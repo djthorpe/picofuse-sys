@@ -5,7 +5,7 @@ add_library(${NAME} STATIC
     uart.c
 )
 target_include_directories(${NAME} PUBLIC
-    ${CMAKE_CURRENT_LIST_DIR}/../../../include
+    ${PROJECT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_BINARY_DIR}
 )
 target_link_libraries(${NAME} 

@@ -13,7 +13,7 @@ struct hw_gpio_t {
 ///////////////////////////////////////////////////////////////////////////////
 // GLOBALS
 
-struct hw_gpio_t pins[MAX_GPIO_BANKS * MAX_GPIO_PINS];
+static struct hw_gpio_t pins[NUM_BANK0_GPIOS];
 
 ///////////////////////////////////////////////////////////////////////////////
 // FORWARD DECLARATIONS
@@ -43,11 +43,6 @@ bool hw_gpio_valid(const hw_gpio_t *gpio) {}
 
 /**
  * @brief Set the global GPIO interrupt callback handler.
- * @ingroup GPIO
- *
- * @param callback Pointer to the callback function, or `NULL` to disable
- * interrupt handling.
- * @param userdata User-defined data pointer to pass to the callback.
  */
 void hw_gpio_set_callback(hw_gpio_callback_t callback, void *userdata) {}
 

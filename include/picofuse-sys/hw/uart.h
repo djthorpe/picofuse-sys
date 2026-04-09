@@ -9,11 +9,10 @@
  * configure baud rates, and handle interrupts.
  */
 #pragma once
+#include "gpio.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-
-#include "hw/gpio.h"
 
 /**
  * @brief UART device structure.
