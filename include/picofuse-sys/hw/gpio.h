@@ -1,0 +1,153 @@
+/**
+ * @file gpio.h
+ * @brief GPIO (General Purpose Input/Output) interface
+ * @defgroup GPIO GPIO
+ * @ingroup Hardware
+ *
+ * General Purpose Input/Output (GPIO) interface for hardware platforms.
+ * This module provides functions to initialize GPIO pins, set their modes,
+ * and handle interrupts.
+ *
+ * @example examples/runtime/gpio/main.c
+ */
+#pragma once
+#include <stdbool.h>
+#include <stdint.h>
+
+///////////////////////////////////////////////////////////////////////////////
+// TYPES
+
+/**
+ * @brief GPIO mode flags for configuring GPIO pins.
+ * @ingroup GPIO
+ */
+typedef enum {
+  HW_GPIO_NONE = 0,
+  HW_GPIO_INPUT,
+  HW_GPIO_PULLUP,
+  HW_GPIO_PULLDOWN,
+  HW_GPIO_OUTPUT,
+  HW_GPIO_SPI,
+  HW_GPIO_I2C,
+  HW_GPIO_UART,
+  HW_GPIO_PWM,
+  HW_GPIO_ADC,
+  HW_GPIO_UNKNOWN,
+} hw_gpio_mode_t;
+
+/**
+ * @brief GPIO interrupt event flags.
+ * @ingroup GPIO
+ */
+typedef enum {
+  HW_GPIO_RISING = (1 << 0),
+  HW_GPIO_FALLING = (1 << 1),
+} hw_gpio_event_t;
+
+/**
+ * @brief GPIO logical pin structure.
+ * @ingroup GPIO
+ * @headerfile gpio.h hw/hw.h
+ */
+typedef struct hw_gpio_t hw_gpio_t;
+
+/**
+ * @brief GPIO interrupt callback function pointer.
+ * @ingroup GPIO
+ *
+ * @param bank The GPIO bank number that triggered the event.
+ * @param pin The logical pin number that triggered the event.
+ * @param event The type of GPIO event that occurred.
+ * @param userdata User-defined data pointer passed when setting the callback.
+ */
+typedef void (*hw_gpio_callback_t)(uint8_t bank, uint8_t pin,
+                                   hw_gpio_event_t event, void *userdata);
+
+///////////////////////////////////////////////////////////////////////////////
+// LIFECYCLE
+
+/**
+ * @brief Get the total number of available GPIO pins for a given bank.
+ * @ingroup GPIO
+ *
+ * @param bank The GPIO bank number to query.
+ * @return The number of GPIO pins available on the hardware platform.
+ */
+uint8_t hw_gpio_count(uint8_t bank);
+
+/**
+ * @brief Validate the GPIO pin.
+ * @ingroup GPIO
+ *
+ * @param gpio Pointer to the GPIO structure to validate.
+ * @retval true The GPIO pin is valid.
+ * @retval false The GPIO pin is invalid.
+ */
+bool hw_gpio_valid(const hw_gpio_t *gpio);
+
+/**
+ * @brief Set the global GPIO interrupt callback handler.
+ * @ingroup GPIO
+ *
+ * @param callback Pointer to the callback function, or `NULL` to disable
+ * interrupt handling.
+ * @param userdata User-defined data pointer to pass to the callback.
+ */
+void hw_gpio_set_callback(hw_gpio_callback_t callback, void *userdata);
+
+/**
+ * @brief Initialize a GPIO pin with the specified mode.
+ * @ingroup GPIO
+ *
+ * @param bank The GPIO bank number to which the pin belongs.
+ * @param pin The logical GPIO pin number to initialize.
+ * @param mode The GPIO mode configuration.
+ * @return A pointer to the initialized GPIO structure, or `NULL` if
+ * initialization fails.
+ */
+hw_gpio_t *hw_gpio_init(uint8_t bank, uint8_t pin, hw_gpio_mode_t mode);
+
+/**
+ * @brief Deinitialize and release a GPIO pin.
+ * @ingroup GPIO
+ *
+ * @param gpio Pointer to the GPIO structure to deinitialize.
+ */
+void hw_gpio_deinit(hw_gpio_t *gpio);
+
+/**
+ * @brief Get the current mode configuration of a GPIO pin.
+ * @ingroup GPIO
+ *
+ * @param gpio Pointer to the GPIO structure.
+ * @return The current GPIO mode configuration.
+ */
+hw_gpio_mode_t hw_gpio_get_mode(const hw_gpio_t *gpio);
+
+/**
+ * @brief Set the current mode configuration of a GPIO pin.
+ * @ingroup GPIO
+ *
+ * @param gpio Pointer to the GPIO structure.
+ * @param mode The new GPIO mode configuration to set.
+ */
+void hw_gpio_set_mode(hw_gpio_t *gpio, hw_gpio_mode_t mode);
+
+/**
+ * @brief Read the current state of a GPIO pin.
+ * @ingroup GPIO
+ *
+ * @param gpio Pointer to the GPIO structure.
+ * @retval true The pin is high.
+ * @retval false The pin is low.
+ */
+bool hw_gpio_get(const hw_gpio_t *gpio);
+
+/**
+ * @brief Set the state of a GPIO pin.
+ * @ingroup GPIO
+ *
+ * @param gpio Pointer to the GPIO structure.
+ * @param value `true` to set the pin high, `false` to set it low.
+ */
+void hw_gpio_set(hw_gpio_t *gpio, bool value);
