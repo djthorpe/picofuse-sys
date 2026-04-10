@@ -8,6 +8,5 @@ int main(void) {
   if (led != NULL) {
     hw_gpio_set(led, true);
   }
-
   sys_halt();
 }

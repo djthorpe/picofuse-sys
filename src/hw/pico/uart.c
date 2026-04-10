@@ -1,4 +1,6 @@
 #include <hardware/gpio.h>
+#include <hardware/irq.h>
+#include <hardware/regs/uart.h>
 #include <hardware/uart.h>
 #include <pico/time.h>
 #include <picofuse/hw.h>
@@ -12,7 +14,9 @@ struct hw_uart_t {
   const hw_gpio_t *rx_pin;
   const hw_gpio_t *tx_pin;
   uint32_t baud_rate;
+  uint32_t events;
   hw_uart_callback_t callback;
+  irq_handler_t irq_handler;
   void *userdata;
 };
 
@@ -31,6 +35,13 @@ static bool _hw_uart_signal_pin_matches_instance(const hw_gpio_t *pin,
                                                  uart_inst_t *instance,
                                                  uint8_t signal_offset);
 static void _hw_uart_configure_pin(const hw_gpio_t *pin, uart_inst_t *instance);
+static void _hw_uart_set_callback(hw_uart_t *uart, hw_uart_callback_t callback,
+                                  void *userdata);
+static irq_handler_t _hw_uart_get_irq_handler(uart_inst_t *instance);
+static void _hw_uart0_irq_handler(void);
+#if NUM_UARTS > 1
+static void _hw_uart1_irq_handler(void);
+#endif
 static uint8_t _hw_uart_num_for_group_base(uint8_t group_base);
 static hw_uart_config_t _hw_uart_default_config(void);
 static uart_parity_t _hw_uart_sdk_parity(hw_uart_parity_t parity);
@@ -92,8 +103,22 @@ hw_uart_t *hw_uart_init(const hw_gpio_t *rx_pin, const hw_gpio_t *tx_pin,
   uart->rx_pin = rx_pin;
   uart->tx_pin = tx_pin;
   uart->baud_rate = baud_rate;
-  uart->callback = callback;
-  uart->userdata = userdata;
+  uart->events = settings.events;
+
+  // Set the IRQ handler based on the selected instance
+  switch (uart_get_index(instance)) {
+  case 0:
+    uart->irq_handler = _hw_uart0_irq_handler;
+    break;
+#if NUM_UARTS > 1
+  case 1:
+    uart->irq_handler = _hw_uart1_irq_handler;
+    break;
+#endif
+  default:
+    sys_panicf("Invalid UART instance");
+    break;
+  }
 
   // Set baud rate, line format, and flow control settings.
   uart_init(instance, baud_rate);
@@ -104,6 +129,11 @@ hw_uart_t *hw_uart_init(const hw_gpio_t *rx_pin, const hw_gpio_t *tx_pin,
                        settings.flow_control == HW_UART_FLOW_CONTROL_CTS_RTS,
                    settings.flow_control == HW_UART_FLOW_CONTROL_RTS ||
                        settings.flow_control == HW_UART_FLOW_CONTROL_CTS_RTS);
+
+  // Set the callback and enable the corresponding UART interrupts
+  if (uart->irq_handler != NULL) {
+    _hw_uart_set_callback(uart, callback, userdata);
+  }
 
   // Return the initialized UART handle
   return uart;
@@ -118,6 +148,7 @@ void hw_uart_deinit(hw_uart_t *uart) {
   }
 
   // Deinitialize the Pico UART instance and clear the UART structure
+  _hw_uart_set_callback(uart, NULL, NULL);
   uart_deinit(uart->instance);
   sys_memset(uart, 0, sizeof(hw_uart_t));
 }
@@ -285,6 +316,90 @@ static void _hw_uart_configure_pin(const hw_gpio_t *pin,
   uint8_t pin_num = hw_gpio_get_pin_num(pin);
   gpio_set_function(pin_num, UART_FUNCSEL_NUM(instance, pin_num));
 }
+
+/**
+ * @brief Configure or remove the callback and its backing UART interrupt.
+ */
+static void _hw_uart_set_callback(hw_uart_t *uart, hw_uart_callback_t callback,
+                                  void *userdata) {
+  if (!hw_uart_valid(uart)) {
+    return;
+  }
+
+  // Remove an existing callback and disable the corresponding UART interrupts
+  // if a callback is already set
+  uint32_t irq_num = UART_IRQ_NUM(uart->instance);
+  if (uart->callback != NULL) {
+    uart_set_irqs_enabled(uart->instance, false, false);
+    irq_set_enabled(irq_num, false);
+    irq_remove_handler(irq_num, uart->irq_handler);
+    uart_get_hw(uart->instance)->icr = UART_UARTICR_RXIC_BITS |
+                                       UART_UARTICR_RTIC_BITS |
+                                       UART_UARTICR_TXIC_BITS;
+  }
+
+  // If no events are enabled, skip configuring the interrupt handler
+  bool rx_has_data =
+      callback != NULL && (uart->events & HW_UART_EVENT_RX_HAS_DATA) != 0;
+  bool tx_empty =
+      callback != NULL && (uart->events & HW_UART_EVENT_TX_EMPTY) != 0;
+
+  uart->callback = callback;
+  uart->userdata = userdata;
+
+  if (!rx_has_data && !tx_empty) {
+    return;
+  }
+
+  // Enable the corresponding UART interrupts and set the global IRQ handler for
+  // the selected instance
+  uart_get_hw(uart->instance)->icr =
+      UART_UARTICR_RXIC_BITS | UART_UARTICR_RTIC_BITS | UART_UARTICR_TXIC_BITS;
+  irq_set_exclusive_handler(irq_num, uart->irq_handler);
+  uart_set_irqs_enabled(uart->instance, rx_has_data, tx_empty);
+  irq_set_enabled(irq_num, true);
+}
+
+/**
+ * @brief Dispatch pending UART IRQ events to the registered callback.
+ */
+static void _hw_uart_irq_handler(hw_uart_t *uart) {
+  if (!hw_uart_valid(uart) || uart->callback == NULL) {
+    return;
+  }
+
+  uint32_t status = uart_get_hw(uart->instance)->mis;
+  uint32_t events = 0;
+  uint32_t clear_mask = 0;
+
+  if ((status & (UART_UARTMIS_RXMIS_BITS | UART_UARTMIS_RTMIS_BITS)) != 0) {
+    events |= HW_UART_EVENT_RX_HAS_DATA;
+    clear_mask |= UART_UARTICR_RXIC_BITS | UART_UARTICR_RTIC_BITS;
+  }
+  if ((status & UART_UARTMIS_TXMIS_BITS) != 0) {
+    events |= HW_UART_EVENT_TX_EMPTY;
+    clear_mask |= UART_UARTICR_TXIC_BITS;
+  }
+
+  if (clear_mask != 0) {
+    uart_get_hw(uart->instance)->icr = clear_mask;
+  }
+  if (events != 0) {
+    uart->callback(uart, events, uart->userdata);
+  }
+}
+
+/**
+ * @brief IRQ wrapper for UART0.
+ */
+static void _hw_uart0_irq_handler(void) { _hw_uart_irq_handler(&uarts[0]); }
+
+#if NUM_UARTS > 1
+/**
+ * @brief IRQ wrapper for UART1.
+ */
+static void _hw_uart1_irq_handler(void) { _hw_uart_irq_handler(&uarts[1]); }
+#endif
 
 /**
  * @brief Map a 4-pin UART group base to a UART instance number.
