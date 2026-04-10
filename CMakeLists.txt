@@ -7,7 +7,7 @@ if(DEFINED PICO_BOARD)
 
     # Point to the shared boards header directory at the root of the objc
     # repository before including pico_sdk_init
-    set(PICO_BOARD_HEADER_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/include/boards")
+    set(PICO_BOARD_HEADER_DIRS "${PROJECT_SOURCE_DIR}/include/boards")
 
     # Load the Pico SDK toolchain before project() selects compilers.
     include(third_party/pico-sdk/pico_sdk_init.cmake)
@@ -17,6 +17,6 @@ project(picofuse_sys C CXX ASM)
 
 if(DEFINED PICO_BOARD)
     pico_sdk_init()
-
-    add_subdirectory(src/hw/pico)
+    add_subdirectory(src)
+    add_subdirectory(examples/hw/gpio)
 endif()
