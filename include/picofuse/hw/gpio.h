@@ -86,6 +86,15 @@ uint8_t hw_gpio_count(uint8_t bank);
 bool hw_gpio_valid(const hw_gpio_t *gpio);
 
 /**
+ * @brief Get the logical pin number for a GPIO handle.
+ * @ingroup GPIO
+ *
+ * @param gpio Pointer to the GPIO structure.
+ * @return The logical GPIO pin number.
+ */
+uint8_t hw_gpio_get_pin_num(const hw_gpio_t *gpio);
+
+/**
  * @brief Set the global GPIO interrupt callback handler.
  * @ingroup GPIO
  *

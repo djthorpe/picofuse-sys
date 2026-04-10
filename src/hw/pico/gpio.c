@@ -17,7 +17,7 @@ struct hw_gpio_t {
 ///////////////////////////////////////////////////////////////////////////////
 // GLOBALS
 
-static struct hw_gpio_t pins[NUM_BANK0_GPIOS];
+static struct hw_gpio_t pins[NUM_BANK0_GPIOS] = {0};
 static hw_gpio_callback_t _hw_gpio_callback_func;
 static void *_hw_gpio_userdata;
 
@@ -75,6 +75,14 @@ bool hw_gpio_valid(const hw_gpio_t *gpio) {
          gpio->mask != 0;
 }
 
+/**
+ * @brief Get the logical pin number for a GPIO handle.
+ */
+uint8_t hw_gpio_get_pin_num(const hw_gpio_t *gpio) {
+  sys_assert(hw_gpio_valid(gpio));
+  return gpio->pin;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // PUBLIC METHODS
 
@@ -118,6 +126,10 @@ hw_gpio_mode_t hw_gpio_get_mode(const hw_gpio_t *gpio) {
     return HW_GPIO_I2C;
   case GPIO_FUNC_UART:
     return HW_GPIO_UART;
+#ifdef GPIO_FUNC_UART_AUX
+  case GPIO_FUNC_UART_AUX:
+    return HW_GPIO_UART;
+#endif
   case GPIO_FUNC_PWM:
     return HW_GPIO_PWM;
   case GPIO_FUNC_SIO:
