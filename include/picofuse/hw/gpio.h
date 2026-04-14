@@ -7,8 +7,6 @@
  * General Purpose Input/Output (GPIO) interface for hardware platforms.
  * This module provides functions to initialize GPIO pins, set their modes,
  * and handle interrupts.
- *
- * @example examples/runtime/gpio/main.c
  */
 #pragma once
 #include <stdbool.h>
