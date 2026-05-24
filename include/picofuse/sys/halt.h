@@ -1,5 +1,6 @@
 /**
  * @file sys/halt.h
+ * @ingroup System
  * @brief Defines the `sys_halt` function.
  * @details This file provides a platform-specific primitive that stops normal
  * execution and never returns.

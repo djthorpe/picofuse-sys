@@ -1,5 +1,6 @@
 /**
  * @file sys/timestamp.h
+ * @ingroup System
  * @brief Defines the `sys_timestamp_ms` function for getting the current
  * timestamp.
  * @details This file provides the declaration of the `sys_timestamp_ms`

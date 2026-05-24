@@ -1,5 +1,6 @@
 /**
  * @file atomic.h
+ * @ingroup System
  * @brief Simple atomic uint32_t API (get, set, increment, decrement).
  *
  * Implements atomic values which can be safely updated across threads.

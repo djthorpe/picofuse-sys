@@ -1,5 +1,6 @@
 /**
  * @file sys/sleep.h
+ * @ingroup System
  * @brief Defines the `sys_sleep` function for sleeping.
  * @details This file provides the declaration of the `sys_sleep` function,
  * which can be used to pause execution for a specified duration.

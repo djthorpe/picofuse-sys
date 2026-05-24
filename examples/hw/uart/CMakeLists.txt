@@ -8,4 +8,6 @@ target_link_libraries(${NAME} PRIVATE
     picofuse-sys
 )
 
-pico_add_extra_outputs(${NAME})
+if(DEFINED PICO_BOARD)
+    pico_add_extra_outputs(${NAME})
+endif()
