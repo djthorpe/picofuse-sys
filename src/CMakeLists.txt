@@ -1,7 +1,7 @@
 set(NAME "picofuse-sys")
 
-add_subdirectory(hw/pico)
-add_subdirectory(sys/pico)
+add_subdirectory(hw/${SYSTEM_NAME_LOWER})
+add_subdirectory(sys/${SYSTEM_NAME_LOWER})
 
 add_library(${NAME} STATIC)
 
@@ -13,7 +13,6 @@ target_sources(${NAME} PRIVATE
 target_link_libraries(${NAME} PUBLIC
     picofuse-hw-obj
     picofuse-sys-obj
-    pico_stdlib
 )
 
 target_include_directories(${NAME} PUBLIC
