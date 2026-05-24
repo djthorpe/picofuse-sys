@@ -45,3 +45,8 @@ picofuse_add_sys_test(sys_008
 picofuse_add_sys_test(sys_009
 	main.c
 )
+
+# Check that the pthread thread wrapper pool bounds concurrent threads.
+picofuse_add_sys_test(sys_010
+	main.c
+)

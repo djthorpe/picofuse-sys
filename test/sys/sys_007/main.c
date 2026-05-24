@@ -2,6 +2,8 @@
 
 typedef struct {
   sys_atomic_t done;
+  sys_atomic_t release;
+  sys_atomic_t started;
   sys_atomic_t worker_core;
 } thread_test_ctx_t;
 
@@ -19,7 +21,15 @@ static bool wait_for_atomic_value(const sys_atomic_t *value, uint32_t expected,
 
 static void thread_worker(void *arg) {
   thread_test_ctx_t *ctx = (thread_test_ctx_t *)arg;
+  sys_atomic_set(&ctx->started, 1);
   sys_atomic_set(&ctx->worker_core, sys_thread_core());
+
+#ifdef SYSTEM_NAME_PICO
+  while (sys_atomic_get(&ctx->release) == 0) {
+    sys_sleep_ms(1);
+  }
+#endif
+
   sys_atomic_set(&ctx->done, 1);
 }
 
@@ -28,11 +38,18 @@ bool test_main(void) {
   uint8_t num_cores = sys_thread_numcores();
 
   sys_atomic_init(&ctx.done, 0);
+  sys_atomic_init(&ctx.release, 0);
+  sys_atomic_init(&ctx.started, 0);
   sys_atomic_init(&ctx.worker_core, UINT32_MAX);
 
 #ifdef SYSTEM_NAME_PICO
   TestAssert(sys_thread_create_on_core(thread_worker, &ctx, 1),
              "Failed to launch worker on Pico core 1");
+  TestAssert(wait_for_atomic_value(&ctx.started, 1, 1000),
+             "Timed out waiting for Pico worker thread to start");
+  TestAssert(!sys_thread_create_on_core(thread_worker, &ctx, 1),
+             "Second Pico worker launch should fail while core 1 is busy");
+  sys_atomic_set(&ctx.release, 1);
 #else
   TestAssert(sys_thread_create(thread_worker, &ctx),
              "Failed to launch worker thread");

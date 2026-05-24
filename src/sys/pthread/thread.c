@@ -79,8 +79,8 @@ static void *thread_wrapper(void *arg) {
   sys_thread_func_t func = wrapper->func;
   void *thread_arg = wrapper->arg;
 
-  sys_thread_release_wrapper(wrapper);
   func(thread_arg);
+  sys_thread_release_wrapper(wrapper);
   return NULL;
 }
 
@@ -146,7 +146,6 @@ bool sys_thread_create_on_core(sys_thread_func_t func, void *arg,
     return false;
   }
 
-  pthread_t thread;
   pthread_attr_t attr;
 
   if (pthread_attr_init(&attr) != 0) {
@@ -158,22 +157,24 @@ bool sys_thread_create_on_core(sys_thread_func_t func, void *arg,
     return false;
   }
 
-  bool ok = sys_thread_create_with_attr(func, arg, &attr, &thread);
-  pthread_attr_destroy(&attr);
-  if (!ok) {
-    return false;
-  }
-
 #ifdef __linux__
   cpu_set_t cpuset;
   CPU_ZERO(&cpuset);
   CPU_SET(core, &cpuset);
-  (void)pthread_setaffinity_np(thread, sizeof(cpuset), &cpuset);
+  if (pthread_attr_setaffinity_np(&attr, sizeof(cpuset), &cpuset) != 0) {
+    pthread_attr_destroy(&attr);
+    return false;
+  }
 #else
+  pthread_attr_destroy(&attr);
   (void)core;
+  return false;
 #endif
 
-  return true;
+  pthread_t thread;
+  bool ok = sys_thread_create_with_attr(func, arg, &attr, &thread);
+  pthread_attr_destroy(&attr);
+  return ok;
 }
 
 uint8_t sys_thread_core(void) {

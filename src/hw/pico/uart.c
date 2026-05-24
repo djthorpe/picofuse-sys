@@ -308,7 +308,9 @@ static bool _hw_uart_signal_pin_matches_instance(const hw_gpio_t *pin,
 }
 
 /**
- * @brief Configure a GPIO pin for the selected UART instance.
+ * @brief Configure a GPIO pin for its UART function.
+ * @details On this Pico backend the GPIO number determines the UART function
+ * selection, so no UART instance parameter is required here.
  */
 static void _hw_uart_configure_pin(const hw_gpio_t *pin) {
   uint8_t pin_num = hw_gpio_get_pin_num(pin);
