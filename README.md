@@ -31,7 +31,7 @@ If the toolchain is not on your `PATH`, pass its `bin` directory with
 Configure the project into a dedicated `build` directory:
 
 ```sh
-cmake -S . -B build -G "Unix Makefiles" -DPICO_BOARD=<board>
+cmake -S . -B build -DPICO_BOARD=<board>
 ```
 
 Build from that directory with:

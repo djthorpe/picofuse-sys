@@ -1,5 +1,6 @@
 /**
  * @file sys/printf.h
+ * @ingroup System
  * @brief Defines the `sys_printf` function for formatted output.
  * @details This file provides the declaration of the `sys_printf` function,
  * which can be used to print formatted messages to the system output.
