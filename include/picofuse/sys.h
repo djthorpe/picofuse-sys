@@ -7,9 +7,12 @@
 #include "sys/atomic.h"
 #include "sys/halt.h"
 #include "sys/mem.h"
+#include "sys/mutex.h"
 #include "sys/panicf.h"
 #include "sys/printf.h"
+#include "sys/random.h"
 #include "sys/sleep.h"
+#include "sys/thread.h"
 #include "sys/timestamp.h"
 
 /**

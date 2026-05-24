@@ -9,6 +9,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifndef SYS_MUTEX_CAPACITY
+#define SYS_MUTEX_CAPACITY 32
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -19,7 +23,7 @@ extern "C" {
 /**
  * @brief Mutex.
  * @ingroup System
- * @headerfile mutex.h hw/hw.h
+ * @headerfile mutex.h picofuse/sys.h
  */
 typedef struct sys_mutex_t sys_mutex_t;
 
@@ -33,7 +37,8 @@ typedef struct sys_mutex_t sys_mutex_t;
  *
  * Creates and initializes a new mutex for thread synchronization.
  * The mutex is initially unlocked and ready for use. The returned mutex can
- * be released with sys_mutex_deinit()
+ * be released with sys_mutex_deinit(). Implementations that use a static pool
+ * may return `NULL` after `SYS_MUTEX_CAPACITY` mutexes have been allocated.
  */
 sys_mutex_t *sys_mutex_init(void);
 

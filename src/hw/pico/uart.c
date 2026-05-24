@@ -34,10 +34,9 @@ static bool _hw_uart_instance_for_pins(const hw_gpio_t *rx_pin,
 static bool _hw_uart_signal_pin_matches_instance(const hw_gpio_t *pin,
                                                  uart_inst_t *instance,
                                                  uint8_t signal_offset);
-static void _hw_uart_configure_pin(const hw_gpio_t *pin, uart_inst_t *instance);
+static void _hw_uart_configure_pin(const hw_gpio_t *pin);
 static void _hw_uart_set_callback(hw_uart_t *uart, hw_uart_callback_t callback,
                                   void *userdata);
-static irq_handler_t _hw_uart_get_irq_handler(uart_inst_t *instance);
 static void _hw_uart0_irq_handler(void);
 #if NUM_UARTS > 1
 static void _hw_uart1_irq_handler(void);
@@ -81,15 +80,15 @@ hw_uart_t *hw_uart_init(const hw_gpio_t *rx_pin, const hw_gpio_t *tx_pin,
   }
 
   // Configure the selected UART signal pins with the platform-specific mux.
-  _hw_uart_configure_pin(rx_pin, instance);
-  _hw_uart_configure_pin(tx_pin, instance);
+  _hw_uart_configure_pin(rx_pin);
+  _hw_uart_configure_pin(tx_pin);
   if (settings.flow_control == HW_UART_FLOW_CONTROL_RTS ||
       settings.flow_control == HW_UART_FLOW_CONTROL_CTS_RTS) {
-    _hw_uart_configure_pin(settings.rts_pin, instance);
+    _hw_uart_configure_pin(settings.rts_pin);
   }
   if (settings.flow_control == HW_UART_FLOW_CONTROL_CTS ||
       settings.flow_control == HW_UART_FLOW_CONTROL_CTS_RTS) {
-    _hw_uart_configure_pin(settings.cts_pin, instance);
+    _hw_uart_configure_pin(settings.cts_pin);
   }
 
   // Get the internal UART structure for the selected instance and initialize it
@@ -311,10 +310,9 @@ static bool _hw_uart_signal_pin_matches_instance(const hw_gpio_t *pin,
 /**
  * @brief Configure a GPIO pin for the selected UART instance.
  */
-static void _hw_uart_configure_pin(const hw_gpio_t *pin,
-                                   uart_inst_t *instance) {
+static void _hw_uart_configure_pin(const hw_gpio_t *pin) {
   uint8_t pin_num = hw_gpio_get_pin_num(pin);
-  gpio_set_function(pin_num, UART_FUNCSEL_NUM(instance, pin_num));
+  gpio_set_function(pin_num, UART_FUNCSEL_NUM(uart0, pin_num));
 }
 
 /**

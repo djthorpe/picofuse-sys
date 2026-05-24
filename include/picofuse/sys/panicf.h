@@ -14,6 +14,13 @@ extern "C" {
 
 ///////////////////////////////////////////////////////////////////////////////
 
+/**
+ * @brief Prints a formatted panic message and halts the system.
+ * @param format A printf-style format string describing the panic.
+ * @param ... Additional arguments referenced by the format string.
+ * @details This function emits a formatted fatal error message using the
+ * platform-specific panic path and does not return to the caller.
+ */
 void sys_panicf(const char *format, ...);
 
 ///////////////////////////////////////////////////////////////////////////////

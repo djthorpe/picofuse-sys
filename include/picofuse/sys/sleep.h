@@ -15,9 +15,11 @@ extern "C" {
 ///////////////////////////////////////////////////////////////////////////////
 
 /**
- * @brief Pauses execution for a specified duration.
+ * @brief Pauses the current thread for a specified duration.
  * @ingroup SystemTiming
  * @param ms The number of milliseconds to sleep.
+ * @details This function blocks only the calling thread for approximately the
+ * requested duration.
  */
 void sys_sleep_ms(uint32_t ms);
 

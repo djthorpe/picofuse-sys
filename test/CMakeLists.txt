@@ -15,3 +15,33 @@ picofuse_add_sys_test(sys_002
 picofuse_add_sys_test(sys_003
 	main.c
 )
+
+# Check basic mutex lifecycle without threading.
+picofuse_add_sys_test(sys_004
+	main.c
+)
+
+# Check thread core discovery.
+picofuse_add_sys_test(sys_005
+	main.c
+)
+
+# Check atomic operations.
+picofuse_add_sys_test(sys_006
+	main.c
+)
+
+# Check thread creation and completion.
+picofuse_add_sys_test(sys_007
+	main.c
+)
+
+# Check mutex synchronization across threads.
+picofuse_add_sys_test(sys_008
+	main.c
+)
+
+# Check random number generation returns non-degenerate values.
+picofuse_add_sys_test(sys_009
+	main.c
+)
