@@ -8,7 +8,7 @@
  * @brief Pauses the execution of the current thread for a specified time.
  */
 void sys_sleep_ms(uint32_t ms) {
-  if (ms <= 0) {
+  if (ms == 0) {
     return;
   }
 

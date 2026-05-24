@@ -9,7 +9,7 @@ target_link_libraries(${NAME} PRIVATE
 )
 
 
-if(DEFINED SYSTEM_NAME_PICO)
+if(DEFINED PICO_BOARD)
     pico_enable_stdio_uart(${NAME} FALSE)
     pico_enable_stdio_usb(${NAME} TRUE)
     pico_add_extra_outputs(${NAME})

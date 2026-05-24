@@ -39,7 +39,7 @@ bool hw_gpio_valid(const hw_gpio_t *gpio) {
  * @brief Get the logical pin number for a GPIO handle.
  */
 uint8_t hw_gpio_get_pin_num(const hw_gpio_t *gpio) {
-  sys_assert(hw_gpio_valid(gpio));
+  (void)gpio;
   return 0;
 }
 

@@ -31,11 +31,11 @@ string(TOLOWER ${CMAKE_SYSTEM_PROCESSOR} PROCESSOR_NAME_LOWER)
 add_compile_options(
     "-Wall"
     "-Wextra"
-    "$<$<CONFIG:DEBUG>:-DDEBUG>"
-    "$<$<CONFIG:RELEASE>:-O3>"
+    "$<$<CONFIG:Debug>:-DDEBUG>"
+    "$<$<CONFIG:Release>:-O3>"
     "-DSYSTEM_NAME_${SYSTEM_NAME_UPPER}"
     "-DSYSTEM_NAME=\"${SYSTEM_NAME_LOWER}\""
-    "-DSYSTEM_PROCESSOR=\"${PROCESSOR_NAME_LOWER}\""    
+    "-DSYSTEM_PROCESSOR=\"${PROCESSOR_NAME_LOWER}\""
 )
 
 # Add source code and examples
