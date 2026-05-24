@@ -1,6 +1,6 @@
-#include <picofuse/sys.h>
 #define _POSIX_C_SOURCE 199309L
 #include <errno.h>
+#include <picofuse/sys.h>
 #include <stdint.h>
 #include <time.h>
 

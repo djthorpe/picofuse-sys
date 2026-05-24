@@ -12,4 +12,4 @@ add_executable(${NAME}
 target_link_libraries(${NAME} PRIVATE
     picofuse-sys
 )
-add_test(NAME ${NAME} COMMAND ${NAME})
+add_test(NAME ${NAME} COMMAND $<TARGET_FILE:${NAME}>)

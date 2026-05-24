@@ -4,7 +4,7 @@
  * @brief Initializes the system on startup.
  */
 void sys_init(void) {
-  // No-op stub implementation for unsupported platforms.
+  sys_timestamp_ms(); // Initialize timestamp
 }
 
 /**
