@@ -15,6 +15,8 @@ endif()
 
 project(picofuse_sys C CXX ASM)
 
+list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
+
 if(DEFINED PICO_BOARD)
     pico_sdk_init()
     add_subdirectory(src)
