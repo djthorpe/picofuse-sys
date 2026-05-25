@@ -43,7 +43,6 @@
 *.pdb
 
 # Kernel Module Compile Results
-*.mod*
 *.cmd
 .tmp_versions/
 modules.order
@@ -55,4 +54,6 @@ dkms.conf
 *.dwo
 
 # Build directories
-build/
+build*/
+doc*/
+

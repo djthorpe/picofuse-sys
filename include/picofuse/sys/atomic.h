@@ -1,6 +1,7 @@
 /**
  * @file atomic.h
- * @ingroup System
+ * @defgroup SystemAtomic Atomic Operations
+ * @ingroup SystemSync
  * @brief Simple atomic uint32_t API (get, set, increment, decrement).
  *
  * Implements atomic values which can be safely updated across threads.
@@ -29,7 +30,7 @@ extern "C" {
 
 /**
  * Underlying atomic uint32_t value
- * @ingroup SystemSync
+ * @ingroup SystemAtomic
  * @headerfile atomic.h picofuse/sys.h
  *
  * Do not access the value directly; use the sys_atomic_* APIs.
@@ -41,7 +42,7 @@ typedef struct sys_atomic_t {
 
 /**
  * @brief Initialize an atomic with an initial value.
- * @ingroup SystemSync
+ * @ingroup SystemAtomic
  *
  * @param a Pointer to the atomic value to initialize (must be non-NULL).
  * @param initial The initial 32-bit value to store.
@@ -56,7 +57,7 @@ static inline void sys_atomic_init(sys_atomic_t *a, uint32_t initial) {
 
 /**
  * @brief Load the current value atomically.
- * @ingroup SystemSync
+ * @ingroup SystemAtomic
  *
  * @param a Pointer to the atomic value (must be non-NULL).
  * @return The current 32-bit value.
@@ -71,7 +72,7 @@ static inline uint32_t sys_atomic_get(const sys_atomic_t *a) {
 
 /**
  * @brief Store a new value atomically.
- * @ingroup SystemSync
+ * @ingroup SystemAtomic
  *
  * @param a Pointer to the atomic value (must be non-NULL).
  * @param v The value to store.
@@ -85,7 +86,7 @@ static inline void sys_atomic_set(sys_atomic_t *a, uint32_t v) {
 
 /**
  * @brief Atomically increment and return the new value.
- * @ingroup SystemSync
+ * @ingroup SystemAtomic
  *
  * @param a Pointer to the atomic value (must be non-NULL).
  * @return The incremented value after the operation.
@@ -98,7 +99,7 @@ static inline uint32_t sys_atomic_inc(sys_atomic_t *a) {
 
 /**
  * @brief Atomically decrement and return the new value.
- * @ingroup SystemSync
+ * @ingroup SystemAtomic
  *
  * @param a Pointer to the atomic value (must be non-NULL).
  * @return The decremented value after the operation.
@@ -111,7 +112,7 @@ static inline uint32_t sys_atomic_dec(sys_atomic_t *a) {
 
 /**
  * @brief Atomically set bits (OR with mask).
- * @ingroup SystemSync
+ * @ingroup SystemAtomic
  *
  * @param a Pointer to the atomic value (must be non-NULL).
  * @param mask Bit mask of bits to set.
@@ -124,7 +125,7 @@ static inline void sys_atomic_set_bits(sys_atomic_t *a, uint32_t mask) {
 
 /**
  * @brief Atomically clear bits (AND with ~mask).
- * @ingroup SystemSync
+ * @ingroup SystemAtomic
  *
  * @param a Pointer to the atomic value (must be non-NULL).
  * @param mask Bit mask of bits to clear.

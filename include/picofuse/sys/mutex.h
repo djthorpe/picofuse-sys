@@ -1,13 +1,23 @@
 /**
  * @file mutex.h
+ * @defgroup SystemSync Synchronization Primitives
  * @ingroup System
  * @brief Synchronization primitives for thread-safe operations.
- * @ingroup System
+ */
+
+/**
+ * @defgroup SystemSyncMutex Mutexes
+ * @ingroup SystemSync
+ * @brief Mutual exclusion primitives.
  */
 #pragma once
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+
+#ifndef SYS_MUTEX_CAPACITY
+#define SYS_MUTEX_CAPACITY 32
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -18,8 +28,8 @@ extern "C" {
 
 /**
  * @brief Mutex.
- * @ingroup System
- * @headerfile mutex.h hw/hw.h
+ * @ingroup SystemSyncMutex
+ * @headerfile mutex.h picofuse/sys.h
  */
 typedef struct sys_mutex_t sys_mutex_t;
 
@@ -28,18 +38,19 @@ typedef struct sys_mutex_t sys_mutex_t;
 
 /**
  * @brief Initialize a new mutex
- * @ingroup System
+ * @ingroup SystemSyncMutex
  * @return Initialized mutex structure
  *
  * Creates and initializes a new mutex for thread synchronization.
  * The mutex is initially unlocked and ready for use. The returned mutex can
- * be released with sys_mutex_deinit()
+ * be released with sys_mutex_deinit(). Implementations that use a static pool
+ * may return `NULL` after `SYS_MUTEX_CAPACITY` mutexes have been allocated.
  */
 sys_mutex_t *sys_mutex_init(void);
 
 /**
  * @brief Lock a mutex, by blocking
- * @ingroup SystemSync
+ * @ingroup SystemSyncMutex
  * @param mutex Pointer to the mutex to lock
  * @return true if the mutex was successfully locked, false on error
  *
@@ -52,7 +63,7 @@ bool sys_mutex_lock(sys_mutex_t *mutex);
 
 /**
  * @brief Try to lock a mutex
- * @ingroup SystemSync
+ * @ingroup SystemSyncMutex
  * @param mutex Pointer to the mutex to try locking
  * @return true if the mutex was successfully locked, false if already locked
  * or on error
@@ -65,7 +76,7 @@ bool sys_mutex_trylock(sys_mutex_t *mutex);
 
 /**
  * @brief Unlock a mutex
- * @ingroup SystemSync
+ * @ingroup SystemSyncMutex
  * @param mutex Pointer to the mutex to unlock
  * @return true if the mutex was successfully unlocked, false on error
  *
@@ -77,7 +88,7 @@ bool sys_mutex_unlock(sys_mutex_t *mutex);
 
 /**
  * @brief Release a mutex
- * @ingroup SystemSync
+ * @ingroup SystemSyncMutex
  * @param mutex Pointer to the mutex to release
  *
  * Releases all resources associated with the mutex and renders it

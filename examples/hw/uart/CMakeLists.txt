@@ -9,5 +9,6 @@ target_link_libraries(${NAME} PRIVATE
 )
 
 if(DEFINED PICO_BOARD)
+    pico_set_printf_implementation(${NAME} none)
     pico_add_extra_outputs(${NAME})
 endif()

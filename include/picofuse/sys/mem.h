@@ -1,5 +1,6 @@
 /**
  * @file sys/mem.h
+ * @defgroup SystemMemory Memory Operations
  * @ingroup System
  * @brief Defines memory-related functions and macros.
  * @details This file provides functions and macros for memory management
