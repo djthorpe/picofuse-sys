@@ -40,8 +40,11 @@ add_compile_options(
     "-DSYSTEM_PROCESSOR=\"${PROCESSOR_NAME_LOWER}\""
 )
 
-# Add source code and examples
+# Add source code 
 add_subdirectory(src)
+
+# Add examples
+add_subdirectory(examples/sys/multicore)
 add_subdirectory(examples/hw/gpio)
 add_subdirectory(examples/hw/uart)
 add_subdirectory(examples/hw/wifi)

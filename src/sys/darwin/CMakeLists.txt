@@ -13,6 +13,7 @@ add_library(${NAME} OBJECT
     ../pthread/cond.c
     ../pthread/mutex.c
     ../pthread/thread.c
+    ../pthread/waitgroup.c
 )
 target_include_directories(${NAME} PUBLIC
     ${PROJECT_SOURCE_DIR}/include

@@ -22,3 +22,8 @@ extern void _sys_mutex_module_init(void);
  * @brief Initializes the cond subsystem
  */
 extern void _sys_cond_module_init(void);
+
+/**
+ * @brief Initializes the waitgroup subsystem
+ */
+extern void _sys_waitgroup_module_init(void);

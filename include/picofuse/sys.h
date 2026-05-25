@@ -17,6 +17,7 @@
 #include "sys/sleep.h"
 #include "sys/thread.h"
 #include "sys/timestamp.h"
+#include "sys/waitgroup.h"
 
 /**
  * @brief Initializes the system on startup.
