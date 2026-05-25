@@ -21,6 +21,27 @@ static bool _sys_cond_valid(const sys_cond_t *cond) {
   return cond != NULL && cond->init;
 }
 
+static bool _sys_cond_init_handle(sys_cond_t *cond) {
+#if !defined(__APPLE__) && defined(CLOCK_MONOTONIC) &&                         \
+    defined(_POSIX_CLOCK_SELECTION) && (_POSIX_CLOCK_SELECTION >= 0)
+  pthread_condattr_t attr;
+  if (pthread_condattr_init(&attr) != 0) {
+    return false;
+  }
+
+  if (pthread_condattr_setclock(&attr, CLOCK_MONOTONIC) != 0) {
+    pthread_condattr_destroy(&attr);
+    return false;
+  }
+
+  int result = pthread_cond_init(&cond->pcond, &attr);
+  pthread_condattr_destroy(&attr);
+  return result == 0;
+#else
+  return pthread_cond_init(&cond->pcond, NULL) == 0;
+#endif
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // LIFECYCLE
 
@@ -37,7 +58,7 @@ sys_cond_t *sys_cond_init(void) {
     }
 
     cond->init = true;
-    if (pthread_cond_init(&cond->pcond, NULL) != 0) {
+    if (!_sys_cond_init_handle(cond)) {
       cond->init = false;
       pthread_mutex_unlock(&cond_pool_lock);
       return NULL;
@@ -55,15 +76,23 @@ sys_cond_t *sys_cond_init(void) {
 void sys_cond_deinit(sys_cond_t *cond) {
   sys_assert(_sys_cond_valid(cond));
 
-  if (pthread_mutex_lock(&cond_pool_lock) != 0) {
+  int lock_result = pthread_mutex_lock(&cond_pool_lock);
+  sys_assert(lock_result == 0);
+  if (lock_result != 0) {
     return;
   }
-  if (pthread_cond_destroy(&cond->pcond) != 0) {
+
+  int destroy_result = pthread_cond_destroy(&cond->pcond);
+  sys_assert(destroy_result == 0);
+  if (destroy_result != 0) {
     pthread_mutex_unlock(&cond_pool_lock);
     return;
   }
+
   cond->init = false;
-  pthread_mutex_unlock(&cond_pool_lock);
+
+  int unlock_result = pthread_mutex_unlock(&cond_pool_lock);
+  sys_assert(unlock_result == 0);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -84,8 +113,18 @@ bool sys_cond_timedwait(sys_cond_t *cond, sys_mutex_t *mutex,
     return sys_cond_wait(cond, mutex);
   }
 
+#if defined(__APPLE__)
+  struct timespec rel_timeout = {
+      .tv_sec = (time_t)(timeout_ms / 1000),
+      .tv_nsec = (long)(timeout_ms % 1000) * 1000000L,
+  };
+
+  int result = pthread_cond_timedwait_relative_np(&cond->pcond, &mutex->pmutex,
+                                                  &rel_timeout);
+  return result == 0;
+#else
   struct timespec abs_timeout;
-  if (clock_gettime(CLOCK_REALTIME, &abs_timeout) != 0) {
+  if (clock_gettime(CLOCK_MONOTONIC, &abs_timeout) != 0) {
     return false;
   }
 
@@ -100,6 +139,7 @@ bool sys_cond_timedwait(sys_cond_t *cond, sys_mutex_t *mutex,
   int result =
       pthread_cond_timedwait(&cond->pcond, &mutex->pmutex, &abs_timeout);
   return result == 0;
+#endif
 }
 
 bool sys_cond_signal(sys_cond_t *cond) {

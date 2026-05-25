@@ -1,14 +1,12 @@
+#include "private.h"
 #include <pico/critical_section.h>
 #include <pico/mutex.h>
 #include <picofuse/sys.h>
-
-#include "pico_sys_internal.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 // TYPES
 
 static critical_section_t mutex_pool_lock;
-static bool mutex_pool_lock_init = false;
 static sys_mutex_t mutex_pool[SYS_MUTEX_CAPACITY];
 static size_t mutex_pool_next_index = 0;
 
@@ -16,11 +14,8 @@ static bool _sys_mutex_valid(const sys_mutex_t *mutex) {
   return sys_pico_mutex_valid(mutex);
 }
 
-static void _sys_mutex_pool_lock_init(void) {
-  if (!mutex_pool_lock_init) {
-    critical_section_init(&mutex_pool_lock);
-    mutex_pool_lock_init = true;
-  }
+void sys_pico_mutex_module_init(void) {
+  critical_section_init(&mutex_pool_lock);
 }
 
 static bool _sys_mutex_init_handle(sys_mutex_t *mutex) {
@@ -32,7 +27,6 @@ static bool _sys_mutex_init_handle(sys_mutex_t *mutex) {
 // LIFECYCLE
 
 sys_mutex_t *sys_mutex_init(void) {
-  _sys_mutex_pool_lock_init();
   critical_section_enter_blocking(&mutex_pool_lock);
 
   for (size_t offset = 0; offset < SYS_MUTEX_CAPACITY; offset++) {
@@ -78,7 +72,6 @@ bool sys_mutex_unlock(sys_mutex_t *mutex) {
 void sys_mutex_deinit(sys_mutex_t *mutex) {
   sys_assert(_sys_mutex_valid(mutex));
 
-  _sys_mutex_pool_lock_init();
   critical_section_enter_blocking(&mutex_pool_lock);
   mutex->init = false;
   critical_section_exit(&mutex_pool_lock);

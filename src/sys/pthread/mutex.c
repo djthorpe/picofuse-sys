@@ -65,15 +65,23 @@ sys_mutex_t *sys_mutex_init(void) {
 void sys_mutex_deinit(sys_mutex_t *mutex) {
   sys_assert(_sys_mutex_valid(mutex));
 
-  if (pthread_mutex_lock(&mutex_pool_lock) != 0) {
+  int lock_result = pthread_mutex_lock(&mutex_pool_lock);
+  sys_assert(lock_result == 0);
+  if (lock_result != 0) {
     return;
   }
-  if (pthread_mutex_destroy(&mutex->pmutex) != 0) {
+
+  int destroy_result = pthread_mutex_destroy(&mutex->pmutex);
+  sys_assert(destroy_result == 0);
+  if (destroy_result != 0) {
     pthread_mutex_unlock(&mutex_pool_lock);
     return;
   }
+
   mutex->init = false;
-  pthread_mutex_unlock(&mutex_pool_lock);
+
+  int unlock_result = pthread_mutex_unlock(&mutex_pool_lock);
+  sys_assert(unlock_result == 0);
 }
 
 ///////////////////////////////////////////////////////////////////////////////

@@ -1,8 +1,8 @@
 # Doxyfile 1.9.1
 
 DOXYFILE_ENCODING      = UTF-8
-PROJECT_NAME           = "objc"
-PROJECT_BRIEF          = "Objective-C runtime and foundation library"
+PROJECT_NAME           = "picofuse-sys"
+PROJECT_BRIEF          = "picofuse runtime and foundation library"
 PROJECT_LOGO           =
 OUTPUT_DIRECTORY       = /data/doc
 INPUT                  = /data/README.md /data/include/picofuse
