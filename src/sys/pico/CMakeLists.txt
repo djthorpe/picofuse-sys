@@ -7,9 +7,11 @@ add_library(${NAME} OBJECT
     mem.c
     mutex.c
     panicf.c
-    printf.c
+    ../printf/float.c
+    ../printf/printf.c
     random.c
     sleep.c
+    stdio.c
     thread.c
     timestamp.c
 )

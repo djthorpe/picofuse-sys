@@ -55,3 +55,13 @@ picofuse_add_sys_test(sys_010
 picofuse_add_sys_test(sys_011
 	main.c
 )
+
+# Check condition variable no-stored-signal semantics and broadcast behavior.
+picofuse_add_sys_test(sys_012
+	main.c
+)
+
+# Check printf formatting for signed size_t, pointers, and custom handlers.
+picofuse_add_sys_test(sys_013
+	main.c
+)

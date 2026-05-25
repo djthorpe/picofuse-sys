@@ -17,34 +17,17 @@ static pthread_mutex_t cond_pool_lock = PTHREAD_MUTEX_INITIALIZER;
 static sys_cond_t cond_pool[SYS_COND_CAPACITY];
 static size_t cond_pool_next_index = 0;
 
-static bool _sys_cond_valid(const sys_cond_t *cond) {
-  return cond != NULL && cond->init;
-}
+///////////////////////////////////////////////////////////////////////////////
+// FORWARD DECLARATIONS
 
-static bool _sys_cond_init_handle(sys_cond_t *cond) {
-#if !defined(__APPLE__) && defined(CLOCK_MONOTONIC) &&                         \
-    defined(_POSIX_CLOCK_SELECTION) && (_POSIX_CLOCK_SELECTION >= 0)
-  pthread_condattr_t attr;
-  if (pthread_condattr_init(&attr) != 0) {
-    return false;
-  }
-
-  if (pthread_condattr_setclock(&attr, CLOCK_MONOTONIC) != 0) {
-    pthread_condattr_destroy(&attr);
-    return false;
-  }
-
-  int result = pthread_cond_init(&cond->pcond, &attr);
-  pthread_condattr_destroy(&attr);
-  return result == 0;
-#else
-  return pthread_cond_init(&cond->pcond, NULL) == 0;
-#endif
-}
+static bool _sys_cond_valid(const sys_cond_t *cond);
+static bool _sys_cond_init_handle(sys_cond_t *cond);
 
 ///////////////////////////////////////////////////////////////////////////////
 // LIFECYCLE
 
+/** @brief Allocates and initializes a condition variable from the static pool.
+ */
 sys_cond_t *sys_cond_init(void) {
   if (pthread_mutex_lock(&cond_pool_lock) != 0) {
     return NULL;
@@ -73,6 +56,7 @@ sys_cond_t *sys_cond_init(void) {
   return NULL;
 }
 
+/** @brief Deinitializes a condition variable and returns its pool slot. */
 void sys_cond_deinit(sys_cond_t *cond) {
   sys_assert(_sys_cond_valid(cond));
 
@@ -98,12 +82,14 @@ void sys_cond_deinit(sys_cond_t *cond) {
 ///////////////////////////////////////////////////////////////////////////////
 // PUBLIC METHODS
 
+/** @brief Waits until the condition variable is signaled. */
 bool sys_cond_wait(sys_cond_t *cond, sys_mutex_t *mutex) {
   sys_assert(_sys_cond_valid(cond));
   sys_assert(_sys_mutex_valid(mutex));
   return pthread_cond_wait(&cond->pcond, &mutex->pmutex) == 0;
 }
 
+/** @brief Waits until signaled or the timeout expires. */
 bool sys_cond_timedwait(sys_cond_t *cond, sys_mutex_t *mutex,
                         uint32_t timeout_ms) {
   sys_assert(_sys_cond_valid(cond));
@@ -142,12 +128,44 @@ bool sys_cond_timedwait(sys_cond_t *cond, sys_mutex_t *mutex,
 #endif
 }
 
+/** @brief Wakes one thread waiting on the condition variable. */
 bool sys_cond_signal(sys_cond_t *cond) {
   sys_assert(_sys_cond_valid(cond));
   return pthread_cond_signal(&cond->pcond) == 0;
 }
 
+/** @brief Wakes all threads waiting on the condition variable. */
 bool sys_cond_broadcast(sys_cond_t *cond) {
   sys_assert(_sys_cond_valid(cond));
   return pthread_cond_broadcast(&cond->pcond) == 0;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// PRIVATE METHODS
+
+/** @brief Returns true when a condition variable handle is initialized. */
+static bool _sys_cond_valid(const sys_cond_t *cond) {
+  return cond != NULL && cond->init;
+}
+
+/** @brief Initializes the native pthread condition variable in a pool slot. */
+static bool _sys_cond_init_handle(sys_cond_t *cond) {
+#if !defined(__APPLE__) && defined(CLOCK_MONOTONIC) &&                         \
+    defined(_POSIX_CLOCK_SELECTION) && (_POSIX_CLOCK_SELECTION >= 0)
+  pthread_condattr_t attr;
+  if (pthread_condattr_init(&attr) != 0) {
+    return false;
+  }
+
+  if (pthread_condattr_setclock(&attr, CLOCK_MONOTONIC) != 0) {
+    pthread_condattr_destroy(&attr);
+    return false;
+  }
+
+  int result = pthread_cond_init(&cond->pcond, &attr);
+  pthread_condattr_destroy(&attr);
+  return result == 0;
+#else
+  return pthread_cond_init(&cond->pcond, NULL) == 0;
+#endif
 }

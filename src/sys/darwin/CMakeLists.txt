@@ -5,7 +5,9 @@ add_library(${NAME} OBJECT
     ../posix/init.c
     ../posix/halt.c
     ../posix/panicf.c
-    ../posix/printf.c
+    ../printf/float.c
+    ../printf/printf.c
+    ../posix/stdio.c
     ../posix/sleep.c
     ../posix/timestamp.c
     ../pthread/cond.c

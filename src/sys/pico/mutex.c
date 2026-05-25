@@ -6,32 +6,26 @@
 ///////////////////////////////////////////////////////////////////////////////
 // TYPES
 
-static critical_section_t mutex_pool_lock;
-static sys_mutex_t mutex_pool[SYS_MUTEX_CAPACITY];
-static size_t mutex_pool_next_index = 0;
+static critical_section_t _sys_mutex_pool_lock;
+static sys_mutex_t _sys_mutex_pool[SYS_MUTEX_CAPACITY];
+static size_t _sys_mutex_pool_index = 0;
 
-static bool _sys_mutex_valid(const sys_mutex_t *mutex) {
-  return sys_pico_mutex_valid(mutex);
-}
+///////////////////////////////////////////////////////////////////////////////
+// FORWARD DECLARATIONS
 
-void sys_pico_mutex_module_init(void) {
-  critical_section_init(&mutex_pool_lock);
-}
-
-static bool _sys_mutex_init_handle(sys_mutex_t *mutex) {
-  mutex_init(&mutex->pmutex);
-  return mutex_is_initialized(&mutex->pmutex);
-}
+void _sys_mutex_module_init(void);
+static bool _sys_mutex_init_handle(sys_mutex_t *mutex);
 
 ///////////////////////////////////////////////////////////////////////////////
 // LIFECYCLE
 
+/** @brief Allocates and initializes a mutex from the static pool. */
 sys_mutex_t *sys_mutex_init(void) {
-  critical_section_enter_blocking(&mutex_pool_lock);
+  critical_section_enter_blocking(&_sys_mutex_pool_lock);
 
   for (size_t offset = 0; offset < SYS_MUTEX_CAPACITY; offset++) {
-    size_t index = (mutex_pool_next_index + offset) % SYS_MUTEX_CAPACITY;
-    sys_mutex_t *mutex = &mutex_pool[index];
+    size_t index = (_sys_mutex_pool_index + offset) % SYS_MUTEX_CAPACITY;
+    sys_mutex_t *mutex = &_sys_mutex_pool[index];
     if (mutex->init) {
       continue;
     }
@@ -39,40 +33,61 @@ sys_mutex_t *sys_mutex_init(void) {
     mutex->init = true;
     if (!_sys_mutex_init_handle(mutex)) {
       mutex->init = false;
-      critical_section_exit(&mutex_pool_lock);
+      critical_section_exit(&_sys_mutex_pool_lock);
       return NULL;
     }
 
-    mutex_pool_next_index = (index + 1) % SYS_MUTEX_CAPACITY;
-    critical_section_exit(&mutex_pool_lock);
+    _sys_mutex_pool_index = (index + 1) % SYS_MUTEX_CAPACITY;
+    critical_section_exit(&_sys_mutex_pool_lock);
     return mutex;
   }
 
-  critical_section_exit(&mutex_pool_lock);
+  critical_section_exit(&_sys_mutex_pool_lock);
   return NULL;
 }
 
+/** @brief Deinitializes a mutex and returns its pool slot. */
+void sys_mutex_deinit(sys_mutex_t *mutex) {
+  sys_assert(_sys_mutex_valid(mutex));
+
+  critical_section_enter_blocking(&_sys_mutex_pool_lock);
+  mutex->init = false;
+  critical_section_exit(&_sys_mutex_pool_lock);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// PUBLIC METHODS
+
+/** @brief Locks a mutex, blocking until it becomes available. */
 bool sys_mutex_lock(sys_mutex_t *mutex) {
   sys_assert(_sys_mutex_valid(mutex));
   mutex_enter_blocking(&mutex->pmutex);
   return true;
 }
 
+/** @brief Attempts to lock a mutex without blocking. */
 bool sys_mutex_trylock(sys_mutex_t *mutex) {
   sys_assert(_sys_mutex_valid(mutex));
   return mutex_try_enter(&mutex->pmutex, NULL);
 }
 
+/** @brief Unlocks a previously locked mutex. */
 bool sys_mutex_unlock(sys_mutex_t *mutex) {
   sys_assert(_sys_mutex_valid(mutex));
   mutex_exit(&mutex->pmutex);
   return true;
 }
 
-void sys_mutex_deinit(sys_mutex_t *mutex) {
-  sys_assert(_sys_mutex_valid(mutex));
+///////////////////////////////////////////////////////////////////////////////
+// PRIVATE METHODS
 
-  critical_section_enter_blocking(&mutex_pool_lock);
-  mutex->init = false;
-  critical_section_exit(&mutex_pool_lock);
+/** @brief Initializes the Pico mutex pool lock. */
+void _sys_mutex_module_init(void) {
+  critical_section_init(&_sys_mutex_pool_lock);
+}
+
+/** @brief Initializes the native Pico mutex stored in a pool slot. */
+static bool _sys_mutex_init_handle(sys_mutex_t *mutex) {
+  mutex_init(&mutex->pmutex);
+  return mutex_is_initialized(&mutex->pmutex);
 }

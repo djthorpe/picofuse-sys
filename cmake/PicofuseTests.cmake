@@ -22,6 +22,7 @@ macro(picofuse_add_sys_test NAME)
     )
 
     if(DEFINED PICO_BOARD)
+        pico_set_printf_implementation(${NAME} none)
         pico_enable_stdio_uart(${NAME} FALSE)
         pico_enable_stdio_usb(${NAME} TRUE)
         pico_add_extra_outputs(${NAME})

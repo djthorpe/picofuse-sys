@@ -10,27 +10,14 @@ static sys_mutex_t mutex_pool[SYS_MUTEX_CAPACITY];
 static size_t mutex_pool_next_index = 0;
 
 ///////////////////////////////////////////////////////////////////////////////
+// FORWARD DECLARATIONS
+
+static bool _sys_mutex_init_handle(sys_mutex_t *mutex);
+
+///////////////////////////////////////////////////////////////////////////////
 // LIFECYCLE
 
-static bool _sys_mutex_init_handle(sys_mutex_t *mutex) {
-  pthread_mutexattr_t attr;
-  if (pthread_mutexattr_init(&attr) != 0) {
-    return false;
-  }
-
-  if (pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK) != 0) {
-    pthread_mutexattr_destroy(&attr);
-    return false;
-  }
-
-  int result = pthread_mutex_init(&mutex->pmutex, &attr);
-  pthread_mutexattr_destroy(&attr);
-  return result == 0;
-}
-
-/**
- * @brief Initialize a new mutex
- */
+/** @brief Allocates and initializes a mutex from the static pool. */
 sys_mutex_t *sys_mutex_init(void) {
   if (pthread_mutex_lock(&mutex_pool_lock) != 0) {
     return NULL;
@@ -59,9 +46,7 @@ sys_mutex_t *sys_mutex_init(void) {
   return NULL;
 }
 
-/**
- * @brief Deinitialize a mutex
- */
+/** @brief Deinitializes a mutex and returns its pool slot. */
 void sys_mutex_deinit(sys_mutex_t *mutex) {
   sys_assert(_sys_mutex_valid(mutex));
 
@@ -87,26 +72,40 @@ void sys_mutex_deinit(sys_mutex_t *mutex) {
 ///////////////////////////////////////////////////////////////////////////////
 // PUBLIC METHODS
 
-/**
- * @brief Lock a mutex, by blocking
- */
+/** @brief Locks a mutex, blocking until it becomes available. */
 bool sys_mutex_lock(sys_mutex_t *mutex) {
   sys_assert(_sys_mutex_valid(mutex));
   return pthread_mutex_lock(&mutex->pmutex) == 0;
 }
 
-/**
- * @brief Try to lock a mutex
- */
+/** @brief Attempts to lock a mutex without blocking. */
 bool sys_mutex_trylock(sys_mutex_t *mutex) {
   sys_assert(_sys_mutex_valid(mutex));
   return pthread_mutex_trylock(&mutex->pmutex) == 0;
 }
 
-/**
- * @brief Unlock a mutex
- */
+/** @brief Unlocks a previously locked mutex. */
 bool sys_mutex_unlock(sys_mutex_t *mutex) {
   sys_assert(_sys_mutex_valid(mutex));
   return pthread_mutex_unlock(&mutex->pmutex) == 0;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// PRIVATE METHODS
+
+/** @brief Initializes the native pthread mutex stored in a pool slot. */
+static bool _sys_mutex_init_handle(sys_mutex_t *mutex) {
+  pthread_mutexattr_t attr;
+  if (pthread_mutexattr_init(&attr) != 0) {
+    return false;
+  }
+
+  if (pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK) != 0) {
+    pthread_mutexattr_destroy(&attr);
+    return false;
+  }
+
+  int result = pthread_mutex_init(&mutex->pmutex, &attr);
+  pthread_mutexattr_destroy(&attr);
+  return result == 0;
 }
