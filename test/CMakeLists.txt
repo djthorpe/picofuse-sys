@@ -50,3 +50,8 @@ picofuse_add_sys_test(sys_009
 picofuse_add_sys_test(sys_010
 	main.c
 )
+
+# Check condition variable wait, signal, timeout, and slot reuse.
+picofuse_add_sys_test(sys_011
+	main.c
+)

@@ -1,21 +1,16 @@
+#include "mutex.h"
 #include <picofuse/sys.h>
 #include <pthread.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 // TYPES
 
-struct sys_mutex_t {
-  pthread_mutex_t pmutex;
-  bool init;
-};
-
 static pthread_mutex_t mutex_pool_lock = PTHREAD_MUTEX_INITIALIZER;
 static sys_mutex_t mutex_pool[SYS_MUTEX_CAPACITY];
 static size_t mutex_pool_next_index = 0;
 
-static bool _sys_mutex_valid(const sys_mutex_t *mutex) {
-  return mutex != NULL && mutex->init;
-}
+///////////////////////////////////////////////////////////////////////////////
+// LIFECYCLE
 
 static bool _sys_mutex_init_handle(sys_mutex_t *mutex) {
   pthread_mutexattr_t attr;
@@ -32,9 +27,6 @@ static bool _sys_mutex_init_handle(sys_mutex_t *mutex) {
   pthread_mutexattr_destroy(&attr);
   return result == 0;
 }
-
-///////////////////////////////////////////////////////////////////////////////
-// LIFECYCLE
 
 /**
  * @brief Initialize a new mutex
@@ -68,6 +60,26 @@ sys_mutex_t *sys_mutex_init(void) {
 }
 
 /**
+ * @brief Deinitialize a mutex
+ */
+void sys_mutex_deinit(sys_mutex_t *mutex) {
+  sys_assert(_sys_mutex_valid(mutex));
+
+  if (pthread_mutex_lock(&mutex_pool_lock) != 0) {
+    return;
+  }
+  if (pthread_mutex_destroy(&mutex->pmutex) != 0) {
+    pthread_mutex_unlock(&mutex_pool_lock);
+    return;
+  }
+  mutex->init = false;
+  pthread_mutex_unlock(&mutex_pool_lock);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// PUBLIC METHODS
+
+/**
  * @brief Lock a mutex, by blocking
  */
 bool sys_mutex_lock(sys_mutex_t *mutex) {
@@ -89,21 +101,4 @@ bool sys_mutex_trylock(sys_mutex_t *mutex) {
 bool sys_mutex_unlock(sys_mutex_t *mutex) {
   sys_assert(_sys_mutex_valid(mutex));
   return pthread_mutex_unlock(&mutex->pmutex) == 0;
-}
-
-/**
- * @brief Deinitialize a mutex
- */
-void sys_mutex_deinit(sys_mutex_t *mutex) {
-  sys_assert(_sys_mutex_valid(mutex));
-
-  if (pthread_mutex_lock(&mutex_pool_lock) != 0) {
-    return;
-  }
-  if (pthread_mutex_destroy(&mutex->pmutex) != 0) {
-    pthread_mutex_unlock(&mutex_pool_lock);
-    return;
-  }
-  mutex->init = false;
-  pthread_mutex_unlock(&mutex_pool_lock);
 }

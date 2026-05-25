@@ -2,13 +2,10 @@
 #include <pico/mutex.h>
 #include <picofuse/sys.h>
 
+#include "pico_sys_internal.h"
+
 ///////////////////////////////////////////////////////////////////////////////
 // TYPES
-
-struct sys_mutex_t {
-  mutex_t pmutex;
-  bool init;
-};
 
 static critical_section_t mutex_pool_lock;
 static bool mutex_pool_lock_init = false;
@@ -16,8 +13,7 @@ static sys_mutex_t mutex_pool[SYS_MUTEX_CAPACITY];
 static size_t mutex_pool_next_index = 0;
 
 static bool _sys_mutex_valid(const sys_mutex_t *mutex) {
-  return mutex != NULL && mutex->init &&
-         mutex_is_initialized((mutex_t *)&mutex->pmutex);
+  return sys_pico_mutex_valid(mutex);
 }
 
 static void _sys_mutex_pool_lock_init(void) {

@@ -16,6 +16,7 @@ extern "C" {
 
 /**
  * @brief Halts the system and never returns.
+ * @ingroup System
  * @details This function stops normal program execution using the
  * platform-specific halt mechanism. Callers should treat this as terminal
  * control flow.

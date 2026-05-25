@@ -2,9 +2,8 @@
  * @file sys/assert.h
  * @brief Defines a custom assertion macro.
  * @ingroup System
- * @details This file provides an `sys_assert` macro that can be used for
- * debugging purposes.
-
+ * This file provides an `sys_assert` macro that can be used for debugging
+ * purposes.
  */
 
 #pragma once

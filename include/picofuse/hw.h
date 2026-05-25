@@ -1,9 +1,7 @@
 /**
  * @file hw.h
- * @brief Hardware interface abstraction layer
  * @defgroup Hardware Hardware Interfaces
- * @ingroup System
- *
+ * @ingroup Picofuse
  * Managing hardware resources, peripherals, and low-level operations.
  */
 #pragma once

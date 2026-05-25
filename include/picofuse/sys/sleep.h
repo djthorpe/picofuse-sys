@@ -1,5 +1,6 @@
 /**
- * @file sys/sleep.h
+ * @file sleep.h
+ * @defgroup SystemSleep Sleep Operations
  * @ingroup System
  * @brief Defines the `sys_sleep` function for sleeping.
  * @details This file provides the declaration of the `sys_sleep` function,
@@ -16,7 +17,7 @@ extern "C" {
 
 /**
  * @brief Pauses the current thread for a specified duration.
- * @ingroup SystemTiming
+ * @ingroup SystemSleep
  * @param ms The number of milliseconds to sleep.
  * @details This function blocks only the calling thread for approximately the
  * requested duration.

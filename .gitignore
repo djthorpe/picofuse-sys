@@ -55,4 +55,5 @@ dkms.conf
 
 # Build directories
 build*/
+doc*/
 

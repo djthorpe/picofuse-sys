@@ -1,5 +1,6 @@
 /**
  * @file thread.h
+ * @defgroup SystemThread Thread Operations
  * @ingroup System
  * @brief Thread creation and CPU core query primitives.
  */

@@ -1,10 +1,13 @@
 /**
  * @file sys.h
- * @ingroup System
+ * @defgroup System System Abstractions
+ * @ingroup Picofuse
+ * System abstraction layer
  */
 #pragma once
 #include "sys/assert.h"
 #include "sys/atomic.h"
+#include "sys/cond.h"
 #include "sys/halt.h"
 #include "sys/mem.h"
 #include "sys/mutex.h"

@@ -3,8 +3,8 @@
  * @brief Defines random number generation APIs.
  * @defgroup SystemRandom Random Number Generation
  * @ingroup System
- * @details This file provides system methods for generating random numbers,
- * sometimes using hardware to provide better entropy.
+ * @brief Generating random numbers, sometimes using hardware to provide better
+ * entropy.
  */
 
 #pragma once

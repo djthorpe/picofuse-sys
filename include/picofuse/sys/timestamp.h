@@ -1,5 +1,6 @@
 /**
- * @file sys/timestamp.h
+ * @file timestamp.h
+ * @defgroup SystemTime Time Operations
  * @ingroup System
  * @brief Defines the `sys_timestamp_ms` function for getting the current
  * timestamp.
@@ -17,6 +18,7 @@ extern "C" {
 
 /**
  * @brief Gets the number of milliseconds since the process launched.
+ * @ingroup SystemTime
  */
 uint64_t sys_timestamp_ms(void);
 

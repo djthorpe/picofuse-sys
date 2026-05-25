@@ -8,6 +8,7 @@ add_library(${NAME} OBJECT
     ../posix/printf.c
     ../posix/sleep.c
     ../posix/timestamp.c
+    ../pthread/cond.c
     ../pthread/mutex.c
     ../pthread/thread.c
 )
