@@ -22,6 +22,9 @@ static size_t cond_pool_next_index = 0;
 
 static bool _sys_cond_valid(const sys_cond_t *cond);
 static bool _sys_cond_init_handle(sys_cond_t *cond);
+#if !defined(__APPLE__)
+static clockid_t _sys_cond_timeout_clock(void);
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////
 // LIFECYCLE
@@ -110,7 +113,8 @@ bool sys_cond_timedwait(sys_cond_t *cond, sys_mutex_t *mutex,
   return result == 0;
 #else
   struct timespec abs_timeout;
-  if (clock_gettime(CLOCK_MONOTONIC, &abs_timeout) != 0) {
+  clockid_t timeout_clock = _sys_cond_timeout_clock();
+  if (clock_gettime(timeout_clock, &abs_timeout) != 0) {
     return false;
   }
 
@@ -169,3 +173,15 @@ static bool _sys_cond_init_handle(sys_cond_t *cond) {
   return pthread_cond_init(&cond->pcond, NULL) == 0;
 #endif
 }
+
+/** @brief Returns the clock used by timed waits for this pthread backend. */
+#if !defined(__APPLE__)
+static clockid_t _sys_cond_timeout_clock(void) {
+#if !defined(__APPLE__) && defined(CLOCK_MONOTONIC) &&                         \
+    defined(_POSIX_CLOCK_SELECTION) && (_POSIX_CLOCK_SELECTION >= 0)
+  return CLOCK_MONOTONIC;
+#else
+  return CLOCK_REALTIME;
+#endif
+}
+#endif

@@ -351,6 +351,7 @@ size_t _sys_vprintf(struct sys_printf_state *state, const char *format,
       switch (*format) {
       case '-':
         state->flags |= SYS_PRINTF_FLAG_LEFT;
+        state->flags &= ~SYS_PRINTF_FLAG_PAD;
         format++;
         break;
       case '+':
@@ -362,7 +363,9 @@ size_t _sys_vprintf(struct sys_printf_state *state, const char *format,
         format++;
         break;
       case '0':
-        state->flags |= SYS_PRINTF_FLAG_PAD;
+        if (!(state->flags & SYS_PRINTF_FLAG_LEFT)) {
+          state->flags |= SYS_PRINTF_FLAG_PAD;
+        }
         format++;
         break;
       case '#':

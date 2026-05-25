@@ -76,6 +76,7 @@ bool test_main(void) {
   ASSERT_FORMAT("%%d", "-17", "%d", -17);
   ASSERT_FORMAT("%%+d", "+17", "%+d", 17);
   ASSERT_FORMAT("%%05d", "-0042", "%05d", -42);
+  ASSERT_FORMAT("%%-05d", "42   ", "%-05d", 42);
   ASSERT_FORMAT("%%ld", "-123456789", "%ld", -123456789L);
   ASSERT_FORMAT("%%zd", "-17", "%zd", (ptrdiff_t)-17);
   ASSERT_FORMAT("%%zu", "17", "%zu", (size_t)17);
