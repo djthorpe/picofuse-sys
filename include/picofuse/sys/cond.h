@@ -1,8 +1,8 @@
 /**
- * @file cond.h
+ * @file sys/cond.h
+ * @brief Defines condition variable primitives for thread synchronization.
  * @defgroup SystemSyncCond Condition Variables
  * @ingroup SystemSync
- * @brief Condition variable primitives for thread synchronization.
  */
 
 #pragma once
@@ -11,6 +11,12 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+/**
+ * @def SYS_COND_CAPACITY
+ * @ingroup SystemSyncCond
+ * @brief Maximum number of condition variables available in static-pool
+ * implementations.
+ */
 #ifndef SYS_COND_CAPACITY
 #define SYS_COND_CAPACITY 32
 #endif
@@ -32,6 +38,9 @@ typedef struct sys_cond_t sys_cond_t;
 ///////////////////////////////////////////////////////////////////////////////
 // LIFECYCLE
 
+/** @name Lifecycle
+ * @{ */
+
 /**
  * @brief Initialize a new condition variable
  * @ingroup SystemSyncCond
@@ -43,6 +52,25 @@ typedef struct sys_cond_t sys_cond_t;
  * sys_cond_deinit()
  */
 sys_cond_t *sys_cond_init(void);
+
+/**
+ * @brief Deinitialize a condition variable
+ * @ingroup SystemSyncCond
+ * @param cond Pointer to the condition variable to deinitialize
+ *
+ * Releases all resources associated with the condition variable and renders
+ * it unusable. No threads should be waiting on the condition variable when
+ * this function is called.
+ */
+void sys_cond_deinit(sys_cond_t *cond);
+
+/** @} */
+
+///////////////////////////////////////////////////////////////////////////////
+// METHODS
+
+/** @name Methods
+ * @{ */
 
 /**
  * @brief Wait on a condition variable
@@ -95,16 +123,7 @@ bool sys_cond_signal(sys_cond_t *cond);
  */
 bool sys_cond_broadcast(sys_cond_t *cond);
 
-/**
- * @brief Deinitialize a condition variable
- * @ingroup SystemSyncCond
- * @param cond Pointer to the condition variable to deinitialize
- *
- * Releases all resources associated with the condition variable and renders
- * it unusable. No threads should be waiting on the condition variable when
- * this function is called.
- */
-void sys_cond_deinit(sys_cond_t *cond);
+/** @} */
 
 #ifdef __cplusplus
 }

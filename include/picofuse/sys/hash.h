@@ -1,8 +1,8 @@
 /**
- * @file hash.h
+ * @file sys/hash.h
+ * @brief Defines incremental hash generation APIs.
  * @defgroup SystemHashing Hashes
  * @ingroup System
- * @brief Methods for incremental hash generation from data.
  *
  * Methods for hash generation, sometimes with hardware acceleration.
  *
@@ -19,10 +19,20 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/**
+ * @def SYS_HASH_SIZE
+ * @ingroup SystemHashing
+ * @brief Maximum digest buffer size in bytes.
+ */
 #ifndef SYS_HASH_SIZE
 #define SYS_HASH_SIZE 32
 #endif
 
+/**
+ * @def SYS_HASH_CAPACITY
+ * @ingroup SystemHashing
+ * @brief Maximum number of concurrent hash contexts available.
+ */
 #ifndef SYS_HASH_CAPACITY
 #ifdef SYSTEM_NAME_PICO
 #define SYS_HASH_CAPACITY 1
@@ -42,9 +52,9 @@ extern "C" {
  * @brief Hash algorithm identifiers.
  * @ingroup SystemHashing
  */
-typedef enum {
-  sys_hash_md5 = 1,
-  sys_hash_sha256,
+typedef enum sys_hash_algorithm_t {
+  sys_hash_md5 = 1, ///< MD5 digest.
+  sys_hash_sha256,  ///< SHA-256 digest.
 } sys_hash_algorithm_t;
 
 /**
@@ -56,6 +66,9 @@ typedef struct sys_hash_t sys_hash_t;
 
 ///////////////////////////////////////////////////////////////////////////////
 // LIFECYCLE
+
+/** @name Lifecycle
+ * @{ */
 
 /**
  * @brief Initialize a new hash context.
@@ -81,8 +94,13 @@ sys_hash_t *sys_hash_init(sys_hash_algorithm_t algorithm);
  */
 void sys_hash_deinit(sys_hash_t *hash);
 
+/** @} */
+
 ///////////////////////////////////////////////////////////////////////////////
 // PUBLIC METHODS
+
+/** @name Methods
+ * @{ */
 
 /**
  * @brief Return the digest size in bytes for a hash context.
@@ -121,6 +139,8 @@ const uint8_t *sys_hash_finalize(sys_hash_t *hash);
  * @return The computed hash value.
  */
 uintptr_t sys_hash_djb2(const char *str);
+
+/** @} */
 
 #ifdef __cplusplus
 }

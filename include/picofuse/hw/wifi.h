@@ -24,6 +24,11 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+/**
+ * @def HW_WIFI_SSID_MAX_LENGTH
+ * @ingroup WiFi
+ * @brief Maximum SSID length in bytes, excluding the NULL terminator.
+ */
 #ifndef HW_WIFI_SSID_MAX_LENGTH
 #define HW_WIFI_SSID_MAX_LENGTH 32
 #endif
@@ -88,7 +93,10 @@ typedef struct {
   int16_t rssi;        ///< Received signal strength (dBm)
 } hw_wifi_network_t;
 
-// Opaque Wi‑Fi handle type
+/**
+ * @brief Opaque Wi-Fi handle.
+ * @ingroup WiFi
+ */
 typedef struct hw_wifi_t hw_wifi_t;
 
 /**
@@ -110,6 +118,9 @@ typedef void (*hw_wifi_callback_t)(hw_wifi_t *wifi, hw_wifi_event_t event,
 ///////////////////////////////////////////////////////////////////////////////
 // LIFECYCLE
 
+/** @name Lifecycle
+ * @{ */
+
 /**
  * @brief Initialize Wi-Fi as a client.
  * @ingroup WiFi
@@ -128,14 +139,6 @@ hw_wifi_t *hw_wifi_init_client(const char *country_code,
                                hw_wifi_callback_t callback, void *user_data);
 
 /**
- * @brief Determine if the Wi-Fi handle is initialized and usable.
- * @ingroup WiFi
- * @param wifi Wi-Fi handle
- * @return True if initialized and not deinitialized; false otherwise.
- */
-bool hw_wifi_valid(hw_wifi_t *wifi);
-
-/**
  * @brief Deinitialize and release any resources.
  * @ingroup WiFi
  * @param wifi Wi-Fi handle
@@ -145,8 +148,21 @@ bool hw_wifi_valid(hw_wifi_t *wifi);
  */
 void hw_wifi_deinit(hw_wifi_t *wifi);
 
+/**
+ * @brief Determine if the Wi-Fi handle is initialized and usable.
+ * @ingroup WiFi
+ * @param wifi Wi-Fi handle
+ * @return True if initialized and not deinitialized; false otherwise.
+ */
+bool hw_wifi_valid(hw_wifi_t *wifi);
+
+/** @} */
+
 ///////////////////////////////////////////////////////////////////////////////
 // METHODS
+
+/** @name Methods
+ * @{ */
 
 /**
  * @brief Begin an asynchronous scan for nearby Wi‑Fi networks.
@@ -203,3 +219,5 @@ bool hw_wifi_connect(hw_wifi_t *wifi, const hw_wifi_network_t *network,
  * returned.
  */
 bool hw_wifi_disconnect(hw_wifi_t *wifi);
+
+/** @} */

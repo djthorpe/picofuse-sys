@@ -1,8 +1,8 @@
 /**
  * @file sys/printf.h
+ * @brief Defines formatted output APIs for console and string buffers.
  * @defgroup SystemFormat Formatting and Output
  * @ingroup System
- * @brief Defines formatted output for strings and characters.
  *
  * This file declares types and functions for formatted output to the system
  * console or to a string buffer. It supports printf-style formatting with
@@ -52,8 +52,9 @@
  *   - `%05d`: Zero-padded hexadecimal, decimal, octal, or binary output
  *   - `%+d`: Forces a sign for positive numbers
  *   - `% f`: Prefixes positive numeric output with a space
- *   - `%#x`, `%#b`, `%#o`: Forces a prefix for hexadecimal (0x), binary (0b)
- * and octal (0) formats, and forces a decimal point for floating-point output
+ *   - The alternate-form flag adds the usual base prefix for hexadecimal,
+ *     binary, and octal output, and forces a decimal point for floating-point
+ *     output where supported.
  *
  * The sys_printf() function is thread-safe and can be used from multiple
  * threads simultaneously without additional synchronization. It was implemented

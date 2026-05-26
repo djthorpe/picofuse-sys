@@ -1,8 +1,8 @@
 /**
- * @file thread.h
+ * @file sys/thread.h
+ * @brief Defines thread creation and CPU core query primitives.
  * @defgroup SystemThread Thread Operations
  * @ingroup System
- * @brief Thread creation and CPU core query primitives.
  */
 
 #pragma once
@@ -10,6 +10,12 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+/**
+ * @def SYS_THREAD_CAPACITY
+ * @ingroup SystemThread
+ * @brief Maximum number of concurrently active thread contexts in static-pool
+ * implementations.
+ */
 #ifndef SYS_THREAD_CAPACITY
 #define SYS_THREAD_CAPACITY 16
 #endif
@@ -33,6 +39,9 @@ typedef void (*sys_thread_func_t)(void *arg);
 
 ///////////////////////////////////////////////////////////////////////////////
 // PUBLIC METHODS
+
+/** @name Methods
+ * @{ */
 
 /**
  * @brief Returns the number of CPU cores available on the host system.
@@ -92,6 +101,8 @@ bool sys_thread_create_on_core(sys_thread_func_t func, void *arg, uint8_t core);
  * cores, so this value may change over time unless thread affinity is set.
  */
 uint8_t sys_thread_core(void);
+
+/** @} */
 
 #ifdef __cplusplus
 }

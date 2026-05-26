@@ -1,8 +1,9 @@
 /**
  * @file hw.h
+ * @brief Aggregates the hardware interface headers and platform lifecycle
+ * hooks.
  * @defgroup Hardware Hardware Interfaces
  * @ingroup Picofuse
- * Managing hardware resources, peripherals, and low-level operations.
  */
 #pragma once
 #include "hw/gpio.h"

@@ -1,8 +1,8 @@
 /**
- * @file atomic.h
+ * @file sys/atomic.h
+ * @brief Defines atomic uint32_t operations for shared state.
  * @defgroup SystemAtomic Atomic Operations
  * @ingroup SystemSync
- * @brief Simple atomic uint32_t API (get, set, increment, decrement).
  *
  * Implements atomic values which can be safely updated across threads.
  *
@@ -37,7 +37,7 @@ extern "C" {
  * in order to maintain thread safety.
  */
 typedef struct sys_atomic_t {
-  uint32_t value;
+  uint32_t value; ///< Raw atomic storage; use sys_atomic_* APIs instead.
 } sys_atomic_t __attribute__((aligned(4)));
 
 /**

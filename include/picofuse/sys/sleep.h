@@ -1,10 +1,10 @@
 /**
- * @file sleep.h
+ * @file sys/sleep.h
+ * @brief Defines thread sleep primitives.
  * @defgroup SystemSleep Sleep Operations
  * @ingroup System
- * @brief Defines the `sys_sleep` function for sleeping.
- * @details This file provides the declaration of the `sys_sleep` function,
- * which can be used to pause execution for a specified duration.
+ * @details This file declares functions that pause execution for a specified
+ * duration.
  */
 
 #pragma once

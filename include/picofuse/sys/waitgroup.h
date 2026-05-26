@@ -1,14 +1,20 @@
 /**
- * @file waitgroup.h
+ * @file sys/waitgroup.h
+ * @brief Defines wait-group primitives for coordinating worker completion.
  * @defgroup SystemSyncWaitgroup Wait Groups
  * @ingroup SystemSync
- * @brief Wait-group primitives for coordinating worker completion.
  */
 
 #pragma once
 
 #include <stdbool.h>
 
+/**
+ * @def SYS_WAITGROUP_CAPACITY
+ * @ingroup SystemSyncWaitgroup
+ * @brief Maximum number of wait groups available in static-pool
+ * implementations.
+ */
 #ifndef SYS_WAITGROUP_CAPACITY
 #define SYS_WAITGROUP_CAPACITY 32
 #endif
@@ -30,6 +36,9 @@ typedef struct sys_waitgroup_t sys_waitgroup_t;
 ///////////////////////////////////////////////////////////////////////////////
 // LIFECYCLE
 
+/** @name Lifecycle
+ * @{ */
+
 /**
  * @brief Initialize a new wait group
  * @ingroup SystemSyncWaitgroup
@@ -42,6 +51,14 @@ typedef struct sys_waitgroup_t sys_waitgroup_t;
  * `NULL` after `SYS_WAITGROUP_CAPACITY` wait groups have been allocated.
  */
 sys_waitgroup_t *sys_waitgroup_init(void);
+
+/** @} */
+
+///////////////////////////////////////////////////////////////////////////////
+// METHODS
+
+/** @name Methods
+ * @{ */
 
 /**
  * @brief Add to the wait group counter
@@ -78,6 +95,8 @@ bool sys_waitgroup_done(sys_waitgroup_t *wg);
  * reach 0 through sys_waitgroup_done() calls from worker threads.
  */
 void sys_waitgroup_wait(sys_waitgroup_t *wg);
+
+/** @} */
 
 #ifdef __cplusplus
 }

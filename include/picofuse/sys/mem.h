@@ -1,10 +1,10 @@
 /**
  * @file sys/mem.h
+ * @brief Defines memory and string utility functions.
  * @defgroup SystemMemory Memory Operations
  * @ingroup System
- * @brief Defines memory-related functions and macros.
- * @details This file provides functions and macros for memory management
- * and manipulation.
+ * @details This file provides functions for memory management and byte-string
+ * manipulation.
  */
 
 #pragma once
