@@ -70,3 +70,8 @@ picofuse_add_sys_test(sys_013
 picofuse_add_sys_test(sys_014
 	main.c
 )
+
+# Check hash lifecycle and digest output.
+picofuse_add_sys_test(sys_015
+	main.c
+)

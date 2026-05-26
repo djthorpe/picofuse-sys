@@ -134,6 +134,54 @@ bool test_main(void) {
       sys_atomic_get(&ctx.worker_ok) == 1,
       "Expected multi-waiter worker to successfully call sys_waitgroup_done");
 
+  wg = sys_waitgroup_init();
+  TestAssert(wg != NULL,
+             "sys_waitgroup_init returned NULL for late-waiter test");
+  TestAssert(
+      sys_waitgroup_add(wg, 1),
+      "sys_waitgroup_add should accept positive deltas for late-waiter test");
+
+  ctx.wg = wg;
+  sys_atomic_set(&ctx.ready, 0);
+  sys_atomic_set(&ctx.completed, 0);
+  sys_atomic_set(&ctx.waiter_ready, 0);
+  sys_atomic_set(&ctx.waiter_done, 0);
+  sys_atomic_set(&ctx.worker_ok, 0);
+
+  TestAssert(launch_test_thread(waitgroup_worker, &ctx),
+             "Failed to launch late-waiter worker");
+  TestAssert(wait_for_atomic_value(&ctx.ready, 1, 1000),
+             "Timed out waiting for late-waiter worker to become ready");
+
+  launched_secondary_waiter = launch_test_thread(waitgroup_waiter, &ctx);
+  if (launched_secondary_waiter) {
+    TestAssert(wait_for_atomic_value(&ctx.waiter_ready, 1, 1000),
+               "Timed out waiting for late waiter to start");
+    uint64_t completion_deadline = sys_timestamp_ms() + 1000;
+    while (sys_atomic_get(&ctx.completed) != 1) {
+      if (sys_timestamp_ms() >= completion_deadline) {
+        break;
+      }
+    }
+    TestAssert(sys_atomic_get(&ctx.completed) == 1,
+               "Timed out waiting for late-waiter worker to complete");
+
+    if (sys_atomic_get(&ctx.waiter_done) == 0) {
+      sys_waitgroup_wait(wg);
+    }
+
+    TestAssert(
+        wait_for_atomic_value(&ctx.waiter_done, 1, 1000),
+        "Timed out waiting for blocked waiter to return after late wait");
+  } else {
+    sys_waitgroup_wait(wg);
+    TestAssert(wait_for_atomic_value(&ctx.completed, 1, 1000),
+               "Timed out waiting for late-waiter worker to complete");
+  }
+  TestAssert(
+      sys_atomic_get(&ctx.worker_ok) == 1,
+      "Expected late-waiter worker to successfully call sys_waitgroup_done");
+
   sys_waitgroup_t *waitgroups[SYS_WAITGROUP_CAPACITY];
   for (size_t index = 0; index < SYS_WAITGROUP_CAPACITY; index++) {
     waitgroups[index] = sys_waitgroup_init();
