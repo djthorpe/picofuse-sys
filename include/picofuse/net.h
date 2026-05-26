@@ -1,8 +1,8 @@
 /**
  * @file net.h
+ * @brief Aggregates network application interfaces.
  * @defgroup Network Network Applications
  * @ingroup Picofuse
- * Network application abstraction layer
  */
 #pragma once
 #include "net/mqtt.h"

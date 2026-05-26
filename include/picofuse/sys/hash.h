@@ -1,8 +1,8 @@
 /**
- * @file hash.h
+ * @file sys/hash.h
+ * @brief Defines incremental hash generation APIs.
  * @defgroup SystemHashing Hashes
  * @ingroup System
- * @brief Methods for incremental hash generation from data.
  *
  * Methods for hash generation, sometimes with hardware acceleration.
  *

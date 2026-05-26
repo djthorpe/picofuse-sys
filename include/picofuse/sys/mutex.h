@@ -1,8 +1,8 @@
 /**
- * @file mutex.h
+ * @file sys/mutex.h
+ * @brief Defines mutex primitives for thread-safe mutual exclusion.
  * @defgroup SystemSync Synchronization Primitives
  * @ingroup System
- * @brief Synchronization primitives for thread-safe operations.
  */
 
 /**

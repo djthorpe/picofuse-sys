@@ -1,8 +1,8 @@
 /**
- * @file cond.h
+ * @file sys/cond.h
+ * @brief Defines condition variable primitives for thread synchronization.
  * @defgroup SystemSyncCond Condition Variables
  * @ingroup SystemSync
- * @brief Condition variable primitives for thread synchronization.
  */
 
 #pragma once

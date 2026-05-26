@@ -1,8 +1,8 @@
 /**
- * @file thread.h
+ * @file sys/thread.h
+ * @brief Defines thread creation and CPU core query primitives.
  * @defgroup SystemThread Thread Operations
  * @ingroup System
- * @brief Thread creation and CPU core query primitives.
  */
 
 #pragma once

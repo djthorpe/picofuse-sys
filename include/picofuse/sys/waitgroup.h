@@ -1,8 +1,8 @@
 /**
- * @file waitgroup.h
+ * @file sys/waitgroup.h
+ * @brief Defines wait-group primitives for coordinating worker completion.
  * @defgroup SystemSyncWaitgroup Wait Groups
  * @ingroup SystemSync
- * @brief Wait-group primitives for coordinating worker completion.
  */
 
 #pragma once

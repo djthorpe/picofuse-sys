@@ -1,11 +1,10 @@
 /**
- * @file timestamp.h
+ * @file sys/timestamp.h
+ * @brief Defines timestamp retrieval APIs.
  * @defgroup SystemTime Time Operations
  * @ingroup System
- * @brief Defines the `sys_timestamp_ms` function for getting the current
- * timestamp.
- * @details This file provides the declaration of the `sys_timestamp_ms`
- * function, which can be used to get the current timestamp in milliseconds.
+ * @details This file declares functions for retrieving the current timestamp
+ * in milliseconds.
  */
 
 #pragma once
