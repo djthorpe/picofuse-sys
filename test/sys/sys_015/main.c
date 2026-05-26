@@ -107,8 +107,7 @@ bool test_main(void) {
   sys_printf("sys_015: checking full-pool allocation failure\n");
   hash = sys_hash_init(sys_hash_md5);
   sys_printf("sys_015: full-pool allocation returned %p\n", (void *)hash);
-  TestAssert(hash == NULL,
-             "sys_hash_init should fail after %u allocations",
+  TestAssert(hash == NULL, "sys_hash_init should fail after %u allocations",
              SYS_HASH_CAPACITY);
 
   for (size_t index = 0; index < SYS_HASH_CAPACITY; index++) {

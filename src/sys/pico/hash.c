@@ -2,7 +2,7 @@
 #include <limits.h>
 #include <mbedtls/md5.h>
 #include <mbedtls/sha256.h>
-#include <pico/critical_section.h>
+#include <pico/mutex.h>
 #include <picofuse/sys.h>
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -19,9 +19,8 @@ struct sys_hash_t {
   bool init;
 };
 
-static critical_section_t _sys_hash_pool_lock;
-static sys_hash_t _sys_hash_pool[SYS_HASH_CAPACITY];
-static size_t _sys_hash_pool_next_index = 0;
+static mutex_t _sys_hash_lock;
+static sys_hash_t _sys_hash_handle;
 
 ///////////////////////////////////////////////////////////////////////////////
 // FORWARD DECLARATIONS
@@ -35,52 +34,45 @@ static void _sys_hash_free_handle(sys_hash_t *hash);
 ///////////////////////////////////////////////////////////////////////////////
 // LIFECYCLE
 
-/** @brief Allocates and initializes a hash context from the static pool. */
+/** @brief Allocates and initializes the single Pico hash context. */
 sys_hash_t *sys_hash_init(sys_hash_algorithm_t algorithm) {
   size_t digest_size = _sys_hash_digest_size(algorithm);
   if (digest_size == 0 || digest_size > SYS_HASH_SIZE) {
     return NULL;
   }
 
-  critical_section_enter_blocking(&_sys_hash_pool_lock);
+  mutex_enter_blocking(&_sys_hash_lock);
 
-  for (size_t offset = 0; offset < SYS_HASH_CAPACITY; offset++) {
-    size_t index = (_sys_hash_pool_next_index + offset) % SYS_HASH_CAPACITY;
-    sys_hash_t *hash = &_sys_hash_pool[index];
-    if (hash->init) {
-      continue;
-    }
-
-    hash->size = digest_size;
-    hash->algorithm = algorithm;
-    hash->init = true;
-    sys_memset(hash->digest, 0, sizeof(hash->digest));
-
-    if (!_sys_hash_init_handle(hash, algorithm)) {
-      hash->size = 0;
-      hash->algorithm = 0;
-      hash->init = false;
-      critical_section_exit(&_sys_hash_pool_lock);
-      return NULL;
-    }
-
-    _sys_hash_pool_next_index = (index + 1) % SYS_HASH_CAPACITY;
-    critical_section_exit(&_sys_hash_pool_lock);
-    return hash;
+  if (_sys_hash_handle.init) {
+    mutex_exit(&_sys_hash_lock);
+    return NULL;
   }
 
-  critical_section_exit(&_sys_hash_pool_lock);
-  return NULL;
+  _sys_hash_handle.size = digest_size;
+  _sys_hash_handle.algorithm = algorithm;
+  _sys_hash_handle.init = true;
+  sys_memset(_sys_hash_handle.digest, 0, sizeof(_sys_hash_handle.digest));
+
+  if (!_sys_hash_init_handle(&_sys_hash_handle, algorithm)) {
+    _sys_hash_handle.size = 0;
+    _sys_hash_handle.algorithm = 0;
+    _sys_hash_handle.init = false;
+    mutex_exit(&_sys_hash_lock);
+    return NULL;
+  }
+
+  mutex_exit(&_sys_hash_lock);
+  return &_sys_hash_handle;
 }
 
-/** @brief Releases a hash context and returns its pool slot. */
+/** @brief Releases the single Pico hash context. */
 void sys_hash_deinit(sys_hash_t *hash) {
   sys_assert(_sys_hash_valid(hash));
   if (!_sys_hash_valid(hash)) {
     return;
   }
 
-  critical_section_enter_blocking(&_sys_hash_pool_lock);
+  mutex_enter_blocking(&_sys_hash_lock);
 
   _sys_hash_free_handle(hash);
   hash->size = 0;
@@ -88,7 +80,7 @@ void sys_hash_deinit(sys_hash_t *hash) {
   hash->init = false;
   sys_memset(hash->digest, 0, sizeof(hash->digest));
 
-  critical_section_exit(&_sys_hash_pool_lock);
+  mutex_exit(&_sys_hash_lock);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -199,7 +191,7 @@ uintptr_t sys_hash_djb2(const char *str) {
 
 /** @brief Returns true when a hash handle is initialized. */
 static bool _sys_hash_valid(const sys_hash_t *hash) {
-  return hash != NULL && hash->init;
+  return hash == &_sys_hash_handle && hash->init;
 }
 
 /** @brief Returns the digest size for a supported hash algorithm. */
@@ -255,7 +247,5 @@ static void _sys_hash_free_handle(sys_hash_t *hash) {
   }
 }
 
-/** @brief Initializes the Pico hash pool lock. */
-void _sys_hash_module_init(void) {
-  critical_section_init(&_sys_hash_pool_lock);
-}
+/** @brief Initializes the Pico hash lock. */
+void _sys_hash_module_init(void) { mutex_init(&_sys_hash_lock); }

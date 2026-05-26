@@ -13,7 +13,9 @@
 #define MBEDTLS_MD5_C
 #define MBEDTLS_SHA256_C
 
-/* Prefer the SDK's SHA-256 acceleration when it is available. */
+/* Pico hashing uses a single active handle, so the hardware SHA-256 backend
+ * can be used safely here.
+ */
 #if LIB_PICO_SHA256
 #define MBEDTLS_SHA256_ALT
 #endif

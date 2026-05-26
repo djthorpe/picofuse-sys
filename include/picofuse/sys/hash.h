@@ -25,7 +25,7 @@
 
 #ifndef SYS_HASH_CAPACITY
 #ifdef SYSTEM_NAME_PICO
-#define SYS_HASH_CAPACITY 2
+#define SYS_HASH_CAPACITY 1
 #else
 #define SYS_HASH_CAPACITY 4
 #endif
@@ -62,11 +62,12 @@ typedef struct sys_hash_t sys_hash_t;
  * @ingroup SystemHashing
  * @param algorithm The hash algorithm to use.
  * @return Initialized hash context, or `NULL` if the algorithm is unsupported
- * or no pool slots remain.
+ * or no implementation capacity remains.
  *
- * Allocates and initializes a hash context from a static pool. The returned
- * handle is ready for use with sys_hash_update() and sys_hash_finalize().
- * Call sys_hash_deinit() to release the slot back to the pool.
+ * Allocates and initializes a hash context from an implementation-defined
+ * static capacity. The returned handle is ready for use with
+ * sys_hash_update() and sys_hash_finalize(). Call sys_hash_deinit() to
+ * release the slot for reuse.
  */
 sys_hash_t *sys_hash_init(sys_hash_algorithm_t algorithm);
 
