@@ -9,6 +9,8 @@ struct sys_waitgroup_t {
   pthread_mutex_t pmutex;
   pthread_cond_t pcond;
   int counter;
+  int waiters;
+  bool handle_init;
   bool init;
 };
 
@@ -39,12 +41,14 @@ sys_waitgroup_t *sys_waitgroup_init(void) {
       continue;
     }
 
-    wg->init = true;
-    if (!_sys_waitgroup_init_handle(wg)) {
-      wg->init = false;
+    if (!wg->handle_init && !_sys_waitgroup_init_handle(wg)) {
       pthread_mutex_unlock(&_sys_waitgroup_pool_lock);
       return NULL;
     }
+
+    wg->counter = 0;
+    wg->waiters = 0;
+    wg->init = true;
 
     _sys_waitgroup_pool_next_index = (index + 1) % SYS_WAITGROUP_CAPACITY;
     pthread_mutex_unlock(&_sys_waitgroup_pool_lock);
@@ -71,6 +75,11 @@ bool sys_waitgroup_add(sys_waitgroup_t *wg, int delta) {
     return false;
   }
 
+  if (!wg->init) {
+    pthread_mutex_unlock(&wg->pmutex);
+    return false;
+  }
+
   bool ok = true;
   if (wg->counter > INT_MAX - delta) {
     ok = false;
@@ -88,6 +97,11 @@ bool sys_waitgroup_done(sys_waitgroup_t *wg) {
 
   int lock_result = pthread_mutex_lock(&wg->pmutex);
   if (lock_result != 0) {
+    return false;
+  }
+
+  if (!wg->init) {
+    pthread_mutex_unlock(&wg->pmutex);
     return false;
   }
 
@@ -115,46 +129,31 @@ void sys_waitgroup_wait(sys_waitgroup_t *wg) {
     return;
   }
 
+  if (!wg->init) {
+    pthread_mutex_unlock(&wg->pmutex);
+    return;
+  }
+
+  wg->waiters++;
+
   while (wg->counter > 0) {
     int wait_result = pthread_cond_wait(&wg->pcond, &wg->pmutex);
     sys_assert(wait_result == 0);
     if (wait_result != 0) {
+      wg->waiters--;
       pthread_mutex_unlock(&wg->pmutex);
       return;
     }
   }
 
+  wg->waiters--;
+  if (wg->waiters == 0) {
+    wg->counter = 0;
+    wg->init = false;
+  }
+
   int unlock_result = pthread_mutex_unlock(&wg->pmutex);
   sys_assert(unlock_result == 0);
-  if (unlock_result != 0) {
-    return;
-  }
-
-  int pool_lock_result = pthread_mutex_lock(&_sys_waitgroup_pool_lock);
-  sys_assert(pool_lock_result == 0);
-  if (pool_lock_result != 0) {
-    return;
-  }
-
-  int cond_destroy_result = pthread_cond_destroy(&wg->pcond);
-  sys_assert(cond_destroy_result == 0);
-  if (cond_destroy_result != 0) {
-    pthread_mutex_unlock(&_sys_waitgroup_pool_lock);
-    return;
-  }
-
-  int mutex_destroy_result = pthread_mutex_destroy(&wg->pmutex);
-  sys_assert(mutex_destroy_result == 0);
-  if (mutex_destroy_result != 0) {
-    pthread_mutex_unlock(&_sys_waitgroup_pool_lock);
-    return;
-  }
-
-  wg->counter = 0;
-  wg->init = false;
-
-  int pool_unlock_result = pthread_mutex_unlock(&_sys_waitgroup_pool_lock);
-  sys_assert(pool_unlock_result == 0);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -190,5 +189,7 @@ static bool _sys_waitgroup_init_handle(sys_waitgroup_t *wg) {
   }
 
   wg->counter = 0;
+  wg->waiters = 0;
+  wg->handle_init = true;
   return true;
 }

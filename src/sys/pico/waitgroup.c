@@ -73,6 +73,11 @@ bool sys_waitgroup_add(sys_waitgroup_t *wg, int delta) {
 
   mutex_enter_blocking(&wg->lock);
 
+  if (!wg->init) {
+    mutex_exit(&wg->lock);
+    return false;
+  }
+
   bool ok = true;
   if (wg->counter > INT_MAX - delta) {
     ok = false;
@@ -89,6 +94,11 @@ bool sys_waitgroup_done(sys_waitgroup_t *wg) {
   sys_assert(_sys_waitgroup_valid(wg));
 
   mutex_enter_blocking(&wg->lock);
+
+  if (!wg->init) {
+    mutex_exit(&wg->lock);
+    return false;
+  }
 
   bool ok = true;
   if (wg->counter <= 0) {
@@ -111,19 +121,33 @@ void sys_waitgroup_wait(sys_waitgroup_t *wg) {
   sys_assert(_sys_waitgroup_valid(wg));
 
   bool should_deinit = false;
+  bool should_block = false;
 
   mutex_enter_blocking(&wg->lock);
-  if (wg->counter > 0) {
-    wg->waiters++;
+  if (!wg->init) {
     mutex_exit(&wg->lock);
+    return;
+  }
 
+  wg->waiters++;
+  should_block = wg->counter > 0;
+  mutex_exit(&wg->lock);
+
+  if (should_block) {
     sem_acquire_blocking(&wg->sem);
+  }
 
-    mutex_enter_blocking(&wg->lock);
-    wg->waiters--;
-    should_deinit = wg->waiters == 0;
-  } else {
-    should_deinit = true;
+  mutex_enter_blocking(&wg->lock);
+  if (!wg->init) {
+    mutex_exit(&wg->lock);
+    return;
+  }
+
+  wg->waiters--;
+  should_deinit = wg->counter == 0 && wg->waiters == 0;
+  if (should_deinit) {
+    wg->counter = 0;
+    wg->init = false;
   }
   mutex_exit(&wg->lock);
 
@@ -150,7 +174,6 @@ static void _sys_waitgroup_deinit_handle(sys_waitgroup_t *wg) {
   critical_section_enter_blocking(&_sys_waitgroup_pool_lock);
   wg->counter = 0;
   wg->waiters = 0;
-  wg->init = false;
   sem_reset(&wg->sem, 0);
   critical_section_exit(&_sys_waitgroup_pool_lock);
 }
