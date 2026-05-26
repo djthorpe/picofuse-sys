@@ -9,25 +9,60 @@
 
 #pragma once
 #include <stddef.h>
-#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////
+// TYPES
 
 /**
- * @def SYS_MEM_EVENT_CAPACITY
+ * @brief Arena allocator handle.
  * @ingroup SystemMemory
- * @brief Number of recent allocator events retained for debug snapshots.
+ * @headerfile mem.h picofuse/sys.h
  */
-#ifndef SYS_MEM_EVENT_CAPACITY
-#define SYS_MEM_EVENT_CAPACITY 32
-#endif
+typedef struct sys_mem_arena_t sys_mem_arena_t;
+
+/** @name Arena Lifecycle
+ * @{ */
+
+/**
+ * @brief Initialize a new arena.
+ * @ingroup SystemMemory
+ * @param prev Pointer to the previous arena, or `NULL` for the first arena.
+ * @param malloc_fn Underlying allocation function used when `prev` is `NULL`.
+ * @param free_fn Underlying deallocation function used when `prev` is `NULL`.
+ * @param size Arena size in bytes.
+ * @return Pointer to the newly initialized arena, or `NULL` on failure.
+ *
+ * When creating the first arena in a chain, `malloc_fn` and `free_fn` must
+ * point to the underlying allocator implementation to use. For subsequent
+ * arenas, pass `NULL` for both callbacks; providing either callback when
+ * `prev` is not `NULL` is an assertion failure.
+ */
+sys_mem_arena_t *sys_mem_arena_init(sys_mem_arena_t *prev,
+                                    void *(*malloc_fn)(size_t size),
+                                    void (*free_fn)(void *ptr), size_t size);
+
+/**
+ * @brief Delete an arena chain.
+ * @ingroup SystemMemory
+ * @param arena Pointer to the first arena to delete.
+ */
+void sys_mem_arena_delete(sys_mem_arena_t *arena);
+
+/**
+ * @brief Return the next arena in a chain.
+ * @ingroup SystemMemory
+ * @param arena Pointer to the current arena.
+ * @return Pointer to the next arena, or `NULL` when the chain ends.
+ */
+sys_mem_arena_t *sys_mem_arena_next(sys_mem_arena_t *arena);
+
+/** @} */
 
 ///////////////////////////////////////////////////////////////////////////////
-// TYPES
 
 /**
  * @brief Allocator event kinds captured in the debug ring buffer.
@@ -67,6 +102,7 @@ typedef struct sys_mem_event_t {
 } sys_mem_event_t;
 
 ///////////////////////////////////////////////////////////////////////////////
+// MEMORY OPERATIONS
 
 /**
  * @brief Fill a block of memory with a byte value.
@@ -123,6 +159,9 @@ int sys_memcmp(const void *lhs, const void *rhs, size_t count);
  */
 size_t sys_strlen(const char *str);
 
+///////////////////////////////////////////////////////////////////////////////
+// HEAP ALLOCATION
+
 /**
  * @brief Allocate an uninitialized block of memory.
  * @ingroup SystemMemory
@@ -170,32 +209,6 @@ void *sys_realloc(void *ptr, size_t size);
  * @param ptr Allocation to release, or NULL.
  */
 void sys_free(void *ptr);
-
-/**
- * @brief Reset allocator debug counters and recent-event history.
- * @ingroup SystemMemory
- */
-void sys_mem_debug_reset(void);
-
-/**
- * @brief Copy the current allocator debug counters into `stats`.
- * @ingroup SystemMemory
- * @param stats Destination for the counter snapshot.
- */
-void sys_mem_debug_stats(sys_mem_stats_t *stats);
-
-/**
- * @brief Copy recent allocator events into `events`.
- * @ingroup SystemMemory
- *
- * Copies up to `capacity` most-recent events in ascending sequence order.
- * Passing `events == NULL` returns how many events are currently retained.
- *
- * @param events Destination array, or NULL.
- * @param capacity Maximum number of events to copy.
- * @return Number of events copied, or retained if `events == NULL`.
- */
-size_t sys_mem_debug_events(sys_mem_event_t *events, size_t capacity);
 
 ///////////////////////////////////////////////////////////////////////////////
 
