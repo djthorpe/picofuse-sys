@@ -14,6 +14,7 @@ add_library(${NAME} OBJECT
     stdio.c
     thread.c
     timestamp.c
+    waitgroup.c
 )
 target_include_directories(${NAME} PUBLIC
     ${PROJECT_SOURCE_DIR}/include

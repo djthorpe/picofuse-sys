@@ -10,6 +10,7 @@
 void sys_init(void) {
   _sys_mutex_module_init();
   _sys_cond_module_init();
+  _sys_waitgroup_module_init();
   _sys_printf_module_init();
   stdio_init_all();
   sys_sleep_ms(1000);

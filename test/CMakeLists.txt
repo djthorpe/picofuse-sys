@@ -65,3 +65,8 @@ picofuse_add_sys_test(sys_012
 picofuse_add_sys_test(sys_013
 	main.c
 )
+
+# Check waitgroup add/done/wait behavior.
+picofuse_add_sys_test(sys_014
+	main.c
+)
