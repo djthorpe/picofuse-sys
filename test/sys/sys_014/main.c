@@ -157,6 +157,12 @@ bool test_main(void) {
   if (launched_secondary_waiter) {
     TestAssert(wait_for_atomic_value(&ctx.waiter_ready, 1, 1000),
                "Timed out waiting for late waiter to start");
+
+    /* Poll completion without the helper's 1 ms sleep so the main thread can
+     * enter the late wait while the first waiter is still draining. Using the
+     * sleep-based helper here makes the timing window too coarse and can miss
+     * the regression this case is meant to cover.
+     */
     uint64_t completion_deadline = sys_timestamp_ms() + 1000;
     while (sys_atomic_get(&ctx.completed) != 1) {
       if (sys_timestamp_ms() >= completion_deadline) {
