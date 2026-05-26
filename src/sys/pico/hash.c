@@ -156,21 +156,6 @@ const uint8_t *sys_hash_finalize(sys_hash_t *hash) {
   return hash->digest;
 }
 
-/** @brief Computes a djb2 hash for a NULL-terminated string. */
-uintptr_t sys_hash_djb2(const char *str) {
-  if (str == NULL) {
-    return 0;
-  }
-
-  uintptr_t hash = 5381;
-  while (*str != '\0') {
-    hash = ((hash << 5) + hash) + (unsigned char)*str;
-    str++;
-  }
-
-  return hash;
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 // PRIVATE METHODS
 

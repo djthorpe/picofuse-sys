@@ -1,11 +1,12 @@
 set(NAME "picofuse-sys-obj")
 
 add_library(${NAME} OBJECT
+    ../any/djb2.c
+    ../any/mem.c
     cond.c
     hash.c
     halt.c
     init.c
-    mem.c
     mutex.c
     panicf.c
     ../printf/float.c
