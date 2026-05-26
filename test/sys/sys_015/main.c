@@ -44,6 +44,8 @@ bool test_main(void) {
              "md5 update for 'abc' should succeed");
   TestAssert(assert_digest(hash, k_md5_abc, sizeof(k_md5_abc), "md5"),
              "md5 digest validation failed");
+  TestAssert(!sys_hash_update(hash, NULL, 0),
+             "zero-length md5 update after finalize should fail");
   TestAssert(!sys_hash_update(hash, "x", 1),
              "md5 update after finalize should fail");
   sys_hash_deinit(hash);

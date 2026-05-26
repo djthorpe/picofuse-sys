@@ -108,12 +108,12 @@ size_t sys_hash_size(const sys_hash_t *hash) {
 bool sys_hash_update(sys_hash_t *hash, const void *data, size_t size) {
   sys_assert(_sys_hash_owned(hash));
 
-  if (size == 0) {
-    return true;
-  }
-
   if (!_sys_hash_owned(hash) || data == NULL) {
-    return false;
+    if (size == 0 && _sys_hash_owned(hash)) {
+      data = "";
+    } else {
+      return false;
+    }
   }
 
   mutex_enter_blocking(&_sys_hash_lock);
@@ -121,6 +121,11 @@ bool sys_hash_update(sys_hash_t *hash, const void *data, size_t size) {
   if (!_sys_hash_valid(hash) || hash->algorithm == 0) {
     mutex_exit(&_sys_hash_lock);
     return false;
+  }
+
+  if (size == 0) {
+    mutex_exit(&_sys_hash_lock);
+    return true;
   }
 
   bool ok = false;
@@ -175,13 +180,15 @@ const uint8_t *sys_hash_finalize(sys_hash_t *hash) {
     break;
   }
 
+  hash->algorithm = 0;
+
   if (!ok) {
+    hash->size = 0;
     sys_memset(hash->digest, 0, sizeof(hash->digest));
     mutex_exit(&_sys_hash_lock);
     return NULL;
   }
 
-  hash->algorithm = 0;
   const uint8_t *digest = hash->digest;
   mutex_exit(&_sys_hash_lock);
   return digest;
