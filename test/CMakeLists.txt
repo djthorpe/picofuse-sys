@@ -75,3 +75,8 @@ picofuse_add_sys_test(sys_014
 picofuse_add_sys_test(sys_015
 	main.c
 )
+
+# Check malloc/calloc/realloc/free wrappers.
+picofuse_add_sys_test(sys_016
+	main.c
+)
