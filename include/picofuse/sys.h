@@ -9,6 +9,7 @@
 #include "sys/atomic.h"
 #include "sys/cond.h"
 #include "sys/halt.h"
+#include "sys/hash.h"
 #include "sys/mem.h"
 #include "sys/mutex.h"
 #include "sys/panicf.h"

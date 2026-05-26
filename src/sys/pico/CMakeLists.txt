@@ -1,10 +1,12 @@
 set(NAME "picofuse-sys-obj")
 
 add_library(${NAME} OBJECT
+    ../any/djb2.c
+    ../any/mem.c
     cond.c
+    hash.c
     halt.c
     init.c
-    mem.c
     mutex.c
     panicf.c
     ../printf/float.c
@@ -19,8 +21,10 @@ add_library(${NAME} OBJECT
 target_include_directories(${NAME} PUBLIC
     ${PROJECT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_BINARY_DIR}
+    ${CMAKE_CURRENT_LIST_DIR}
 )
 target_link_libraries(${NAME} PUBLIC
+    pico_mbedtls
     pico_multicore
     pico_rand
     pico_stdlib

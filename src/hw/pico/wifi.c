@@ -191,7 +191,7 @@ bool hw_wifi_disconnect(hw_wifi_t *wifi);
  * @brief Get country code as uint32_t for SDK from Wi-Fi handle
  */
 static uint32_t _hw_wifi_country_code(const char *country_code) {
-  if (country_code == NULL || strlen(country_code) != 2) {
+  if (country_code == NULL || sys_strlen(country_code) != 2u) {
     return 0;
   } else {
     return CYW43_COUNTRY(country_code[0], country_code[1], 0);

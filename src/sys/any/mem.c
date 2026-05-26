@@ -21,6 +21,18 @@ void *sys_memcpy(void *dest, const void *src, size_t count) {
   return dest;
 }
 
+int sys_memcmp(const void *lhs, const void *rhs, size_t count) {
+  const unsigned char *left = lhs;
+  const unsigned char *right = rhs;
+  while (count--) {
+    int diff = (int)*left++ - (int)*right++;
+    if (diff != 0) {
+      return diff;
+    }
+  }
+  return 0;
+}
+
 size_t sys_strlen(const char *str) {
   const char *s = str;
   while (*s) {

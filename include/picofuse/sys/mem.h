@@ -45,6 +45,21 @@ void *sys_memset(void *dest, int value, size_t count);
 void *sys_memcpy(void *dest, const void *src, size_t count);
 
 /**
+ * @brief Compare two memory regions byte-by-byte.
+ * @ingroup SystemMemory
+ *
+ * Compares the first `count` bytes of the memory regions pointed to by `lhs`
+ * and `rhs`.
+ *
+ * @param lhs Pointer to the first memory region.
+ * @param rhs Pointer to the second memory region.
+ * @param count Number of bytes to compare.
+ * @return Negative if `lhs` is less than `rhs`, zero if equal, positive if
+ * `lhs` is greater than `rhs`.
+ */
+int sys_memcmp(const void *lhs, const void *rhs, size_t count);
+
+/**
  * @brief Compute the length of a NULL-terminated string.
  * @ingroup SystemMemory
  *

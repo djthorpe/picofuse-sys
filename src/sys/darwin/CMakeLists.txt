@@ -1,6 +1,11 @@
 set(NAME "picofuse-sys-obj")
 
+find_package(OpenSSL REQUIRED)
+
 add_library(${NAME} OBJECT
+    ../any/djb2.c
+    ../any/mem.c
+    ../openssl/hash.c
     random.c
     ../posix/init.c
     ../posix/halt.c
@@ -17,4 +22,9 @@ add_library(${NAME} OBJECT
 )
 target_include_directories(${NAME} PUBLIC
     ${PROJECT_SOURCE_DIR}/include
+)
+
+target_link_libraries(${NAME} PUBLIC
+    OpenSSL::SSL
+    OpenSSL::Crypto
 )
