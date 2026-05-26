@@ -64,43 +64,8 @@ typedef void (*hw_gpio_callback_t)(uint8_t bank, uint8_t pin,
 ///////////////////////////////////////////////////////////////////////////////
 // LIFECYCLE
 
-/**
- * @brief Get the total number of available GPIO pins for a given bank.
- * @ingroup GPIO
- *
- * @param bank The GPIO bank number to query.
- * @return The number of GPIO pins available on the hardware platform.
- */
-uint8_t hw_gpio_count(uint8_t bank);
-
-/**
- * @brief Validate the GPIO pin.
- * @ingroup GPIO
- *
- * @param gpio Pointer to the GPIO structure to validate.
- * @retval true The GPIO pin is valid.
- * @retval false The GPIO pin is invalid.
- */
-bool hw_gpio_valid(const hw_gpio_t *gpio);
-
-/**
- * @brief Get the logical pin number for a GPIO handle.
- * @ingroup GPIO
- *
- * @param gpio Pointer to the GPIO structure.
- * @return The logical GPIO pin number.
- */
-uint8_t hw_gpio_get_pin_num(const hw_gpio_t *gpio);
-
-/**
- * @brief Set the global GPIO interrupt callback handler.
- * @ingroup GPIO
- *
- * @param callback Pointer to the callback function, or `NULL` to disable
- * interrupt handling.
- * @param userdata User-defined data pointer to pass to the callback.
- */
-void hw_gpio_set_callback(hw_gpio_callback_t callback, void *userdata);
+/** @name Lifecycle
+ * @{ */
 
 /**
  * @brief Initialize a GPIO pin with the specified mode.
@@ -121,6 +86,52 @@ hw_gpio_t *hw_gpio_init(uint8_t bank, uint8_t pin, hw_gpio_mode_t mode);
  * @param gpio Pointer to the GPIO structure to deinitialize.
  */
 void hw_gpio_deinit(hw_gpio_t *gpio);
+
+/**
+ * @brief Validate the GPIO pin.
+ * @ingroup GPIO
+ *
+ * @param gpio Pointer to the GPIO structure to validate.
+ * @retval true The GPIO pin is valid.
+ * @retval false The GPIO pin is invalid.
+ */
+bool hw_gpio_valid(const hw_gpio_t *gpio);
+
+/** @} */
+
+///////////////////////////////////////////////////////////////////////////////
+// METHODS
+
+/** @name Methods
+ * @{ */
+
+/**
+ * @brief Get the total number of available GPIO pins for a given bank.
+ * @ingroup GPIO
+ *
+ * @param bank The GPIO bank number to query.
+ * @return The number of GPIO pins available on the hardware platform.
+ */
+uint8_t hw_gpio_count(uint8_t bank);
+
+/**
+ * @brief Get the logical pin number for a GPIO handle.
+ * @ingroup GPIO
+ *
+ * @param gpio Pointer to the GPIO structure.
+ * @return The logical GPIO pin number.
+ */
+uint8_t hw_gpio_get_pin_num(const hw_gpio_t *gpio);
+
+/**
+ * @brief Set the global GPIO interrupt callback handler.
+ * @ingroup GPIO
+ *
+ * @param callback Pointer to the callback function, or `NULL` to disable
+ * interrupt handling.
+ * @param userdata User-defined data pointer to pass to the callback.
+ */
+void hw_gpio_set_callback(hw_gpio_callback_t callback, void *userdata);
 
 /**
  * @brief Get the current mode configuration of a GPIO pin.
@@ -158,3 +169,5 @@ bool hw_gpio_get(const hw_gpio_t *gpio);
  * @param value `true` to set the pin high, `false` to set it low.
  */
 void hw_gpio_set(hw_gpio_t *gpio, bool value);
+
+/** @} */

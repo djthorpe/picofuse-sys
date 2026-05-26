@@ -19,7 +19,7 @@
 
 /**
  * @brief Connection/event status flags for MQTT operations.
- * @ingroup Network
+ * @ingroup MQTT
  */
 typedef enum {
   net_mqtt_status_connected_t =
@@ -43,7 +43,7 @@ typedef enum {
 
 /**
  * @brief Callback invoked on connection state changes and errors.
- * @ingroup Network
+ * @ingroup MQTT
  *
  * @param mqtt      The MQTT instance that generated the event.
  * @param status    One or more @ref net_mqtt_status_t flags describing the
@@ -59,16 +59,19 @@ typedef void (*net_mqtt_connect_callback_t)(net_mqtt_t *mqtt,
 
 /**
  * @brief Create and initialize an MQTT handle.
- * @ingroup Network
+ * @ingroup MQTT
  */
 typedef struct net_mqtt_t net_mqtt_t;
 
 ///////////////////////////////////////////////////////////////////////////////
 // LIFECYCLE
 
+/** @name Lifecycle
+ * @{ */
+
 /**
  * @brief Create and initialize an MQTT handle.
- * @ingroup Network
+ * @ingroup MQTT
  *
  * @param connect   Callback to receive connection status updates.
  * @param user_data Opaque pointer passed back to @p connect.
@@ -80,18 +83,8 @@ typedef struct net_mqtt_t net_mqtt_t;
 net_mqtt_t *net_mqtt_init(net_mqtt_connect_callback_t connect, void *user_data);
 
 /**
- * @brief Check whether an MQTT client is valid and connected.
- * @ingroup Network
- *
- * @param mqtt The MQTT handle to check.
- * @return true if the handle is initialized and currently connected to a
- *         broker, false otherwise.
- */
-bool net_mqtt_valid(net_mqtt_t *mqtt);
-
-/**
  * @brief Finalize the MQTT handle and free associated resources.
- * @ingroup Network
+ * @ingroup MQTT
  *
  * @param mqtt The MQTT handle to finalize. NULL is allowed and is a no-op.
  *
@@ -102,8 +95,26 @@ bool net_mqtt_valid(net_mqtt_t *mqtt);
 void net_mqtt_deinit(net_mqtt_t *mqtt);
 
 /**
+ * @brief Check whether an MQTT client is valid and connected.
+ * @ingroup MQTT
+ *
+ * @param mqtt The MQTT handle to check.
+ * @return true if the handle is initialized and currently connected to a
+ *         broker, false otherwise.
+ */
+bool net_mqtt_valid(net_mqtt_t *mqtt);
+
+/** @} */
+
+///////////////////////////////////////////////////////////////////////////////
+// METHODS
+
+/** @name Methods
+ * @{ */
+
+/**
  * @brief Begin an asynchronous connection to an MQTT broker.
- * @ingroup Network
+ * @ingroup MQTT
  *
  * @param mqtt            MQTT handle created by @ref net_mqtt_init.
  * @param hostname        Broker hostname or IP address.
@@ -133,7 +144,7 @@ bool net_mqtt_connect(net_mqtt_t *mqtt, const char *hostname, uint16_t port,
 
 /**
  * @brief Begin an asynchronous disconnect from the MQTT broker.
- * @ingroup Network
+ * @ingroup MQTT
  *
  * @param mqtt MQTT handle created by @ref net_mqtt_init.
  * @return true if the disconnect was successfully initiated; false otherwise.
@@ -142,3 +153,5 @@ bool net_mqtt_connect(net_mqtt_t *mqtt, const char *hostname, uint16_t port,
  * with @ref net_mqtt_status_disconnected_t.
  */
 bool net_mqtt_disconnect(net_mqtt_t *mqtt);
+
+/** @} */

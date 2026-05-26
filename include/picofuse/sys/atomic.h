@@ -37,7 +37,7 @@ extern "C" {
  * in order to maintain thread safety.
  */
 typedef struct sys_atomic_t {
-  uint32_t value;
+  uint32_t value; ///< Raw atomic storage; use sys_atomic_* APIs instead.
 } sys_atomic_t __attribute__((aligned(4)));
 
 /**

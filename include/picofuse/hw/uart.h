@@ -95,17 +95,20 @@ typedef void (*hw_uart_callback_t)(hw_uart_t *uart, uint32_t events,
  * for all fields in this structure.
  */
 typedef struct {
-  const hw_gpio_t *cts_pin;
-  const hw_gpio_t *rts_pin;
-  hw_uart_data_bits_t data_bits;
-  hw_uart_stop_bits_t stop_bits;
-  hw_uart_parity_t parity;
-  hw_uart_flow_control_t flow_control;
-  uint32_t events;
+  const hw_gpio_t *cts_pin; ///< Optional CTS pin for hardware flow control.
+  const hw_gpio_t *rts_pin; ///< Optional RTS pin for hardware flow control.
+  hw_uart_data_bits_t data_bits; ///< Number of data bits per frame.
+  hw_uart_stop_bits_t stop_bits; ///< Number of stop bits per frame.
+  hw_uart_parity_t parity; ///< Parity mode for transmitted and received frames.
+  hw_uart_flow_control_t flow_control; ///< Flow-control mode to enable.
+  uint32_t events; ///< UART event mask that should trigger the callback.
 } hw_uart_config_t;
 
 ///////////////////////////////////////////////////////////////////////////////
 // LIFECYCLE
+
+/** @name Lifecycle
+ * @{ */
 
 /**
  * @brief Initialize a UART device.
@@ -154,8 +157,13 @@ void hw_uart_deinit(hw_uart_t *uart);
  */
 bool hw_uart_valid(const hw_uart_t *uart);
 
+/** @} */
+
 ///////////////////////////////////////////////////////////////////////////////
 // PUBLIC METHODS
+
+/** @name Methods
+ * @{ */
 
 /**
  * @brief Transmit bytes over a UART interface.
@@ -208,3 +216,5 @@ size_t hw_uart_read(hw_uart_t *uart, void *data, size_t size,
  * @retval false Transmission was still in progress when the timeout expired.
  */
 bool hw_uart_flush(hw_uart_t *uart, uint32_t timeout_ms);
+
+/** @} */

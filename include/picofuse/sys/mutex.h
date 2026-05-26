@@ -15,6 +15,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/**
+ * @def SYS_MUTEX_CAPACITY
+ * @ingroup SystemSyncMutex
+ * @brief Maximum number of mutexes available in static-pool implementations.
+ */
 #ifndef SYS_MUTEX_CAPACITY
 #define SYS_MUTEX_CAPACITY 32
 #endif
@@ -36,6 +41,9 @@ typedef struct sys_mutex_t sys_mutex_t;
 ///////////////////////////////////////////////////////////////////////////////
 // LIFECYCLE
 
+/** @name Lifecycle
+ * @{ */
+
 /**
  * @brief Initialize a new mutex
  * @ingroup SystemSyncMutex
@@ -47,6 +55,24 @@ typedef struct sys_mutex_t sys_mutex_t;
  * may return `NULL` after `SYS_MUTEX_CAPACITY` mutexes have been allocated.
  */
 sys_mutex_t *sys_mutex_init(void);
+
+/**
+ * @brief Release a mutex
+ * @ingroup SystemSyncMutex
+ * @param mutex Pointer to the mutex to release
+ *
+ * Releases all resources associated with the mutex and renders it
+ * unusable. The mutex should not be locked when this function is called.
+ */
+void sys_mutex_deinit(sys_mutex_t *mutex);
+
+/** @} */
+
+///////////////////////////////////////////////////////////////////////////////
+// METHODS
+
+/** @name Methods
+ * @{ */
 
 /**
  * @brief Lock a mutex, by blocking
@@ -86,15 +112,7 @@ bool sys_mutex_trylock(sys_mutex_t *mutex);
  */
 bool sys_mutex_unlock(sys_mutex_t *mutex);
 
-/**
- * @brief Release a mutex
- * @ingroup SystemSyncMutex
- * @param mutex Pointer to the mutex to release
- *
- * Releases all resources associated with the mutex and renders it
- * unusable. The mutex should not be locked when this function is called.
- */
-void sys_mutex_deinit(sys_mutex_t *mutex);
+/** @} */
 
 #ifdef __cplusplus
 }
