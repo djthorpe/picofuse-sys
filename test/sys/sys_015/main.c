@@ -18,7 +18,7 @@ static bool assert_digest(sys_hash_t *hash, const uint8_t *expected,
   if (digest == NULL) {
     return false;
   }
-  if (memcmp(digest, expected, expected_size) != 0) {
+  if (sys_memcmp(digest, expected, expected_size) != 0) {
     return false;
   }
 
@@ -26,7 +26,7 @@ static bool assert_digest(sys_hash_t *hash, const uint8_t *expected,
   if (digest_again != digest) {
     return false;
   }
-  if (memcmp(digest_again, expected, expected_size) != 0) {
+  if (sys_memcmp(digest_again, expected, expected_size) != 0) {
     return false;
   }
 
