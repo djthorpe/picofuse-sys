@@ -1,6 +1,7 @@
 /**
  * @file hw.h
- * @brief Aggregates the hardware interface headers and platform lifecycle hooks.
+ * @brief Aggregates the hardware interface headers and platform lifecycle
+ * hooks.
  * @defgroup Hardware Hardware Interfaces
  * @ingroup Picofuse
  */

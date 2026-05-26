@@ -1,6 +1,7 @@
 /**
  * @file sys.h
- * @brief Aggregates the core system abstraction headers and process lifecycle hooks.
+ * @brief Aggregates the core system abstraction headers and process lifecycle
+ * hooks.
  * @defgroup System System Abstractions
  * @ingroup Picofuse
  */
