@@ -112,20 +112,10 @@ bool sys_hash_update(sys_hash_t *hash, const void *data, size_t size) {
   }
 
   switch (hash->algorithm) {
-  case sys_hash_md5: {
-    int rc = mbedtls_md5_update(&hash->ctx.md5, data, size);
-    if (rc != 0) {
-      sys_printf("sys_hash_update(md5, %zu) failed: %d\n", size, rc);
-    }
-    return rc == 0;
-  }
-  case sys_hash_sha256: {
-    int rc = mbedtls_sha256_update(&hash->ctx.sha256, data, size);
-    if (rc != 0) {
-      sys_printf("sys_hash_update(sha256, %zu) failed: %d\n", size, rc);
-    }
-    return rc == 0;
-  }
+  case sys_hash_md5:
+    return mbedtls_md5_update(&hash->ctx.md5, data, size) == 0;
+  case sys_hash_sha256:
+    return mbedtls_sha256_update(&hash->ctx.sha256, data, size) == 0;
   default:
     return false;
   }
@@ -144,16 +134,13 @@ const uint8_t *sys_hash_finalize(sys_hash_t *hash) {
   }
 
   bool ok = false;
-  int rc = 0;
   switch (hash->algorithm) {
   case sys_hash_md5:
-    rc = mbedtls_md5_finish(&hash->ctx.md5, hash->digest);
-    ok = rc == 0;
+    ok = mbedtls_md5_finish(&hash->ctx.md5, hash->digest) == 0;
     mbedtls_md5_free(&hash->ctx.md5);
     break;
   case sys_hash_sha256:
-    rc = mbedtls_sha256_finish(&hash->ctx.sha256, hash->digest);
-    ok = rc == 0;
+    ok = mbedtls_sha256_finish(&hash->ctx.sha256, hash->digest) == 0;
     mbedtls_sha256_free(&hash->ctx.sha256);
     break;
   default:
@@ -161,8 +148,6 @@ const uint8_t *sys_hash_finalize(sys_hash_t *hash) {
   }
 
   if (!ok) {
-    sys_printf("sys_hash_finalize(%u) failed: %d\n", (unsigned)hash->algorithm,
-               rc);
     sys_memset(hash->digest, 0, sizeof(hash->digest));
     return NULL;
   }
@@ -212,22 +197,10 @@ static bool _sys_hash_init_handle(sys_hash_t *hash,
   switch (algorithm) {
   case sys_hash_md5:
     mbedtls_md5_init(&hash->ctx.md5);
-    {
-      int rc = mbedtls_md5_starts(&hash->ctx.md5);
-      if (rc != 0) {
-        sys_printf("sys_hash_init(md5) start failed: %d\n", rc);
-      }
-      return rc == 0;
-    }
+    return mbedtls_md5_starts(&hash->ctx.md5) == 0;
   case sys_hash_sha256:
     mbedtls_sha256_init(&hash->ctx.sha256);
-    {
-      int rc = mbedtls_sha256_starts(&hash->ctx.sha256, 0);
-      if (rc != 0) {
-        sys_printf("sys_hash_init(sha256) start failed: %d\n", rc);
-      }
-      return rc == 0;
-    }
+    return mbedtls_sha256_starts(&hash->ctx.sha256, 0) == 0;
   default:
     return false;
   }
