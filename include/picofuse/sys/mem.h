@@ -25,6 +25,16 @@ extern "C" {
  */
 typedef struct sys_mem_arena_t sys_mem_arena_t;
 
+/**
+ * @brief Snapshot of arena usage statistics.
+ * @ingroup SystemMemory
+ */
+typedef struct sys_mem_arena_stats_t {
+  size_t size_bytes;
+  size_t used_bytes;
+  size_t allocations;
+} sys_mem_arena_stats_t;
+
 /** @name Arena Lifecycle
  * @{ */
 
@@ -59,9 +69,11 @@ void sys_mem_arena_delete(sys_mem_arena_t *arena);
  * @brief Return the next arena in a chain.
  * @ingroup SystemMemory
  * @param arena Pointer to the current arena.
+ * @param stats Optional pointer populated with stats for `arena` when non-NULL.
  * @return Pointer to the next arena, or `NULL` when the chain ends.
  */
-sys_mem_arena_t *sys_mem_arena_next(sys_mem_arena_t *arena);
+sys_mem_arena_t *sys_mem_arena_next(sys_mem_arena_t *arena,
+                                    sys_mem_arena_stats_t *stats);
 
 /** @} */
 

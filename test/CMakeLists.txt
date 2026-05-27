@@ -80,3 +80,8 @@ picofuse_add_sys_test(sys_015
 picofuse_add_sys_test(sys_016
 	main.c
 )
+
+# Check arena init/next/delete behavior.
+picofuse_add_sys_test(sys_017
+	main.c
+)

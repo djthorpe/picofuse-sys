@@ -13,6 +13,8 @@ struct sys_mem_arena_t {
   void *(*malloc_fn)(size_t size);
   void (*free_fn)(void *ptr);
   size_t size;
+  size_t used_bytes;
+  size_t allocations;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -104,6 +106,8 @@ sys_mem_arena_t *sys_mem_arena_init(size_t size, sys_mem_arena_t *prev,
   arena->malloc_fn = malloc_fn;
   arena->free_fn = free_fn;
   arena->size = aligned_size - arena_struct_size;
+  arena->used_bytes = 0;
+  arena->allocations = 0;
   if (prev == NULL) {
     arena->head = arena;
     arena->lock = sys_mutex_init();
@@ -144,4 +148,20 @@ void sys_mem_arena_delete(sys_mem_arena_t *arena) {
     free_fn(head);
     head = next;
   }
+}
+
+/** @brief Returns the next arena in a chain. */
+sys_mem_arena_t *sys_mem_arena_next(sys_mem_arena_t *arena,
+                                    sys_mem_arena_stats_t *stats) {
+  if (arena == NULL) {
+    return NULL;
+  }
+
+  if (stats != NULL) {
+    stats->size_bytes = arena->size;
+    stats->used_bytes = arena->used_bytes;
+    stats->allocations = arena->allocations;
+  }
+
+  return arena->next;
 }
