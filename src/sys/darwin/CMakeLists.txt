@@ -3,6 +3,7 @@ set(NAME "picofuse-sys-obj")
 find_package(OpenSSL REQUIRED)
 
 add_library(${NAME} OBJECT
+    ../any/arena.c
     ../any/djb2.c
     ../any/mem.c
     ../openssl/hash.c

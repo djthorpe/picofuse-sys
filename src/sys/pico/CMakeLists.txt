@@ -1,6 +1,7 @@
 set(NAME "picofuse-sys-obj")
 
 add_library(${NAME} OBJECT
+    ../any/arena.c
     ../any/djb2.c
     ../any/mem.c
     cond.c

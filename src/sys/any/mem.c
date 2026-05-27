@@ -8,34 +8,6 @@
 #define SYS_MEM_EVENT_CAPACITY 32
 #endif
 
-///////////////////////////////////////////////////////////////////////////////
-// TYPES
-
-typedef enum sys_mem_event_type_t {
-  sys_mem_event_malloc = 1,
-  sys_mem_event_calloc,
-  sys_mem_event_realloc,
-  sys_mem_event_free,
-} sys_mem_event_type_t;
-
-typedef struct sys_mem_stats_t {
-  size_t malloc_calls;
-  size_t calloc_calls;
-  size_t realloc_calls;
-  size_t free_calls;
-  size_t failed_allocations;
-  size_t requested_bytes;
-} sys_mem_stats_t;
-
-typedef struct sys_mem_event_t {
-  size_t sequence;
-  sys_mem_event_type_t type;
-  uintptr_t old_ptr;
-  uintptr_t new_ptr;
-  size_t size;
-  size_t count;
-} sys_mem_event_t;
-
 typedef struct sys_mem_event_slot_t {
   uintptr_t old_ptr;
   uintptr_t new_ptr;

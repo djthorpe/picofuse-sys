@@ -9,6 +9,7 @@
 
 #pragma once
 #include <stddef.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -30,10 +31,10 @@ typedef struct sys_mem_arena_t sys_mem_arena_t;
 /**
  * @brief Initialize a new arena.
  * @ingroup SystemMemory
+ * @param size Arena size in bytes.
  * @param prev Pointer to the previous arena, or `NULL` for the first arena.
  * @param malloc_fn Underlying allocation function used when `prev` is `NULL`.
  * @param free_fn Underlying deallocation function used when `prev` is `NULL`.
- * @param size Arena size in bytes.
  * @return Pointer to the newly initialized arena, or `NULL` on failure.
  *
  * When creating the first arena in a chain, `malloc_fn` and `free_fn` must
@@ -41,14 +42,16 @@ typedef struct sys_mem_arena_t sys_mem_arena_t;
  * arenas, pass `NULL` for both callbacks; providing either callback when
  * `prev` is not `NULL` is an assertion failure.
  */
-sys_mem_arena_t *sys_mem_arena_init(sys_mem_arena_t *prev,
+sys_mem_arena_t *sys_mem_arena_init(size_t size, sys_mem_arena_t *prev,
                                     void *(*malloc_fn)(size_t size),
-                                    void (*free_fn)(void *ptr), size_t size);
+                                    void (*free_fn)(void *ptr));
 
 /**
  * @brief Delete an arena chain.
  * @ingroup SystemMemory
- * @param arena Pointer to the first arena to delete.
+ * @param arena Pointer to an arena in the chain. Must be non-NULL.
+ *
+ * Deletes the chain beginning at the head arena associated with `arena`.
  */
 void sys_mem_arena_delete(sys_mem_arena_t *arena);
 
