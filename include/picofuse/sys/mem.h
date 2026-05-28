@@ -35,6 +35,9 @@ typedef struct sys_mem_arena_stats_t {
   size_t allocations;
 } sys_mem_arena_stats_t;
 
+///////////////////////////////////////////////////////////////////////////////
+// LIFECYCLE
+
 /** @name Arena Lifecycle
  * @{ */
 
@@ -74,6 +77,50 @@ void sys_mem_arena_delete(sys_mem_arena_t *arena);
  */
 sys_mem_arena_t *sys_mem_arena_next(sys_mem_arena_t *arena,
                                     sys_mem_arena_stats_t *stats);
+
+/** @} */
+
+///////////////////////////////////////////////////////////////////////////////
+// PUBLIC METHODS
+
+/** @name Single-Arena Allocation
+ * @{ */
+
+/**
+ * @brief Allocate memory from a single arena.
+ * @ingroup SystemMemory
+ * @param arena Arena that services the allocation request.
+ * @param size Number of bytes to allocate.
+ * @return Pointer to the allocated block, or `NULL` on failure.
+ *
+ * This function operates only on the supplied arena and does not traverse any
+ * linked successor arenas.
+ */
+void *sys_mem_arena_alloc(sys_mem_arena_t *arena, size_t size);
+
+/**
+ * @brief Resize an allocation within a single arena.
+ * @ingroup SystemMemory
+ * @param arena Arena that owns the allocation.
+ * @param ptr Existing allocation to resize, or `NULL`.
+ * @param size New size in bytes.
+ * @return Pointer to the resized block, or `NULL` on failure.
+ *
+ * This function operates only on the supplied arena and does not traverse any
+ * linked successor arenas.
+ */
+void *sys_mem_arena_realloc(sys_mem_arena_t *arena, void *ptr, size_t size);
+
+/**
+ * @brief Release an allocation owned by a single arena.
+ * @ingroup SystemMemory
+ * @param arena Arena that owns the allocation.
+ * @param ptr Allocation to release, or `NULL`.
+ *
+ * This function operates only on the supplied arena and does not traverse any
+ * linked successor arenas.
+ */
+void sys_mem_arena_free(sys_mem_arena_t *arena, void *ptr);
 
 /** @} */
 
