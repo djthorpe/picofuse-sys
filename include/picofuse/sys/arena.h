@@ -58,8 +58,9 @@ typedef struct sys_mem_arena_stats_t {
  *
  * When creating the first arena in a chain, `malloc_fn` and `free_fn` must
  * point to the underlying allocator implementation to use. For subsequent
- * arenas, pass `NULL` for both callbacks; providing either callback when
- * `prev` is not `NULL` is an assertion failure.
+ * arenas, `prev` must point to the current tail arena. In that case the
+ * allocator callbacks are inherited from `prev`, and initialization returns
+ * `NULL` if `prev` is not the tail or does not have valid allocator callbacks.
  */
 sys_mem_arena_t *sys_mem_arena_init(size_t size, sys_mem_arena_t *prev,
                                     void *(*malloc_fn)(size_t size),

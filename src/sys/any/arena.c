@@ -25,11 +25,31 @@ struct sys_mem_arena_t {
   size_t allocations;
 };
 
+#if !defined(__STDC_VERSION__) || __STDC_VERSION__ < 201112L
+typedef union sys_mem_arena_fallback_align_t {
+  void *ptr;
+  void (*func)(void);
+  long double long_double_value;
+  long long long_long_value;
+} sys_mem_arena_fallback_align_t;
+#endif
+
 ///////////////////////////////////////////////////////////////////////////////
 // PRIVATE METHODS
 
 /** @brief Returns the alignment used for arena headers and payloads. */
-static size_t _sys_mem_arena_alignment(void) { return _Alignof(max_align_t); }
+static size_t _sys_mem_arena_alignment(void) {
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+  return _Alignof(max_align_t);
+#else
+  return offsetof(
+      struct {
+        char byte;
+        sys_mem_arena_fallback_align_t value;
+      },
+      value);
+#endif
+}
 
 /** @brief Rounds a size up to the arena alignment. */
 static bool _sys_mem_arena_align_up(size_t value, size_t *aligned) {
@@ -233,7 +253,6 @@ sys_mem_arena_t *sys_mem_arena_init(size_t size, sys_mem_arena_t *prev,
       return NULL;
     }
 
-    sys_assert(prev->next == NULL);
     if (prev->next != NULL || prev->malloc_fn == NULL ||
         prev->free_fn == NULL) {
       _sys_mem_arena_unlock(prev);

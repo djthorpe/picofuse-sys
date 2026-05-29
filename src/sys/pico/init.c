@@ -5,6 +5,7 @@
 #include <pico/stdlib.h>
 #include <picofuse/sys.h>
 #include <stdbool.h>
+#include <stdlib.h>
 
 /**
  * @brief Initializes the system on startup.
