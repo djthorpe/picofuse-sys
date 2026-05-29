@@ -5,6 +5,7 @@ find_package(OpenSSL REQUIRED)
 add_library(${NAME} OBJECT
     ../any/arena.c
     ../any/djb2.c
+    ../any/event.c
     ../any/mem.c
     ../openssl/hash.c
     random.c

@@ -85,3 +85,13 @@ picofuse_add_sys_test(sys_016
 picofuse_add_sys_test(sys_017
 	main.c
 )
+
+# Check arena allocation behavior under concurrent access.
+picofuse_add_sys_test(sys_018
+	main.c
+)
+
+# Check heap-backed event queue behavior.
+picofuse_add_sys_test(sys_019
+	main.c
+)

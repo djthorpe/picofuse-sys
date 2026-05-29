@@ -6,9 +6,11 @@
  * @ingroup Picofuse
  */
 #pragma once
+#include "sys/arena.h"
 #include "sys/assert.h"
 #include "sys/atomic.h"
 #include "sys/cond.h"
+#include "sys/event.h"
 #include "sys/halt.h"
 #include "sys/hash.h"
 #include "sys/mem.h"

@@ -25,6 +25,7 @@ type config struct {
 	port          string
 	pattern       string
 	timeout       time.Duration
+	resultGrace   time.Duration
 	loadTimeout   time.Duration
 	baud          int
 	pollInterval  time.Duration
@@ -99,6 +100,7 @@ func parseFlags() config {
 	flag.StringVar(&cfg.port, "port", "", "Serial device path; autodetect when empty")
 	flag.StringVar(&cfg.pattern, "pattern", "sys_*.uf2", "Glob pattern for test UF2 files")
 	flag.DurationVar(&cfg.timeout, "timeout", 15*time.Second, "Maximum time to wait for a test result")
+	flag.DurationVar(&cfg.resultGrace, "result-grace", 500*time.Millisecond, "Extra time to keep reading serial output after the TEST PASS/FAIL line")
 	flag.DurationVar(&cfg.loadTimeout, "load-timeout", 20*time.Second, "Maximum time for each picotool command")
 	flag.IntVar(&cfg.baud, "baud", 115200, "Serial baud rate")
 	flag.DurationVar(&cfg.pollInterval, "poll-interval", 250*time.Millisecond, "Polling interval for serial device detection")
@@ -213,6 +215,7 @@ func waitForResult(cfg config, portPath string) (testResult, error) {
 
 	deadline := time.Now().Add(cfg.timeout)
 	reader := bufio.NewReader(file)
+	var result *testResult
 	for time.Now().Before(deadline) {
 		line, err := readLineWithDeadline(reader, file, deadline)
 		if errors.Is(err, context.DeadlineExceeded) {
@@ -227,13 +230,23 @@ func waitForResult(cfg config, portPath string) (testResult, error) {
 		}
 		fmt.Printf("    serial: %s\n", line)
 		if matches := resultPattern.FindStringSubmatch(line); len(matches) == 4 {
-			return testResult{
+			captured := testResult{
 				status:    matches[1],
 				name:      matches[2],
 				elapsedMs: matches[3],
 				line:      line,
-			}, nil
+			}
+			result = &captured
+
+			graceDeadline := time.Now().Add(cfg.resultGrace)
+			if graceDeadline.Before(deadline) {
+				deadline = graceDeadline
+			}
 		}
+	}
+
+	if result != nil {
+		return *result, nil
 	}
 
 	return testResult{}, fmt.Errorf("timeout waiting for TEST PASS/FAIL line on %s", portPath)

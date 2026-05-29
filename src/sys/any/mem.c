@@ -1,66 +1,205 @@
+#include "private.h"
 #include <picofuse/sys.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdlib.h>
 
-#ifndef SYS_MEM_EVENT_CAPACITY
-#define SYS_MEM_EVENT_CAPACITY 32
+#ifndef SYS_MEM_ARENA_GROWTH_MIN_SLACK
+#define SYS_MEM_ARENA_GROWTH_MIN_SLACK ((size_t)1024u)
 #endif
-
-typedef struct sys_mem_event_slot_t {
-  uintptr_t old_ptr;
-  uintptr_t new_ptr;
-  size_t size;
-  size_t count;
-  unsigned int type;
-  size_t sequence;
-} sys_mem_event_slot_t;
 
 ///////////////////////////////////////////////////////////////////////////////
 // GLOBALS
 
-static size_t _sys_mem_malloc_calls = 0;
-static size_t _sys_mem_calloc_calls = 0;
-static size_t _sys_mem_realloc_calls = 0;
-static size_t _sys_mem_free_calls = 0;
-static size_t _sys_mem_failed_allocations = 0;
-static size_t _sys_mem_requested_bytes = 0;
-static size_t _sys_mem_event_sequence = 0;
-static sys_mem_event_slot_t _sys_mem_events[SYS_MEM_EVENT_CAPACITY] = {{0}};
+static sys_mem_arena_t *_sys_mem_default_head = NULL;
 
 ///////////////////////////////////////////////////////////////////////////////
 // PRIVATE METHODS
 
-static void _sys_mem_record_requested_bytes(size_t count, size_t size) {
-  if (count != 0 && size <= SIZE_MAX / count) {
-    __atomic_add_fetch(&_sys_mem_requested_bytes, count * size,
-                       __ATOMIC_RELAXED);
+/**
+ * @brief Return the tail arena in a chain.
+ * @param head Head of the chain.
+ * @param stats Optional stats populated for the returned tail arena.
+ * @return Tail arena, or `NULL` when the chain is empty.
+ */
+static sys_mem_arena_t *_sys_mem_default_tail(sys_mem_arena_t *head,
+                                              sys_mem_arena_stats_t *stats) {
+  if (head == NULL) {
+    return NULL;
+  }
+
+  sys_mem_arena_t *current = head;
+  sys_mem_arena_stats_t current_stats = {0};
+  while (true) {
+    sys_mem_arena_t *next = sys_mem_arena_next(current, &current_stats);
+    if (next == NULL) {
+      if (stats != NULL) {
+        *stats = current_stats;
+      }
+      return current;
+    }
+    current = next;
   }
 }
 
-static void _sys_mem_record_failure(void) {
-  __atomic_add_fetch(&_sys_mem_failed_allocations, 1, __ATOMIC_RELAXED);
+/**
+ * @brief Compute the size of a newly appended arena.
+ * @param previous_size Payload size of the current tail arena.
+ * @param required_size Allocation size that triggered growth.
+ * @param arena_size Output size for the new arena payload.
+ * @return `true` when a size was produced, otherwise `false`.
+ */
+static bool _sys_mem_default_growth_size(size_t previous_size,
+                                         size_t required_size,
+                                         size_t *arena_size) {
+  if (arena_size == NULL || required_size == 0) {
+    return false;
+  }
+
+  size_t candidate = previous_size;
+  if (required_size > candidate) {
+    size_t slack = required_size / 2u;
+    if (slack < SYS_MEM_ARENA_GROWTH_MIN_SLACK) {
+      slack = SYS_MEM_ARENA_GROWTH_MIN_SLACK;
+    }
+
+    if (required_size > SIZE_MAX - slack) {
+      candidate = required_size;
+    } else {
+      candidate = required_size + slack;
+    }
+  }
+
+  if (candidate == 0) {
+    return false;
+  }
+
+  *arena_size = candidate;
+  return true;
 }
 
-static void _sys_mem_record_event(sys_mem_event_type_t type, uintptr_t old_ptr,
-                                  uintptr_t new_ptr, size_t size,
-                                  size_t count) {
-  size_t sequence =
-      __atomic_add_fetch(&_sys_mem_event_sequence, 1, __ATOMIC_RELAXED);
-  sys_mem_event_slot_t *slot =
-      &_sys_mem_events[(sequence - 1) % SYS_MEM_EVENT_CAPACITY];
-  slot->old_ptr = old_ptr;
-  slot->new_ptr = new_ptr;
-  slot->size = size;
-  slot->count = count;
-  slot->type = (unsigned int)type;
-  __atomic_store_n(&slot->sequence, sequence, __ATOMIC_RELEASE);
+/**
+ * @brief Allocate from the default arena chain, growing it when necessary.
+ * @param size Number of bytes to allocate.
+ * @return Pointer to the allocated block, or `NULL` on failure.
+ */
+static void *_sys_mem_default_alloc(size_t size) {
+  if (size == 0) {
+    return NULL;
+  }
+
+  sys_mem_arena_t *head = _sys_mem_default_head;
+  sys_mem_arena_stats_t tail_stats = {0};
+  sys_mem_arena_t *tail = _sys_mem_default_tail(head, &tail_stats);
+  if (tail == NULL) {
+    return NULL;
+  }
+
+  sys_mem_arena_t *current = tail;
+  while (current != NULL) {
+    void *ptr = sys_mem_arena_alloc(current, size);
+    if (ptr != NULL) {
+      return ptr;
+    }
+    current = _sys_mem_arena_prev(current, NULL);
+  }
+
+  size_t arena_size = 0;
+  if (!_sys_mem_default_growth_size(tail_stats.size_bytes, size, &arena_size)) {
+    return NULL;
+  }
+
+  sys_mem_arena_t *next = sys_mem_arena_init(arena_size, tail, NULL, NULL);
+  if (next == NULL) {
+    return NULL;
+  }
+
+  return sys_mem_arena_alloc(next, size);
+}
+
+/**
+ * @brief Find the arena that owns a payload pointer.
+ * @param ptr Payload pointer to locate.
+ * @param size Optional allocation size populated for the owning arena.
+ * @return Arena that owns `ptr`, or `NULL` when not found.
+ */
+static sys_mem_arena_t *_sys_mem_default_owner(void *ptr, size_t *size) {
+  sys_mem_arena_t *tail = _sys_mem_default_tail(_sys_mem_default_head, NULL);
+  while (tail != NULL) {
+    size_t alloc_size = _sys_mem_arena_alloc_size(tail, ptr);
+    if (alloc_size != 0) {
+      if (size != NULL) {
+        *size = alloc_size;
+      }
+      return tail;
+    }
+    tail = _sys_mem_arena_prev(tail, NULL);
+  }
+
+  return NULL;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// PUBLIC API
+// LIFECYCLE
 
+/**
+ * @brief Initialize the process-wide default arena.
+ * @param capacity Arena capacity in bytes.
+ * @param malloc_fn Backing allocator used for the first arena.
+ * @param free_fn Backing deallocator paired with `malloc_fn`.
+ * @return `true` when the default arena is ready, otherwise `false`.
+ */
+bool _sys_mem_init(size_t capacity, void *(*malloc_fn)(size_t),
+                   void (*free_fn)(void *)) {
+  if (_sys_mem_default_head != NULL) {
+    return true;
+  }
+
+  if (capacity == 0 || malloc_fn == NULL || free_fn == NULL) {
+    return false;
+  }
+
+  sys_mem_arena_t *arena =
+      sys_mem_arena_init(capacity, NULL, malloc_fn, free_fn);
+  if (arena == NULL) {
+    return false;
+  }
+
+  _sys_mem_default_head = arena;
+  return true;
+}
+
+/**
+ * @brief Tear down the process-wide default arena chain.
+ */
+void _sys_mem_deinit(void) {
+  sys_mem_arena_t *head = _sys_mem_default_head;
+  _sys_mem_default_head = NULL;
+
+#ifndef NDEBUG
+  if (head != NULL) {
+    sys_printf("mem deinit:\n");
+    sys_mem_dump(head);
+  }
+#endif
+
+  while (head != NULL) {
+    sys_mem_arena_t *next = sys_mem_arena_next(head, NULL);
+    sys_mem_arena_delete(head);
+    head = next;
+  }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// PUBLIC METHODS
+
+/**
+ * @brief Fill a memory region with a byte value.
+ * @param dest Destination memory region.
+ * @param value Byte value to write.
+ * @param count Number of bytes to set.
+ * @return The original `dest` pointer.
+ */
 void *sys_memset(void *dest, int value, size_t count) {
   unsigned char *ptr = dest;
   while (count--) {
@@ -69,15 +208,44 @@ void *sys_memset(void *dest, int value, size_t count) {
   return dest;
 }
 
+/**
+ * @brief Copy bytes from one memory region to another.
+ * @param dest Destination memory region.
+ * @param src Source memory region.
+ * @param count Number of bytes to copy.
+ * @return The original `dest` pointer.
+ */
 void *sys_memcpy(void *dest, const void *src, size_t count) {
-  unsigned char *d = dest;
-  const unsigned char *s = src;
-  while (count--) {
-    *d++ = *s++;
+  unsigned char *dst = dest;
+  const unsigned char *source = src;
+
+  if (dst == source || count == 0) {
+    return dest;
   }
+
+  if (dst < source || dst >= source + count) {
+    while (count-- != 0) {
+      *dst++ = *source++;
+    }
+    return dest;
+  }
+
+  dst += count;
+  source += count;
+  while (count-- != 0) {
+    *--dst = *--source;
+  }
+
   return dest;
 }
 
+/**
+ * @brief Compare two memory regions byte by byte.
+ * @param lhs First memory region.
+ * @param rhs Second memory region.
+ * @param count Number of bytes to compare.
+ * @return Negative, zero, or positive depending on the first differing byte.
+ */
 int sys_memcmp(const void *lhs, const void *rhs, size_t count) {
   const unsigned char *left = lhs;
   const unsigned char *right = rhs;
@@ -90,6 +258,11 @@ int sys_memcmp(const void *lhs, const void *rhs, size_t count) {
   return 0;
 }
 
+/**
+ * @brief Measure the length of a null-terminated string.
+ * @param str String to measure.
+ * @return Number of characters before the terminating null byte.
+ */
 size_t sys_strlen(const char *str) {
   const char *s = str;
   while (*s) {
@@ -98,122 +271,103 @@ size_t sys_strlen(const char *str) {
   return s - str;
 }
 
-void *sys_calloc(size_t count, size_t size) {
-  __atomic_add_fetch(&_sys_mem_calloc_calls, 1, __ATOMIC_RELAXED);
-  if (count != 0 && size > SIZE_MAX / count) {
-    _sys_mem_record_failure();
-    _sys_mem_record_event(sys_mem_event_calloc, 0, 0, size, count);
-    return NULL;
-  }
+/**
+ * @brief Print per-arena statistics for a chain.
+ * @param arena First arena in the chain, or `NULL` for the default arena.
+ */
+void sys_mem_dump(sys_mem_arena_t *arena) {
+  sys_mem_arena_t *current = arena == NULL ? _sys_mem_default_head : arena;
+  size_t index = 0;
 
-  _sys_mem_record_requested_bytes(count, size);
-  void *ptr = calloc(count, size);
-  if (ptr == NULL && count != 0 && size != 0) {
-    _sys_mem_record_failure();
-  }
-  _sys_mem_record_event(sys_mem_event_calloc, 0, (uintptr_t)ptr, size, count);
-  return ptr;
-}
-
-void *sys_realloc(void *ptr, size_t size) {
-  __atomic_add_fetch(&_sys_mem_realloc_calls, 1, __ATOMIC_RELAXED);
-  _sys_mem_record_requested_bytes(1, size);
-  uintptr_t old_ptr = (uintptr_t)ptr;
-  void *resized = realloc(ptr, size);
-  if (resized == NULL && size != 0) {
-    _sys_mem_record_failure();
-  }
-  _sys_mem_record_event(sys_mem_event_realloc, old_ptr, (uintptr_t)resized,
-                        size, 1);
-  return resized;
-}
-
-void sys_free(void *ptr) {
-  __atomic_add_fetch(&_sys_mem_free_calls, 1, __ATOMIC_RELAXED);
-  _sys_mem_record_event(sys_mem_event_free, (uintptr_t)ptr, 0, 0, 0);
-  free(ptr);
-}
-
-void *sys_malloc(size_t size) {
-  __atomic_add_fetch(&_sys_mem_malloc_calls, 1, __ATOMIC_RELAXED);
-  _sys_mem_record_requested_bytes(1, size);
-  void *ptr = malloc(size);
-  if (ptr == NULL && size != 0) {
-    _sys_mem_record_failure();
-  }
-  _sys_mem_record_event(sys_mem_event_malloc, 0, (uintptr_t)ptr, size, 1);
-  return ptr;
-}
-
-void sys_mem_debug_reset(void) {
-  __atomic_store_n(&_sys_mem_malloc_calls, 0, __ATOMIC_RELAXED);
-  __atomic_store_n(&_sys_mem_calloc_calls, 0, __ATOMIC_RELAXED);
-  __atomic_store_n(&_sys_mem_realloc_calls, 0, __ATOMIC_RELAXED);
-  __atomic_store_n(&_sys_mem_free_calls, 0, __ATOMIC_RELAXED);
-  __atomic_store_n(&_sys_mem_failed_allocations, 0, __ATOMIC_RELAXED);
-  __atomic_store_n(&_sys_mem_requested_bytes, 0, __ATOMIC_RELAXED);
-  __atomic_store_n(&_sys_mem_event_sequence, 0, __ATOMIC_RELAXED);
-  for (size_t index = 0; index < SYS_MEM_EVENT_CAPACITY; index++) {
-    _sys_mem_events[index].old_ptr = 0;
-    _sys_mem_events[index].new_ptr = 0;
-    _sys_mem_events[index].size = 0;
-    _sys_mem_events[index].count = 0;
-    _sys_mem_events[index].type = 0;
-    __atomic_store_n(&_sys_mem_events[index].sequence, 0, __ATOMIC_RELAXED);
-  }
-}
-
-void sys_mem_debug_stats(sys_mem_stats_t *stats) {
-  if (stats == NULL) {
+  if (current == NULL) {
+    sys_printf("mem: no arenas\n");
     return;
   }
 
-  stats->malloc_calls =
-      __atomic_load_n(&_sys_mem_malloc_calls, __ATOMIC_RELAXED);
-  stats->calloc_calls =
-      __atomic_load_n(&_sys_mem_calloc_calls, __ATOMIC_RELAXED);
-  stats->realloc_calls =
-      __atomic_load_n(&_sys_mem_realloc_calls, __ATOMIC_RELAXED);
-  stats->free_calls = __atomic_load_n(&_sys_mem_free_calls, __ATOMIC_RELAXED);
-  stats->failed_allocations =
-      __atomic_load_n(&_sys_mem_failed_allocations, __ATOMIC_RELAXED);
-  stats->requested_bytes =
-      __atomic_load_n(&_sys_mem_requested_bytes, __ATOMIC_RELAXED);
+  while (current != NULL) {
+    sys_mem_arena_stats_t stats = {0};
+    sys_mem_arena_t *next = sys_mem_arena_next(current, &stats);
+    sys_printf("mem arena %zu: size=%zu used=%zu allocations=%zu\n", index,
+               stats.size_bytes, stats.used_bytes, stats.allocations);
+    current = next;
+    index++;
+  }
 }
 
-size_t sys_mem_debug_events(sys_mem_event_t *events, size_t capacity) {
-  size_t sequence = __atomic_load_n(&_sys_mem_event_sequence, __ATOMIC_ACQUIRE);
-  size_t available =
-      sequence < SYS_MEM_EVENT_CAPACITY ? sequence : SYS_MEM_EVENT_CAPACITY;
-  if (events == NULL) {
-    return available;
+/**
+ * @brief Allocate zero-initialized memory from the default arena.
+ * @param count Number of elements to allocate.
+ * @param size Size of each element in bytes.
+ * @return Pointer to the allocated block, or `NULL` on failure.
+ */
+void *sys_calloc(size_t count, size_t size) {
+  if (count != 0 && size > SIZE_MAX / count) {
+    return NULL;
   }
-
-  size_t copied = capacity < available ? capacity : available;
-  size_t first_sequence = copied == 0 ? 0 : sequence - copied + 1;
-  for (size_t index = 0; index < copied; index++) {
-    size_t expected_sequence = first_sequence + index;
-    sys_mem_event_slot_t *slot =
-        &_sys_mem_events[(expected_sequence - 1) % SYS_MEM_EVENT_CAPACITY];
-    size_t observed_sequence =
-        __atomic_load_n(&slot->sequence, __ATOMIC_ACQUIRE);
-    if (observed_sequence != expected_sequence) {
-      events[index].sequence = 0;
-      events[index].type = 0;
-      events[index].old_ptr = 0;
-      events[index].new_ptr = 0;
-      events[index].size = 0;
-      events[index].count = 0;
-      continue;
-    }
-
-    events[index].sequence = observed_sequence;
-    events[index].type = (sys_mem_event_type_t)slot->type;
-    events[index].old_ptr = slot->old_ptr;
-    events[index].new_ptr = slot->new_ptr;
-    events[index].size = slot->size;
-    events[index].count = slot->count;
+  size_t total_size = count * size;
+  void *ptr = sys_malloc(total_size);
+  if (ptr != NULL) {
+    sys_memset(ptr, 0, total_size);
   }
-
-  return copied;
+  return ptr;
 }
+
+/**
+ * @brief Resize an allocation owned by the default arena.
+ * @param ptr Existing allocation, or `NULL`.
+ * @param size New size in bytes.
+ * @return Pointer to the resized allocation, or `NULL` on failure.
+ */
+void *sys_realloc(void *ptr, size_t size) {
+  if (ptr == NULL) {
+    return sys_malloc(size);
+  }
+
+  if (size == 0) {
+    sys_free(ptr);
+    return NULL;
+  }
+
+  size_t current_size = 0;
+  sys_mem_arena_t *owner = _sys_mem_default_owner(ptr, &current_size);
+  if (owner == NULL) {
+    return NULL;
+  }
+
+  void *resized = sys_mem_arena_realloc(owner, ptr, size);
+  if (resized != NULL) {
+    return resized;
+  }
+
+  void *replacement = _sys_mem_default_alloc(size);
+  if (replacement == NULL) {
+    return NULL;
+  }
+
+  size_t copy_size = current_size < size ? current_size : size;
+  sys_memcpy(replacement, ptr, copy_size);
+  sys_mem_arena_free(owner, ptr);
+  return replacement;
+}
+
+/**
+ * @brief Release an allocation owned by the default arena.
+ * @param ptr Allocation to release, or `NULL`.
+ */
+void sys_free(void *ptr) {
+  if (ptr == NULL) {
+    return;
+  }
+
+  sys_mem_arena_t *owner = _sys_mem_default_owner(ptr, NULL);
+  if (owner != NULL) {
+    sys_mem_arena_free(owner, ptr);
+  }
+}
+
+/**
+ * @brief Allocate memory from the default arena.
+ * @param size Number of bytes to allocate.
+ * @return Pointer to the allocated block, or `NULL` on failure.
+ */
+void *sys_malloc(size_t size) { return _sys_mem_default_alloc(size); }
