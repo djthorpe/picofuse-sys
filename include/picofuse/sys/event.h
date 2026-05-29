@@ -3,8 +3,11 @@
  * @brief Defines opaque event queues for producer/consumer coordination.
  * @defgroup SystemEvents Events
  * @ingroup System
+ */
+
+/**
  * @defgroup SystemEventQueue Queue
- * @ingroup SystemEventQueue
+ * @ingroup SystemEvents
  */
 
 #pragma once
