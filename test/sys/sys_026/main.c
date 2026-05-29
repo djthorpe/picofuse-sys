@@ -24,7 +24,10 @@ static void on_init(uint8_t worker_index) {
     sys_atomic_set(&_worker0_inited, 1);
     // Wait for worker 1 to start before posting — ensures it is alive
     // before the shutdown sentinel can be processed and the queue drained.
-    wait_for_flag(&_worker1_inited, 1000);
+    if (!wait_for_flag(&_worker1_inited, 1000)) {
+      sys_runloop_shutdown(0);
+      return;
+    }
     for (uint32_t i = 1; i <= 5; i++) {
       sys_runloop_post((sys_event_t)(uintptr_t)i);
     }

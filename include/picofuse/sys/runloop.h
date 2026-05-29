@@ -7,18 +7,18 @@
  * The run loop is a process-wide singleton that drives an event queue across
  * one or more workers. Call sys_runloop_run() from the main thread with an
  * event handler; it blocks until sys_runloop_shutdown() is called. Post
- * events from any thread or interrupt context with sys_runloop_post().
+ * events from any thread with sys_runloop_post() once the loop is running.
  *
  * @code
  *   static void on_event(sys_event_t event) {
  *     // handle event
  *     if (done) {
- *       sys_runloop_shutdown();
+ *       sys_runloop_shutdown(0);
  *     }
  *   }
  *
  *   sys_runloop_post((sys_event_t)(uintptr_t)MY_EVENT);
- *   sys_runloop_run(2, on_event); // blocks; uses 2 workers
+ *   sys_runloop_run(2, NULL, on_event, NULL); // blocks; uses 2 workers
  * @endcode
  *
  * On Pico the calling thread counts as one worker; additional workers are
@@ -122,8 +122,9 @@ void sys_runloop_shutdown(uint32_t exit_value);
  * @return `true` on success, `false` if the run loop is shut down or the
  *         queue is full.
  *
- * Safe to call from any thread or interrupt context before or after
- * sys_runloop_run(). Events are processed in the order posted.
+ * Safe to call from any thread while the run loop is running. Returns
+ * `false` if called before sys_runloop_run() or after sys_runloop_shutdown().
+ * Events are processed in the order posted.
  */
 bool sys_runloop_post(sys_event_t event);
 
