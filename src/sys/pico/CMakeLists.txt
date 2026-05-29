@@ -7,6 +7,7 @@ add_library(${NAME} OBJECT
     ../any/event.c
     ../any/mem.c
     cond.c
+    env.c
     date.c
     hash.c
     halt.c

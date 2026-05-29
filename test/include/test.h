@@ -6,10 +6,6 @@
 #include <picofuse/sys.h>
 #include <stdbool.h>
 
-#ifndef PICOFUSE_TEST_NAME
-#define PICOFUSE_TEST_NAME "unknown"
-#endif
-
 #define TestAssert(COND, ...)                                                  \
   do {                                                                         \
     if (!(COND)) {                                                             \
@@ -29,7 +25,7 @@
     bool success = ENTRYPOINT();                                               \
     uint64_t elapsed_time_ms = sys_timestamp_ms() - start_time_ms;             \
     sys_printf("TEST %s (%s) in %" PRIu64 " ms\n", success ? "PASS" : "FAIL",  \
-               PICOFUSE_TEST_NAME, elapsed_time_ms);                           \
+               sys_env_name(), elapsed_time_ms);                               \
     hw_exit();                                                                 \
     sys_exit();                                                                \
     return success ? 0 : 1;                                                    \

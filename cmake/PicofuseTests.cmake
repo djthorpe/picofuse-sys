@@ -8,10 +8,6 @@ macro(picofuse_add_sys_test NAME)
         ${TEST_SOURCES}
     )
 
-    target_compile_definitions(${NAME} PRIVATE
-        PICOFUSE_TEST_NAME="${NAME}"
-    )
-
     target_include_directories(${NAME} PRIVATE
         ${PROJECT_SOURCE_DIR}/include
         ${PROJECT_SOURCE_DIR}/test/include

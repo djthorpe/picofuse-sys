@@ -40,6 +40,10 @@ add_compile_options(
     "-DSYSTEM_PROCESSOR=\"${PROCESSOR_NAME_LOWER}\""
 )
 
+if(DEFINED PROGRAM_VERSION)
+    add_compile_options("-DPROGRAM_VERSION=\"${PROGRAM_VERSION}\"")
+endif()
+
 # Add source code 
 add_subdirectory(src)
 
