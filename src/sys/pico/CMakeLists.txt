@@ -2,10 +2,12 @@ set(NAME "picofuse-sys-obj")
 
 add_library(${NAME} OBJECT
     ../any/arena.c
+    ../any/date.c
     ../any/djb2.c
     ../any/event.c
     ../any/mem.c
     cond.c
+    date.c
     hash.c
     halt.c
     init.c

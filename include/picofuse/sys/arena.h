@@ -1,8 +1,7 @@
 /**
  * @file sys/arena.h
  * @brief Defines arena allocator types and operations.
- * @defgroup SystemMemory Memory Operations
- * @ingroup System
+ * @ingroup SystemMemory
  */
 
 #pragma once

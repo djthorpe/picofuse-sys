@@ -95,3 +95,8 @@ picofuse_add_sys_test(sys_018
 picofuse_add_sys_test(sys_019
 	main.c
 )
+
+# Check date and time parsing, mutation, and comparison behavior.
+picofuse_add_sys_test(sys_020
+	main.c
+)
