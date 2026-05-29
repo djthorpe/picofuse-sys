@@ -88,33 +88,38 @@ static void *_sys_mem_default_alloc(size_t size) {
     return NULL;
   }
 
-  sys_mem_arena_t *head = _sys_mem_default_head;
-  sys_mem_arena_stats_t tail_stats = {0};
-  sys_mem_arena_t *tail = _sys_mem_default_tail(head, &tail_stats);
-  if (tail == NULL) {
-    return NULL;
-  }
-
-  sys_mem_arena_t *current = tail;
-  while (current != NULL) {
-    void *ptr = sys_mem_arena_alloc(current, size);
-    if (ptr != NULL) {
-      return ptr;
+  while (true) {
+    sys_mem_arena_t *head = _sys_mem_default_head;
+    sys_mem_arena_stats_t tail_stats = {0};
+    sys_mem_arena_t *tail = _sys_mem_default_tail(head, &tail_stats);
+    if (tail == NULL) {
+      return NULL;
     }
-    current = _sys_mem_arena_prev(current, NULL);
-  }
 
-  size_t arena_size = 0;
-  if (!_sys_mem_default_growth_size(tail_stats.size_bytes, size, &arena_size)) {
-    return NULL;
-  }
+    sys_mem_arena_t *current = tail;
+    while (current != NULL) {
+      void *ptr = sys_mem_arena_alloc(current, size);
+      if (ptr != NULL) {
+        return ptr;
+      }
+      current = _sys_mem_arena_prev(current, NULL);
+    }
 
-  sys_mem_arena_t *next = sys_mem_arena_init(arena_size, tail, NULL, NULL);
-  if (next == NULL) {
-    return NULL;
-  }
+    size_t arena_size = 0;
+    if (!_sys_mem_default_growth_size(tail_stats.size_bytes, size,
+                                      &arena_size)) {
+      return NULL;
+    }
 
-  return sys_mem_arena_alloc(next, size);
+    sys_mem_arena_t *next = sys_mem_arena_init(arena_size, tail, NULL, NULL);
+    if (next != NULL) {
+      return sys_mem_arena_alloc(next, size);
+    }
+
+    if (_sys_mem_default_tail(_sys_mem_default_head, NULL) == tail) {
+      return NULL;
+    }
+  }
 }
 
 /**
