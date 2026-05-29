@@ -4,11 +4,13 @@ find_package(OpenSSL REQUIRED)
 
 add_library(${NAME} OBJECT
     ../any/arena.c
+    ../any/date.c
     ../any/djb2.c
     ../any/event.c
     ../any/mem.c
     ../openssl/hash.c
     random.c
+    ../posix/date.c
     ../posix/init.c
     ../posix/halt.c
     ../posix/panicf.c
