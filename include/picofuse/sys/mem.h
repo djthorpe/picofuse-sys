@@ -1,20 +1,23 @@
 /**
  * @file sys/mem.h
- * @brief Defines memory and string utility functions.
+ * @brief Defines heap and string utility functions.
  * @defgroup SystemMemory Memory Operations
  * @ingroup System
- * @details This file provides functions for memory management and byte-string
+ * @details This file provides default heap wrappers and byte-string
  * manipulation.
  */
 
 #pragma once
+#include "arena.h"
 #include <stddef.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////
+// MEMORY OPERATIONS
 
 /**
  * @brief Fill a block of memory with a byte value.
@@ -35,7 +38,7 @@ void *sys_memset(void *dest, int value, size_t count);
  * @ingroup SystemMemory
  *
  * Copies `count` bytes from the memory region pointed to by `src` into the
- * memory region pointed to by `dest`.
+ * memory region pointed to by `dest`. Overlapping regions are handled safely.
  *
  * @param dest Pointer to the destination memory region.
  * @param src Pointer to the source memory region.
@@ -70,6 +73,67 @@ int sys_memcmp(const void *lhs, const void *rhs, size_t count);
  * @return Number of characters preceding the terminating `\0`.
  */
 size_t sys_strlen(const char *str);
+
+/**
+ * @brief Print arena-chain statistics.
+ * @ingroup SystemMemory
+ *
+ * Walks the arena chain starting at `arena` and prints one line of usage
+ * statistics per arena via `sys_printf`. Passing `NULL` uses the default arena
+ * chain managed by the global heap wrappers.
+ *
+ * @param arena First arena in the chain to dump, or `NULL` for the default
+ * arena chain.
+ */
+void sys_mem_dump(sys_mem_arena_t *arena);
+
+/**
+ * @brief Allocate an uninitialized block of memory.
+ * @ingroup SystemMemory
+ *
+ * Reserves `size` bytes and returns a pointer to the allocated block, or NULL
+ * when the allocation fails.
+ *
+ * @param size Number of bytes to allocate.
+ * @return Pointer to the allocated block, or NULL on failure.
+ */
+void *sys_malloc(size_t size);
+
+/**
+ * @brief Allocate zero-initialized memory for an array.
+ * @ingroup SystemMemory
+ *
+ * Allocates space for `count` elements of `size` bytes each and initializes
+ * the allocation to zero.
+ *
+ * @param count Number of elements to allocate.
+ * @param size Size in bytes of each element.
+ * @return Pointer to the allocated block, or NULL on failure.
+ */
+void *sys_calloc(size_t count, size_t size);
+
+/**
+ * @brief Resize a previously allocated block of memory.
+ * @ingroup SystemMemory
+ *
+ * Changes the size of the allocation referenced by `ptr` to `size` bytes.
+ * Passing NULL behaves like `sys_malloc(size)`.
+ *
+ * @param ptr Existing allocation to resize, or NULL.
+ * @param size New size in bytes.
+ * @return Pointer to the resized block, or NULL on failure.
+ */
+void *sys_realloc(void *ptr, size_t size);
+
+/**
+ * @brief Release a previously allocated block of memory.
+ * @ingroup SystemMemory
+ *
+ * Frees the allocation referenced by `ptr`. Passing NULL has no effect.
+ *
+ * @param ptr Allocation to release, or NULL.
+ */
+void sys_free(void *ptr);
 
 ///////////////////////////////////////////////////////////////////////////////
 

@@ -5,6 +5,8 @@
  */
 #pragma once
 
+#include <picofuse/sys/mem.h>
+
 // allow override in some examples
 #ifndef NO_SYS
 #define NO_SYS 1
@@ -16,7 +18,11 @@
 #endif
 
 #if PICO_CYW43_ARCH_POLL
-#define MEM_LIBC_MALLOC 1
+#define MEM_LIBC_MALLOC 0
+#define MEM_CUSTOM_ALLOCATOR 1
+#define MEM_CUSTOM_MALLOC sys_malloc
+#define MEM_CUSTOM_CALLOC sys_calloc
+#define MEM_CUSTOM_FREE sys_free
 #else
 // MEM_LIBC_MALLOC is incompatible with non polling versions
 #define MEM_LIBC_MALLOC 0

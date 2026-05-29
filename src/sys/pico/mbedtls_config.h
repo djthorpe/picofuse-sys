@@ -9,6 +9,9 @@
 /* Use the SDK's hardware entropy source when the broader stack needs it. */
 #define MBEDTLS_ENTROPY_HARDWARE_ALT
 
+/* Route any dynamic mbedTLS allocations through the system allocator hooks. */
+#define MBEDTLS_PLATFORM_MEMORY
+
 /* Keep the digest modules enabled for this hash backend. */
 #define MBEDTLS_MD5_C
 #define MBEDTLS_SHA256_C

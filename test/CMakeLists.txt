@@ -75,3 +75,23 @@ picofuse_add_sys_test(sys_014
 picofuse_add_sys_test(sys_015
 	main.c
 )
+
+# Check malloc/calloc/realloc/free wrappers.
+picofuse_add_sys_test(sys_016
+	main.c
+)
+
+# Check arena init/next/delete behavior.
+picofuse_add_sys_test(sys_017
+	main.c
+)
+
+# Check arena allocation behavior under concurrent access.
+picofuse_add_sys_test(sys_018
+	main.c
+)
+
+# Check heap-backed event queue behavior.
+picofuse_add_sys_test(sys_019
+	main.c
+)
