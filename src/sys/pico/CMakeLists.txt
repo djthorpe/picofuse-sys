@@ -20,6 +20,7 @@ add_library(${NAME} OBJECT
     sleep.c
     stdio.c
     thread.c
+    timer.c
     timestamp.c
     waitgroup.c
 )

@@ -3,6 +3,8 @@
 #include <picofuse/sys.h>
 #include <stdlib.h>
 
+extern void _sys_timer_module_exit(void);
+
 /**
  * @brief Initializes the system on startup.
  */
@@ -16,6 +18,7 @@ void sys_init(void) {
  * @brief Cleans up the system on shutdown.
  */
 void sys_exit(void) {
-  _sys_mem_deinit();
-  _sys_printf_module_deinit();
+  _sys_timer_module_exit();
+  _sys_mem_module_exit();
+  _sys_printf_module_exit();
 }

@@ -105,3 +105,18 @@ picofuse_add_sys_test(sys_020
 picofuse_add_sys_test(sys_021
 	main.c
 )
+
+# Check timer lifecycle: invalid args, start/valid/deinit, pool exhaustion and reuse.
+picofuse_add_sys_test(sys_022
+	main.c
+)
+
+# Check timer firing: periodic counter and one-shot via deinit from callback.
+picofuse_add_sys_test(sys_023
+	main.c
+)
+
+# Check concurrent timer access from two cores/threads.
+picofuse_add_sys_test(sys_024
+	main.c
+)

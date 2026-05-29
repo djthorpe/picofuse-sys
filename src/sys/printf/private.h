@@ -14,7 +14,7 @@ extern void _sys_printf_module_init(void);
 /**
  * @brief Finalizes the printf mutex and cleans up resources.
  */
-extern void _sys_printf_module_deinit(void);
+extern void _sys_printf_module_exit(void);
 
 ///////////////////////////////////////////////////////////////////////////////
 // TYPES

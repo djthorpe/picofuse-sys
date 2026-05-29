@@ -177,7 +177,7 @@ bool _sys_mem_init(size_t capacity, void *(*malloc_fn)(size_t),
 /**
  * @brief Tear down the process-wide default arena chain.
  */
-void _sys_mem_deinit(void) {
+void _sys_mem_module_exit(void) {
   sys_mem_arena_t *head = _sys_mem_default_head;
   _sys_mem_default_head = NULL;
 
