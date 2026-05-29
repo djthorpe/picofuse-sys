@@ -1,8 +1,8 @@
 /**
  * @file sys/runloop.h
  * @brief Single process-wide run loop for dispatching events across cores or threads.
- * @defgroup SystemRunloop Run Loop
- * @ingroup System
+ * @defgroup SystemEventRunloop Run Loop
+ * @ingroup SystemEvents
  *
  * The run loop is a process-wide singleton that drives an event queue across
  * one or more workers. Call sys_runloop_run() from the main thread with an
@@ -37,7 +37,7 @@ extern "C" {
 
 /**
  * @def SYS_RUNLOOP_QUEUE_CAPACITY
- * @ingroup SystemRunloop
+ * @ingroup SystemEventRunloop
  * @brief Maximum number of pending events.
  */
 #ifndef SYS_RUNLOOP_QUEUE_CAPACITY
@@ -49,7 +49,7 @@ extern "C" {
 
 /**
  * @brief Per-worker initialisation callback.
- * @ingroup SystemRunloop
+ * @ingroup SystemEventRunloop
  * @param worker_index Zero-based index of the worker (0 = calling thread /
  *                     core 0, 1 = first additional worker, etc.).
  *
@@ -61,14 +61,14 @@ typedef void (*sys_runloop_init_func_t)(uint8_t worker_index);
 
 /**
  * @brief Event handler called on a worker for each posted event.
- * @ingroup SystemRunloop
+ * @ingroup SystemEventRunloop
  * @param event The event posted via sys_runloop_post().
  */
 typedef void (*sys_runloop_func_t)(sys_event_t event);
 
 /**
  * @brief Per-worker exit callback.
- * @ingroup SystemRunloop
+ * @ingroup SystemEventRunloop
  * @param worker_index Zero-based index of the worker.
  *
  * Called once on each worker after the event queue is drained and before the
@@ -85,7 +85,7 @@ typedef void (*sys_runloop_exit_func_t)(uint8_t worker_index);
 
 /**
  * @brief Start the run loop and block until shutdown.
- * @ingroup SystemRunloop
+ * @ingroup SystemEventRunloop
  * @param num_workers Total number of workers, including the calling thread.
  *                    Pass 0 to use all available cores. Values greater than
  *                    the number of available cores are clamped to that limit.
@@ -104,7 +104,7 @@ uint32_t sys_runloop_run(uint8_t num_workers, sys_runloop_init_func_t init,
 
 /**
  * @brief Signal the run loop to stop accepting events and exit when drained.
- * @ingroup SystemRunloop
+ * @ingroup SystemEventRunloop
  * @param exit_value Value returned by sys_runloop_run() once all workers
  *                   have exited.
  *
@@ -117,7 +117,7 @@ void sys_runloop_shutdown(uint32_t exit_value);
 
 /**
  * @brief Post an event to be processed by the run loop.
- * @ingroup SystemRunloop
+ * @ingroup SystemEventRunloop
  * @param event Non-NULL event payload.
  * @return `true` on success, `false` if the run loop is shut down or the
  *         queue is full.
@@ -129,7 +129,7 @@ bool sys_runloop_post(sys_event_t event);
 
 /**
  * @brief Check whether the run loop is currently running.
- * @ingroup SystemRunloop
+ * @ingroup SystemEventRunloop
  * @return `true` if sys_runloop_run() has been called and has not yet
  *         returned.
  */
