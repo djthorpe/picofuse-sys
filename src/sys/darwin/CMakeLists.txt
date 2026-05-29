@@ -9,9 +9,11 @@ add_library(${NAME} OBJECT
     ../any/event.c
     ../any/mem.c
     ../openssl/hash.c
+    env.c
     random.c
     ../posix/date.c
     ../posix/init.c
+    ../posix/signal.c
     ../posix/halt.c
     ../posix/panicf.c
     ../printf/float.c
@@ -31,4 +33,6 @@ target_include_directories(${NAME} PUBLIC
 target_link_libraries(${NAME} PUBLIC
     OpenSSL::SSL
     OpenSSL::Crypto
+    "-framework IOKit"
+    "-framework CoreFoundation"
 )

@@ -100,3 +100,8 @@ picofuse_add_sys_test(sys_019
 picofuse_add_sys_test(sys_020
 	main.c
 )
+
+# Check environment serial, name, version, and signal handler behavior.
+picofuse_add_sys_test(sys_021
+	main.c
+)
