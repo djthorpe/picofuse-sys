@@ -258,6 +258,12 @@ sys_mem_arena_t *sys_mem_arena_init(size_t size, sys_mem_arena_t *prev,
   }
   size_t arena_struct_size = sizeof(sys_mem_arena_t);
   size_t requested_size = payload_offset + size;
+  if (requested_size > SIZE_MAX - 63u) {
+    if (prev != NULL) {
+      _sys_mem_arena_unlock(prev);
+    }
+    return NULL;
+  }
   size_t aligned_size = (requested_size + 63u) & ~(size_t)63u;
   void *region = malloc_fn(aligned_size);
   if (region == NULL) {

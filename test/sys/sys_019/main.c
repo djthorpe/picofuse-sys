@@ -44,6 +44,7 @@ static void pop_worker(void *arg) {
 bool test_main(void) {
   event_queue_ctx_t ctx;
   event_queue_ctx_t ctx2;
+  bool launched_second_consumer = false;
   sys_event_queue_t *queue = sys_event_queue_init(2);
   TestAssert(queue != NULL, "sys_event_queue_init returned NULL");
   TestAssert(sys_event_queue_valid(queue),
@@ -120,24 +121,36 @@ bool test_main(void) {
 
   TestAssert(launch_test_thread(pop_worker, &ctx),
              "failed to launch first multi-consumer worker");
-  TestAssert(launch_test_thread(pop_worker, &ctx2),
-             "failed to launch second multi-consumer worker");
+  launched_second_consumer = launch_test_thread(pop_worker, &ctx2);
   TestAssert(wait_for_atomic_value(&ctx.ready, 1, 1000),
              "timed out waiting for first multi-consumer worker readiness");
-  TestAssert(wait_for_atomic_value(&ctx2.ready, 1, 1000),
-             "timed out waiting for second multi-consumer worker readiness");
+  if (launched_second_consumer) {
+    TestAssert(wait_for_atomic_value(&ctx2.ready, 1, 1000),
+               "timed out waiting for second multi-consumer worker readiness");
+  }
 
   TestAssert(sys_event_queue_push(queue, (sys_event_t)(uintptr_t)8u),
              "first multi-consumer push should succeed");
-  TestAssert(sys_event_queue_push(queue, (sys_event_t)(uintptr_t)9u),
-             "second multi-consumer push should succeed");
+  if (launched_second_consumer) {
+    TestAssert(sys_event_queue_push(queue, (sys_event_t)(uintptr_t)9u),
+               "second multi-consumer push should succeed");
+  }
   TestAssert(wait_for_atomic_value(&ctx.done, 1, 1000),
              "timed out waiting for first multi-consumer worker completion");
-  TestAssert(wait_for_atomic_value(&ctx2.done, 1, 1000),
-             "timed out waiting for second multi-consumer worker completion");
-  TestAssert(holds_events(sys_atomic_get(&ctx.event_value),
-                          sys_atomic_get(&ctx2.event_value), 8u, 9u),
-             "multi-consumer workers should drain the two pushed events");
+  if (launched_second_consumer) {
+    TestAssert(wait_for_atomic_value(&ctx2.done, 1, 1000),
+               "timed out waiting for second multi-consumer worker completion");
+    TestAssert(holds_events(sys_atomic_get(&ctx.event_value),
+                            sys_atomic_get(&ctx2.event_value), 8u, 9u),
+               "multi-consumer workers should drain the two pushed events");
+  } else {
+    TestAssert(
+        sys_atomic_get(&ctx.event_value) == 8u,
+        "single-worker backends should still drain the first pushed event");
+    TestAssert(sys_event_queue_empty(queue),
+               "single-worker backends should leave the queue empty after the "
+               "fallback path");
+  }
 
   TestAssert(sys_event_queue_push(queue, (sys_event_t)(uintptr_t)5u),
              "push before shutdown should succeed");
