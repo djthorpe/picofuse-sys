@@ -135,6 +135,14 @@ bool test_main(void) {
   target.nanoseconds = 250000000;
   target.tzoffset = 90 * 60;
 
+  sys_date_t invalid = target;
+  invalid.nanoseconds = 1000000000;
+  TestAssert(!sys_date_set_now(&invalid),
+             "Pico sys_date_set_now should reject nanoseconds >= 1e9");
+  invalid.nanoseconds = -1;
+  TestAssert(!sys_date_set_now(&invalid),
+             "Pico sys_date_set_now should reject negative nanoseconds");
+
   TestAssert(sys_date_set_now(&target),
              "Pico sys_date_set_now should succeed without host privileges");
   TestAssert(sys_date_get_now(&after),

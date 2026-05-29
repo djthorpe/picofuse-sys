@@ -43,7 +43,7 @@ bool sys_date_set_now(const sys_date_t *date) {
   }
 
   struct timespec ts;
-  ts.tv_sec = (time_t)(date->seconds - date->tzoffset);
+  ts.tv_sec = (time_t)date->seconds;
   ts.tv_nsec = (long)date->nanoseconds;
 
   if (clock_settime(CLOCK_REALTIME, &ts) != 0) {

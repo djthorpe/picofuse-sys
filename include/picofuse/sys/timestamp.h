@@ -1,10 +1,10 @@
 /**
  * @file sys/timestamp.h
- * @brief Defines timestamp retrieval APIs.
- * @defgroup SystemTime Time Operations
+ * @brief Defines timestamp, date, and time APIs.
+ * @defgroup SystemTime Date and Time Operations
  * @ingroup System
- * @details This file declares functions for retrieving the current timestamp
- * in milliseconds.
+ * @details This module declares timestamp retrieval and wall-clock date/time
+ * APIs.
  */
 
 #pragma once

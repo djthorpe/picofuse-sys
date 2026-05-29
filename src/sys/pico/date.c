@@ -71,7 +71,8 @@ bool sys_date_get_now(sys_date_t *date) {
  * @return `true` on success, `false` on invalid arguments.
  */
 bool sys_date_set_now(const sys_date_t *date) {
-  if (date == NULL) {
+  if (date == NULL || date->nanoseconds < 0 ||
+      date->nanoseconds >= 1000000000) {
     return false;
   }
 

@@ -1,7 +1,7 @@
 /**
  * @file sys/thread.h
- * @brief Defines thread creation and CPU core query primitives.
- * @defgroup SystemThread Thread Operations
+ * @brief Defines thread creation, core query, and sleep primitives.
+ * @defgroup SystemThread Thread and Sleep Operations
  * @ingroup System
  */
 

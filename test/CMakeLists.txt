@@ -96,7 +96,7 @@ picofuse_add_sys_test(sys_019
 	main.c
 )
 
-# Check date and time parsing, mutation, and comparison behavior.
+# Check date and time extraction, mutation, validation, and comparison behavior.
 picofuse_add_sys_test(sys_020
 	main.c
 )
