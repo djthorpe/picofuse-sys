@@ -8,4 +8,4 @@ void _sys_date_init();
 /**
  * @brief Exits the date module.
  */
-void _sys_date_exit();
+void _sys_date_module_exit();

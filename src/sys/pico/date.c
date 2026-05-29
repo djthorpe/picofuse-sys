@@ -39,7 +39,7 @@ void _sys_date_init() {
 /**
  * @brief Exits the date module.
  */
-void _sys_date_exit() {
+void _sys_date_module_exit() {
   _sys_date_offset_seconds = 0;
   _sys_date_tzoffset_seconds = 0;
 }

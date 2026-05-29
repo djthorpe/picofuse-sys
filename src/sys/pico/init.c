@@ -20,6 +20,7 @@ void sys_init(void) {
   _sys_cond_module_init();
   _sys_hash_module_init();
   _sys_waitgroup_module_init();
+  _sys_timer_module_init();
   _sys_printf_module_init();
   stdio_init_all();
   sys_sleep_ms(1000);
@@ -30,9 +31,10 @@ void sys_init(void) {
  * @brief Cleans up the system on shutdown.
  */
 void sys_exit(void) {
-  _sys_date_exit();
-  _sys_mem_deinit();
-  _sys_printf_module_deinit();
+  _sys_timer_module_exit();
+  _sys_date_module_exit();
+  _sys_mem_module_exit();
+  _sys_printf_module_exit();
   while (true) {
     sys_sleep_ms(1000);
   }

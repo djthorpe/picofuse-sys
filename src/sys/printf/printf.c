@@ -20,7 +20,7 @@ void _sys_printf_module_init(void) {
   sys_assert(_sys_printf_mutex != NULL);
 }
 
-void _sys_printf_module_deinit(void) {
+void _sys_printf_module_exit(void) {
   sys_mutex_deinit(_sys_printf_mutex);
   _sys_printf_mutex = NULL;
 }

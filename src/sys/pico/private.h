@@ -32,3 +32,13 @@ extern void _sys_hash_module_init(void);
  * @brief Initializes the waitgroup subsystem
  */
 extern void _sys_waitgroup_module_init(void);
+
+/**
+ * @brief Initializes the timer subsystem
+ */
+extern void _sys_timer_module_init(void);
+
+/**
+ * @brief Deinitializes the timer subsystem
+ */
+extern void _sys_timer_module_exit(void);
