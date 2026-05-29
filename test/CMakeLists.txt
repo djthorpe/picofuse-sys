@@ -120,3 +120,13 @@ picofuse_add_sys_test(sys_023
 picofuse_add_sys_test(sys_024
 	main.c
 )
+
+# Check single-worker run loop: lifecycle, events, exit value, reuse.
+picofuse_add_sys_test(sys_025
+	main.c
+)
+
+# Check multi-worker run loop: both workers initialize, all events processed.
+picofuse_add_sys_test(sys_026
+	main.c
+)

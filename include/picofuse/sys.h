@@ -20,6 +20,7 @@
 #include "sys/panicf.h"
 #include "sys/printf.h"
 #include "sys/random.h"
+#include "sys/runloop.h"
 #include "sys/sleep.h"
 #include "sys/thread.h"
 #include "sys/timer.h"
