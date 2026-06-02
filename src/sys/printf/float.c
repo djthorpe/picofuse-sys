@@ -227,7 +227,7 @@ static size_t _sys_printf_format_exponential(struct sys_printf_state *state,
 
   unsigned int abs_exponent =
       (unsigned int)(exponent < 0 ? -exponent : exponent);
-  char exponent_digits[8];
+  char exponent_digits[32];
   size_t exponent_len =
       _sys_printf_write_unsigned(exponent_digits, abs_exponent);
 
