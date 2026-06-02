@@ -33,6 +33,9 @@ static const uint32_t _hw_wifi_scan_poll_ms = 100;
 ///////////////////////////////////////////////////////////////////////////////
 // PRIVATE
 
+static bool _hw_wifi_request(hw_wifi_t *wifi, const char *command, char *reply,
+                             size_t *reply_len);
+
 static uint8_t _hw_wifi_frequency_to_channel(int frequency_mhz) {
   if (frequency_mhz == 2484) {
     return 14;
