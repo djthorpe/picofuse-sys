@@ -16,6 +16,11 @@ If you already cloned the repository, initialize the Pico SDK submodule with:
 git submodule update --init --recursive
 ```
 
+For linux the following dependencies are required:
+
+* `libssl-dev`
+* `libwpa-client-dev`
+
 ## Build
 
 For Pico targets, install the ARM embedded GCC toolchain first. On macOS with
