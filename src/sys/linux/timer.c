@@ -142,14 +142,19 @@ bool sys_timer_start(sys_timer_t *timer) {
                    .tv_nsec = (long)(timer->interval_ms % 1000) * 1000000L},
   };
 
+  // Set running before arming so an immediate SIGEV_THREAD callback is not
+  // dropped while observing timer state.
+  timer->timer_id = timer_id;
+  timer->running = true;
+
   if (timer_settime(timer_id, 0, &timer_spec, NULL) != 0) {
+    timer->running = false;
+    timer->timer_id = (timer_t)0;
     pthread_mutex_unlock(&_sys_timer_pool_lock);
     timer_delete(timer_id);
     return false;
   }
 
-  timer->timer_id = timer_id;
-  timer->running = true;
   pthread_mutex_unlock(&_sys_timer_pool_lock);
   return true;
 }

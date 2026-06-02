@@ -48,4 +48,10 @@ const char *sys_env_name(void) {
 /**
  * @brief Returns the version of the current environment.
  */
-const char *sys_env_version(void) { return "unknown"; }
+const char *sys_env_version(void) {
+#ifdef PROGRAM_VERSION
+  return PROGRAM_VERSION;
+#else
+  return "unknown";
+#endif
+}
