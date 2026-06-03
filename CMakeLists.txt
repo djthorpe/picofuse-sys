@@ -57,6 +57,7 @@ add_subdirectory(examples/sys/queue)
 add_subdirectory(examples/sys/runloop)
 add_subdirectory(examples/hw/gpio)
 add_subdirectory(examples/hw/uart)
+add_subdirectory(examples/hw/usb-scan)
 add_subdirectory(examples/hw/wifi-scan)
 add_subdirectory(examples/hw/wifi-join)
 

@@ -16,11 +16,14 @@ target_include_directories(${NAME} PUBLIC
     ${CMAKE_CURRENT_LIST_DIR}
 )
 target_link_libraries(${NAME} PUBLIC
+    pico_stdlib
     hardware_gpio
     hardware_i2c
     hardware_uart
     hardware_spi
     hardware_adc
+    tinyusb_host
+    tinyusb_board
 )
 
 # Check if we're building for a board with CYW43 support

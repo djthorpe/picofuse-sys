@@ -105,7 +105,11 @@ typedef struct hw_usb_t hw_usb_t;
  * @param usb    The USB host handle.
  * @param event  The hotplug event type (attached or detached).
  * @param device Descriptor of the device that was attached or detached.
- *               Always non-NULL. String fields may be empty on detach.
+ *               For normal attach/detach callbacks this is non-NULL.
+ *               After initial enumeration completes, the callback is invoked
+ *               once with @ref hw_usb_event_attached and @p device set to
+ *               NULL as an "enumeration complete" marker.
+ *               String fields may be empty on detach.
  * @param userdata Opaque user pointer supplied to @ref hw_usb_init.
  */
 typedef void (*hw_usb_callback_t)(hw_usb_t *usb, hw_usb_event_t event,
@@ -125,8 +129,10 @@ typedef void (*hw_usb_callback_t)(hw_usb_t *usb, hw_usb_event_t event,
  * Initializes the USB host controller and registers the hotplug callback.
  * Before returning, this function enumerates any devices already connected
  * to the host and fires the callback with @ref hw_usb_event_attached for
- * each one, so that callers receive a consistent view of attached devices
- * regardless of when @ref hw_usb_init is called.
+ * each one, then fires one final callback with
+ * @ref hw_usb_event_attached and @p device set to NULL to mark completion,
+ * so that callers receive a consistent view of attached devices regardless
+ * of when @ref hw_usb_init is called.
  *
  * @param callback Callback to invoke on attach and detach events. Must not
  *                 be NULL.
