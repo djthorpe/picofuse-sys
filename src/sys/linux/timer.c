@@ -17,6 +17,7 @@ struct sys_timer_t {
   timer_t timer_id;
   bool init;
   bool running;
+  bool callback_active;
 };
 
 static pthread_mutex_t _sys_timer_pool_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -34,13 +35,21 @@ static void _sys_timer_callback(union sigval sv) {
 
   void (*callback)(sys_timer_t *) = NULL;
   pthread_mutex_lock(&_sys_timer_pool_lock);
-  if (timer->init && timer->running) {
+  // SIGEV_THREAD may dispatch overlapping notifications if callback execution
+  // exceeds interval. Serialize per timer to keep one-shot deinit semantics
+  // deterministic across platforms.
+  if (timer->init && timer->running && !timer->callback_active) {
+    timer->callback_active = true;
     callback = timer->callback;
   }
   pthread_mutex_unlock(&_sys_timer_pool_lock);
 
   if (callback != NULL) {
     callback(timer);
+
+    pthread_mutex_lock(&_sys_timer_pool_lock);
+    timer->callback_active = false;
+    pthread_mutex_unlock(&_sys_timer_pool_lock);
   }
 }
 
@@ -67,7 +76,7 @@ sys_timer_t *sys_timer_init(uint32_t interval_ms, void *userdata,
   for (size_t offset = 0; offset < SYS_TIMER_CAPACITY; offset++) {
     size_t index = (_sys_timer_pool_index + offset) % SYS_TIMER_CAPACITY;
     sys_timer_t *timer = &_sys_timer_pool[index];
-    if (timer->init) {
+    if (timer->init || timer->callback_active) {
       continue;
     }
 
@@ -76,6 +85,7 @@ sys_timer_t *sys_timer_init(uint32_t interval_ms, void *userdata,
     timer->userdata = userdata;
     timer->timer_id = (timer_t)0;
     timer->running = false;
+    timer->callback_active = false;
     timer->init = true;
 
     _sys_timer_pool_index = (index + 1) % SYS_TIMER_CAPACITY;

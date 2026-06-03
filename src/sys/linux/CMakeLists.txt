@@ -10,9 +10,9 @@ add_library(${NAME} OBJECT
     ../any/event.c
     ../any/mem.c
     ../openssl/hash.c
+    ../openssl/random.c
     env.c
     timer.c
-    ../posix/random.c
     ../posix/date.c
     ../posix/init.c
     ../posix/signal.c
