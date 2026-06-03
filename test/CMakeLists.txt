@@ -130,3 +130,13 @@ picofuse_add_sys_test(sys_025
 picofuse_add_sys_test(sys_026
 	main.c
 )
+
+# Check GPIO API behavior on supported and stub backends.
+picofuse_add_hw_test(hw_000
+	main.c
+)
+
+# Check ADC API behavior and GPIO/channel mapping.
+picofuse_add_hw_test(hw_001
+	main.c
+)

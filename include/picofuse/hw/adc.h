@@ -68,10 +68,18 @@ void hw_adc_deinit(hw_adc_t *adc);
 /**
  * @brief Get the ADC channel number for a GPIO pin.
  * @ingroup ADC
- * @param gpio GPIO pin number.
+ * @param gpio GPIO handle.
  * @return Channel number, or 0xFF if the GPIO is not ADC-capable.
  */
-uint8_t hw_adc_gpio_channel(uint8_t gpio);
+uint8_t hw_adc_gpio_channel(const hw_gpio_t *gpio);
+
+/**
+ * @brief Get the GPIO pin number for an ADC channel.
+ * @ingroup ADC
+ * @param channel ADC channel number.
+ * @return GPIO pin number, or 0xFF if the channel has no GPIO mapping.
+ */
+uint8_t hw_adc_gpio_pin(uint8_t channel);
 
 /**
  * @brief Check if an ADC handle is valid and usable.

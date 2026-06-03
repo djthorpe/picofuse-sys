@@ -37,37 +37,23 @@ struct hw_adc_t {
 
 static hw_adc_t _hw_adc_channels[NUM_ADC_CHANNELS] = {0};
 
-static bool _hw_adc_initialized = false;
-
-///////////////////////////////////////////////////////////////////////////////
-// PRIVATE
-
-static inline void _hw_adc_init_once(void) {
-  if (!_hw_adc_initialized) {
-    adc_init();
-    _hw_adc_initialized = true;
-  }
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 // LIFECYCLE
 
 uint8_t hw_adc_count(void) { return NUM_ADC_CHANNELS; }
 
 hw_adc_t *hw_adc_init_pin(hw_gpio_t *gpio) {
-  sys_assert(gpio);
-  sys_assert(hw_gpio_valid(gpio));
+  if (!hw_gpio_valid(gpio)) {
+    return NULL;
+  }
 
-  uint8_t pin = hw_gpio_get_pin_num(gpio);
-  // Last channel is reserved for temperature sensor.
-  sys_assert(pin >= ADC_CHANNEL_OFFSET &&
-             pin < (uint8_t)(ADC_CHANNEL_OFFSET + NUM_ADC_CHANNELS - 1));
+  uint8_t channel = hw_adc_gpio_channel(gpio);
+  if (channel == UINT8_MAX) {
+    return NULL;
+  }
 
-  uint8_t channel = (uint8_t)(pin - ADC_CHANNEL_OFFSET);
-
-  _hw_adc_init_once();
+  // Last channel is reserved for the internal temperature sensor.
   hw_gpio_set_mode(gpio, HW_GPIO_ADC);
-  adc_gpio_init(pin);
 
   hw_adc_t *adc = &_hw_adc_channels[channel];
   adc->channel = channel;
@@ -78,7 +64,6 @@ hw_adc_t *hw_adc_init_pin(hw_gpio_t *gpio) {
 }
 
 hw_adc_t *hw_adc_init_temperature(void) {
-  _hw_adc_init_once();
   adc_set_temp_sensor_enabled(true);
 
   hw_adc_t *adc = &_hw_adc_channels[ADC_TEMPERATURE_CHANNEL_NUM];
@@ -90,9 +75,11 @@ hw_adc_t *hw_adc_init_temperature(void) {
 }
 
 void hw_adc_deinit(hw_adc_t *adc) {
-  sys_assert(adc);
+  if (!hw_adc_valid(adc)) {
+    return;
+  }
 
-  if (adc->init && adc->channel == ADC_TEMPERATURE_CHANNEL_NUM) {
+  if (adc->channel == ADC_TEMPERATURE_CHANNEL_NUM) {
     adc_set_temp_sensor_enabled(false);
   }
 
@@ -105,14 +92,28 @@ void hw_adc_deinit(hw_adc_t *adc) {
 ///////////////////////////////////////////////////////////////////////////////
 // METHODS
 
-uint8_t hw_adc_gpio_channel(uint8_t gpio) {
+uint8_t hw_adc_gpio_channel(const hw_gpio_t *gpio) {
+  if (!hw_gpio_valid(gpio)) {
+    return UINT8_MAX;
+  }
+
+  uint8_t pin = hw_gpio_get_pin_num(gpio);
+
   // Check if the GPIO pin is within the ADC channel range.
-  if (gpio >= ADC_CHANNEL_OFFSET &&
-      gpio < (uint8_t)(ADC_CHANNEL_OFFSET + NUM_ADC_CHANNELS - 1)) {
-    return (uint8_t)(gpio - ADC_CHANNEL_OFFSET);
+  if (pin >= ADC_CHANNEL_OFFSET &&
+      pin < (uint8_t)(ADC_CHANNEL_OFFSET + NUM_ADC_CHANNELS - 1)) {
+    return (uint8_t)(pin - ADC_CHANNEL_OFFSET);
   }
 
   return UINT8_MAX;
+}
+
+uint8_t hw_adc_gpio_pin(uint8_t channel) {
+  if (channel >= (uint8_t)(NUM_ADC_CHANNELS - 1)) {
+    return UINT8_MAX;
+  }
+
+  return (uint8_t)(ADC_CHANNEL_OFFSET + channel);
 }
 
 bool hw_adc_valid(const hw_adc_t *adc) {

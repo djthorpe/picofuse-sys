@@ -22,8 +22,13 @@ void hw_adc_deinit(hw_adc_t *adc) { (void)adc; }
 ///////////////////////////////////////////////////////////////////////////////
 // METHODS
 
-uint8_t hw_adc_gpio_channel(uint8_t gpio) {
+uint8_t hw_adc_gpio_channel(const hw_gpio_t *gpio) {
   (void)gpio;
+  return UINT8_MAX;
+}
+
+uint8_t hw_adc_gpio_pin(uint8_t channel) {
+  (void)channel;
   return UINT8_MAX;
 }
 
