@@ -56,8 +56,8 @@ hw_spi_t *hw_spi_init_default(bool cs_active_low, uint32_t baud_rate);
  * @return SPI handle or NULL on failure.
  */
 hw_spi_t *hw_spi_init(uint8_t index, hw_gpio_t *sck_pin, hw_gpio_t *tx_pin,
-                      hw_gpio_t *rx_pin, hw_gpio_t *cs_pin,
-                      bool cs_active_low, uint32_t baud_rate);
+                      hw_gpio_t *rx_pin, hw_gpio_t *cs_pin, bool cs_active_low,
+                      uint32_t baud_rate);
 
 /**
  * @brief Initialize an SPI interface from a platform-specific device path.
