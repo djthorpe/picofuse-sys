@@ -5,7 +5,7 @@ add_library(${NAME} OBJECT
     gpio.c
     init.c
     i2c.c
-    ../stub/spi.c
+    spi.c
     uart.c
     wifi.c
 )
@@ -18,6 +18,7 @@ target_link_libraries(${NAME} PUBLIC
     hardware_gpio
     hardware_i2c
     hardware_uart
+    hardware_spi
     hardware_adc
 )
 

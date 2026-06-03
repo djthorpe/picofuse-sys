@@ -8,29 +8,30 @@ struct hw_spi_t {};
 ///////////////////////////////////////////////////////////////////////////////
 // LIFECYCLE
 
-hw_spi_t *hw_spi_init_default(bool cs_active_low, uint32_t baud_rate) {
-  (void)cs_active_low;
+hw_spi_t *hw_spi_init_default(uint32_t baud_rate,
+                              const hw_spi_config_t *config) {
+  (void)config;
   (void)baud_rate;
   return NULL;
 }
 
 hw_spi_t *hw_spi_init(uint8_t index, hw_gpio_t *sck_pin, hw_gpio_t *tx_pin,
-                      hw_gpio_t *rx_pin, hw_gpio_t *cs_pin, bool cs_active_low,
-                      uint32_t baud_rate) {
+                      hw_gpio_t *rx_pin, hw_gpio_t *cs_pin, uint32_t baud_rate,
+                      const hw_spi_config_t *config) {
   (void)index;
   (void)sck_pin;
   (void)tx_pin;
   (void)rx_pin;
   (void)cs_pin;
-  (void)cs_active_low;
+  (void)config;
   (void)baud_rate;
   return NULL;
 }
 
-hw_spi_t *hw_spi_init_device(const char *device, bool cs_active_low,
-                             uint32_t baud_rate) {
+hw_spi_t *hw_spi_init_device(const char *device, uint32_t baud_rate,
+                             const hw_spi_config_t *config) {
   (void)device;
-  (void)cs_active_low;
+  (void)config;
   (void)baud_rate;
   return NULL;
 }

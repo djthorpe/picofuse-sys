@@ -19,7 +19,8 @@
 struct hw_spi_t {
   int fd;
   uint32_t baud_rate;
-  bool cs_active_low;
+  hw_spi_mode_t mode;
+  uint8_t bits_per_word;
   bool init;
 };
 
@@ -46,28 +47,40 @@ static hw_spi_t *_hw_spi_alloc_slot(void) {
 
 uint8_t hw_spi_count(void) { return 0; }
 
-hw_spi_t *hw_spi_init_default(bool cs_active_low, uint32_t baud_rate) {
-  (void)cs_active_low;
+hw_spi_t *hw_spi_init_default(uint32_t baud_rate,
+                              const hw_spi_config_t *config) {
+  (void)config;
   (void)baud_rate;
   return NULL;
 }
 
 hw_spi_t *hw_spi_init(uint8_t index, hw_gpio_t *sck_pin, hw_gpio_t *tx_pin,
-                      hw_gpio_t *rx_pin, hw_gpio_t *cs_pin, bool cs_active_low,
-                      uint32_t baud_rate) {
+                      hw_gpio_t *rx_pin, hw_gpio_t *cs_pin, uint32_t baud_rate,
+                      const hw_spi_config_t *config) {
   (void)index;
   (void)sck_pin;
   (void)tx_pin;
   (void)rx_pin;
   (void)cs_pin;
-  (void)cs_active_low;
+  (void)config;
   (void)baud_rate;
   return NULL;
 }
 
-hw_spi_t *hw_spi_init_device(const char *device, bool cs_active_low,
-                             uint32_t baud_rate) {
-  if (device == NULL || device[0] == '\0' || baud_rate == 0) {
+hw_spi_t *hw_spi_init_device(const char *device, uint32_t baud_rate,
+                             const hw_spi_config_t *config) {
+  hw_spi_mode_t mode = HW_SPI_MODE_0;
+  uint8_t bits_per_word = 8u;
+  bool cs_active_low = false;
+
+  if (config != NULL) {
+    cs_active_low = config->cs_active_low;
+    mode = config->mode;
+    bits_per_word = config->bits_per_word;
+  }
+
+  if (device == NULL || device[0] == '\0' || baud_rate == 0 ||
+      bits_per_word == 0) {
     return NULL;
   }
 
@@ -81,10 +94,12 @@ hw_spi_t *hw_spi_init_device(const char *device, bool cs_active_low,
     return NULL;
   }
 
-  uint8_t mode = cs_active_low ? 0u : SPI_CS_HIGH;
-  uint8_t bits_per_word = 8u;
+  uint8_t ioctl_mode = (uint8_t)mode;
+  if (cs_active_low) {
+    ioctl_mode |= SPI_CS_HIGH;
+  }
 
-  if (ioctl(fd, SPI_IOC_WR_MODE, &mode) < 0 ||
+  if (ioctl(fd, SPI_IOC_WR_MODE, &ioctl_mode) < 0 ||
       ioctl(fd, SPI_IOC_WR_BITS_PER_WORD, &bits_per_word) < 0 ||
       ioctl(fd, SPI_IOC_WR_MAX_SPEED_HZ, &baud_rate) < 0) {
     close(fd);
@@ -94,7 +109,8 @@ hw_spi_t *hw_spi_init_device(const char *device, bool cs_active_low,
   sys_memset(spi, 0, sizeof(*spi));
   spi->fd = fd;
   spi->baud_rate = baud_rate;
-  spi->cs_active_low = cs_active_low;
+  spi->mode = mode;
+  spi->bits_per_word = bits_per_word;
   spi->init = true;
   return spi;
 }
@@ -136,7 +152,7 @@ size_t hw_spi_xfr(hw_spi_t *spi, void *data, size_t tx, size_t rx,
     xfr[xfr_count].tx_buf = (uintptr_t)bytes;
     xfr[xfr_count].len = (uint32_t)tx;
     xfr[xfr_count].speed_hz = spi->baud_rate;
-    xfr[xfr_count].bits_per_word = 8u;
+    xfr[xfr_count].bits_per_word = spi->bits_per_word;
     xfr[xfr_count].cs_change = (rx > 0) ? 0u : 1u;
     xfr_count++;
   }
@@ -145,7 +161,7 @@ size_t hw_spi_xfr(hw_spi_t *spi, void *data, size_t tx, size_t rx,
     xfr[xfr_count].rx_buf = (uintptr_t)(bytes + tx);
     xfr[xfr_count].len = (uint32_t)rx;
     xfr[xfr_count].speed_hz = spi->baud_rate;
-    xfr[xfr_count].bits_per_word = 8u;
+    xfr[xfr_count].bits_per_word = spi->bits_per_word;
     xfr[xfr_count].cs_change = 1u;
     xfr_count++;
   }
@@ -171,13 +187,13 @@ size_t hw_spi_read(hw_spi_t *spi, uint8_t reg, void *data, size_t len,
   xfr[0].tx_buf = (uintptr_t)&command;
   xfr[0].len = 1u;
   xfr[0].speed_hz = spi->baud_rate;
-  xfr[0].bits_per_word = 8u;
+  xfr[0].bits_per_word = spi->bits_per_word;
   xfr[0].cs_change = (len > 0) ? 0u : 1u;
 
   xfr[1].rx_buf = (uintptr_t)data;
   xfr[1].len = (uint32_t)len;
   xfr[1].speed_hz = spi->baud_rate;
-  xfr[1].bits_per_word = 8u;
+  xfr[1].bits_per_word = spi->bits_per_word;
   xfr[1].cs_change = 1u;
 
   if (ioctl(spi->fd, SPI_IOC_MESSAGE((len > 0) ? 2 : 1), xfr) < 0) {
@@ -201,13 +217,13 @@ size_t hw_spi_write(hw_spi_t *spi, uint8_t reg, const void *data, size_t len,
   xfr[0].tx_buf = (uintptr_t)&command;
   xfr[0].len = 1u;
   xfr[0].speed_hz = spi->baud_rate;
-  xfr[0].bits_per_word = 8u;
+  xfr[0].bits_per_word = spi->bits_per_word;
   xfr[0].cs_change = (len > 0) ? 0u : 1u;
 
   xfr[1].tx_buf = (uintptr_t)data;
   xfr[1].len = (uint32_t)len;
   xfr[1].speed_hz = spi->baud_rate;
-  xfr[1].bits_per_word = 8u;
+  xfr[1].bits_per_word = spi->bits_per_word;
   xfr[1].cs_change = 1u;
 
   if (ioctl(spi->fd, SPI_IOC_MESSAGE((len > 0) ? 2 : 1), xfr) < 0) {

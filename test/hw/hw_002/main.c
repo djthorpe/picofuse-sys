@@ -9,6 +9,17 @@ bool test_main(void) {
   TestAssert(hw_i2c_count() == 2, "Pico should expose 2 I2C adapters, got %u",
              hw_i2c_count());
 
+#if defined(PICO_DEFAULT_I2C_SDA_PIN) && defined(PICO_DEFAULT_I2C_SCL_PIN)
+  hw_i2c_t *default_i2c = hw_i2c_init_default(100000);
+  TestAssert(default_i2c != NULL,
+             "Pico default I2C init should succeed on default pins");
+  TestAssert(hw_i2c_valid(default_i2c),
+             "Pico default I2C handle should be valid after init");
+  hw_i2c_deinit(default_i2c);
+  TestAssert(!hw_i2c_valid(default_i2c),
+             "Pico default I2C handle should be invalid after deinit");
+#endif
+
   hw_gpio_t *sda0 = hw_gpio_init(0, 0, HW_GPIO_INPUT);
   hw_gpio_t *scl0 = hw_gpio_init(0, 1, HW_GPIO_INPUT);
   hw_gpio_t *bad_scl = hw_gpio_init(0, 3, HW_GPIO_INPUT);
