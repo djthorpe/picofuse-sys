@@ -11,11 +11,20 @@
  * subscribe to topics, and handle incoming messages.
  */
 #pragma once
+#include <picofuse/sys/mem.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stddef.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 // TYPES
+
+/**
+ * @brief MQTT client handle.
+ * @ingroup MQTT
+ * @headerfile net/mqtt.h picofuse/net.h
+ */
+typedef struct net_mqtt_t net_mqtt_t;
 
 /**
  * @brief Connection/event status flags for MQTT operations.
@@ -58,10 +67,19 @@ typedef void (*net_mqtt_connect_callback_t)(net_mqtt_t *mqtt,
                                             void *user_data);
 
 /**
- * @brief Create and initialize an MQTT handle.
+ * @brief Callback invoked when a message is received on a subscribed topic.
  * @ingroup MQTT
+ *
+ * @param mqtt      The MQTT instance that received the message.
+ * @param topic     The topic the message was published to.
+ * @param data      The message payload.
+ * @param size      Payload length in bytes.
+ * @param user_data Opaque pointer supplied at initialization time.
  */
-typedef struct net_mqtt_t net_mqtt_t;
+typedef void (*net_mqtt_message_callback_t)(net_mqtt_t *mqtt,
+                                            const char *topic,
+                                            const void *data, size_t size,
+                                            void *user_data);
 
 ///////////////////////////////////////////////////////////////////////////////
 // LIFECYCLE
@@ -80,7 +98,8 @@ typedef struct net_mqtt_t net_mqtt_t;
  * The returned handle is opaque and must be released with
  * @ref net_mqtt_deinit after disconnecting.
  */
-net_mqtt_t *net_mqtt_init(net_mqtt_connect_callback_t connect, void *user_data);
+net_mqtt_t *net_mqtt_init(net_mqtt_connect_callback_t connect,
+                          net_mqtt_message_callback_t message, void *user_data);
 
 /**
  * @brief Finalize the MQTT handle and free associated resources.
@@ -153,5 +172,66 @@ bool net_mqtt_connect(net_mqtt_t *mqtt, const char *hostname, uint16_t port,
  * with @ref net_mqtt_status_disconnected_t.
  */
 bool net_mqtt_disconnect(net_mqtt_t *mqtt);
+
+/**
+ * @brief Publish a message to a topic.
+ * @ingroup MQTT
+ *
+ * @param mqtt   MQTT handle created by @ref net_mqtt_init and currently
+ *               connected (see @ref net_mqtt_valid).
+ * @param topic  Topic name. Must be non-NULL and non-empty.
+ * @param data   Message payload. Must be non-NULL when @p size is non-zero.
+ * @param size   Payload length in bytes.
+ * @param qos    QoS level: 0, 1, or 2.
+ * @return `true` if the message was accepted for transmission; `false` on
+ *         failure (not connected, invalid arguments, or broker error).
+ */
+bool net_mqtt_publish(net_mqtt_t *mqtt, const char *topic, const void *data,
+                      size_t size, uint8_t qos);
+
+/**
+ * @brief Publish a NUL-terminated string to a topic.
+ * @ingroup MQTT
+ *
+ * Convenience wrapper around @ref net_mqtt_publish that derives the payload
+ * length with @ref sys_strlen.
+ *
+ * @param mqtt   MQTT handle created by @ref net_mqtt_init and currently
+ *               connected (see @ref net_mqtt_valid).
+ * @param topic  Topic name. Must be non-NULL and non-empty.
+ * @param str    NUL-terminated string payload. Must be non-NULL.
+ * @param qos    QoS level: 0, 1, or 2.
+ * @return `true` if the message was accepted for transmission; `false` on
+ *         failure.
+ */
+static inline bool net_mqtt_publish_str(net_mqtt_t *mqtt, const char *topic,
+                                        const char *str, uint8_t qos) {
+  return net_mqtt_publish(mqtt, topic, str, sys_strlen(str), qos);
+}
+
+/**
+ * @brief Subscribe to a topic.
+ * @ingroup MQTT
+ *
+ * @param mqtt   MQTT handle created by @ref net_mqtt_init and currently
+ *               connected (see @ref net_mqtt_valid).
+ * @param topic  Topic filter to subscribe to. Must be non-NULL and non-empty.
+ * @param qos    Maximum QoS level the broker should use when delivering
+ *               messages for this subscription: 0, 1, or 2.
+ * @return `true` if the subscription request was accepted; `false` on failure.
+ */
+bool net_mqtt_subscribe(net_mqtt_t *mqtt, const char *topic, uint8_t qos);
+
+/**
+ * @brief Unsubscribe from a topic.
+ * @ingroup MQTT
+ *
+ * @param mqtt   MQTT handle created by @ref net_mqtt_init and currently
+ *               connected (see @ref net_mqtt_valid).
+ * @param topic  Topic filter to unsubscribe from. Must be non-NULL and
+ *               non-empty.
+ * @return `true` if the unsubscribe request was accepted; `false` on failure.
+ */
+bool net_mqtt_unsubscribe(net_mqtt_t *mqtt, const char *topic);
 
 /** @} */
