@@ -1,6 +1,7 @@
 set(NAME "picofuse-hw-obj")
 
 add_library(${NAME} OBJECT
+    adc.c
     gpio.c
     init.c
     ../stub/i2c.c

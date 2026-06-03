@@ -1,3 +1,4 @@
+#include <hardware/adc.h>
 #include <picofuse/sys.h>
 
 #if PICO_CYW43_SUPPORTED
@@ -16,6 +17,8 @@ void _hw_wifi_poll(void);
  * @brief Initializes the hardware system on startup.
  */
 void hw_init(void) {
+  adc_init();
+
 #if PICO_CYW43_SUPPORTED
   if (cyw43_arch_init()) {
     sys_panicf("cyw43_arch_init failed");
