@@ -1,4 +1,4 @@
-set(NAME "picofuse-example-hw-wifi")
+set(NAME "picofuse-example-hw-wifi-scan")
 
 add_executable(${NAME}
     main.c

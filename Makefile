@@ -1,12 +1,30 @@
 # Installation prefix and build directory
 BUILD_DIR ?= build
 PREFIX ?= /opt/picofuse
+CMAKE_BUILD_TYPE ?= Release
 
 # Tools
 CMAKE ?= $(shell which cmake 2>/dev/null)
 DOCKER ?= $(shell which docker 2>/dev/null)
 GIT ?= $(shell which git 2>/dev/null)
 
+
+###############################################################################
+# CONFIGURE AND BUILD
+
+.PHONY: configure
+configure: dep-cmake
+	@${CMAKE} -B ${BUILD_DIR} \
+		-D CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} \
+		$(if ${PICO_BOARD},-D PICO_BOARD=${PICO_BOARD})
+
+.PHONY: build
+build: configure
+	@${CMAKE} --build ${BUILD_DIR} --target all -j 4
+
+.PHONY: test
+test: build
+	@${CMAKE} --build ${BUILD_DIR} --target test
 
 ###############################################################################
 # DOCUMENTATION

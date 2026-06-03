@@ -35,9 +35,11 @@ typedef enum {
 ///////////////////////////////////////////////////////////////////////////////
 // GLOBALS
 
+#ifdef PICO_CYW43_SUPPORTED
 static struct hw_wifi_t _hw_wifi_instance = {0};
 static const char _hw_wifi_default_country_code[] = "XX";
 static uint32_t _hw_wifi_status_interval_ms = (1000 * 60);
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////
 // FORWARD DECLARATIONS
@@ -88,11 +90,10 @@ static int _hw_wifi_scan_callback(void *env,
 
 hw_wifi_t *hw_wifi_init_client(const char *country_code,
                                hw_wifi_callback_t callback, void *userdata) {
-
+#ifdef PICO_CYW43_SUPPORTED
   // Deinitialize if already initialized
   hw_wifi_deinit(&_hw_wifi_instance);
 
-#ifdef PICO_CYW43_SUPPORTED
   // Country code check
   if (country_code == NULL) {
     country_code = _hw_wifi_default_country_code;
@@ -100,9 +101,7 @@ hw_wifi_t *hw_wifi_init_client(const char *country_code,
   if (sys_strlen(country_code) != 2u) {
     return NULL;
   }
-
   if (cyw43_is_initialized(&cyw43_state) == false) {
-    sys_printf("cyw43_arch_init failed\n");
     return NULL;
   }
 
@@ -112,10 +111,24 @@ hw_wifi_t *hw_wifi_init_client(const char *country_code,
   _hw_wifi_instance.callback = callback;
   _hw_wifi_instance.userdata = userdata;
   sys_atomic_init(&_hw_wifi_instance.flags, 0);
-#endif
 
   // Return the Wi-Fi handle
   return &_hw_wifi_instance;
+#else
+  (void)country_code;
+  (void)callback;
+  (void)userdata;
+  return NULL; // No-op stub implementation for unsupported platforms.
+#endif
+}
+
+/** @brief Stub function in Pico SDK */
+hw_wifi_t *hw_wifi_init_device(const char *device, hw_wifi_callback_t callback,
+                               void *user_data) {
+  (void)device;
+  (void)callback;
+  (void)user_data;
+  return NULL; // No-op stub implementation for unsupported platforms.
 }
 
 bool hw_wifi_valid(hw_wifi_t *wifi) {
@@ -126,6 +139,21 @@ void hw_wifi_deinit(hw_wifi_t *wifi) {
   if (!hw_wifi_valid(wifi)) {
     return;
   }
+
+#ifdef PICO_CYW43_SUPPORTED
+  if (cyw43_is_initialized(&cyw43_state)) {
+    // Stop any in-flight connect/scan activity and disconnect from STA.
+    cyw43_wifi_leave(&cyw43_state, CYW43_ITF_STA);
+    cyw43_wifi_set_up(&cyw43_state, CYW43_ITF_STA, false,
+                      _hw_wifi_country_code(wifi->country_code));
+  }
+
+  _hw_wifi_set_busy(
+      wifi, hw_wifi_flag_leaving | hw_wifi_flag_joining | hw_wifi_flag_scanning,
+      false);
+  wifi->state = -1;
+  wifi->ts = 0;
+#endif
 
   sys_memset(wifi, 0, sizeof(struct hw_wifi_t));
 }
@@ -138,11 +166,12 @@ void hw_wifi_deinit(hw_wifi_t *wifi) {
  */
 bool hw_wifi_scan(hw_wifi_t *wifi) {
   bool success = false;
+
+#ifdef PICO_CYW43_SUPPORTED
   if (hw_wifi_valid(wifi) == false) {
     return false;
   }
 
-#ifdef PICO_CYW43_SUPPORTED
   // If we're already leaving, joining or scanning, don't init a new scan
   if (_hw_wifi_get_busy(wifi, hw_wifi_flag_leaving | hw_wifi_flag_joining |
                                   hw_wifi_flag_scanning)) {
@@ -157,15 +186,15 @@ bool hw_wifi_scan(hw_wifi_t *wifi) {
 
   // TODO: set power management cyw43_wifi_pm
 
-  // Zero-initialize scan options
-  cyw43_wifi_scan_options_t opts = {0};
-
   // Pass the wifi handle as the callback environment
+  cyw43_wifi_scan_options_t opts = {0};
   if (cyw43_wifi_scan(&cyw43_state, &opts, wifi, _hw_wifi_scan_callback) == 0) {
     _hw_wifi_set_busy(wifi, hw_wifi_flag_scanning, true);
     wifi->state = -1;
     success = true;
   }
+#else
+  (void)wifi;
 #endif
 
   return success;
@@ -175,12 +204,114 @@ bool hw_wifi_scan(hw_wifi_t *wifi) {
  * @brief Begin an asynchronous connection to a Wi‑Fi network.
  */
 bool hw_wifi_connect(hw_wifi_t *wifi, const hw_wifi_network_t *network,
-                     const char *password);
+                     const char *password) {
+  bool success = false;
+
+#ifdef PICO_CYW43_SUPPORTED
+  if (hw_wifi_valid(wifi) == false || network == NULL) {
+    return false;
+  }
+
+  // If we're already leaving, joining or scanning, don't start a new join.
+  if (_hw_wifi_get_busy(wifi, hw_wifi_flag_leaving | hw_wifi_flag_joining |
+                                  hw_wifi_flag_scanning)) {
+    return false;
+  }
+
+  size_t ssid_len = sys_strlen(network->ssid);
+  if (ssid_len == 0 || ssid_len > HW_WIFI_SSID_MAX_LENGTH) {
+    return false;
+  }
+
+  const char *key = password != NULL ? password : "";
+  size_t key_len = sys_strlen(key);
+
+  uint32_t auth = CYW43_AUTH_OPEN;
+  if ((network->auth & hw_wifi_auth_wpa3_sae) != 0) {
+#if defined(CYW43_AUTH_WPA3_SAE_AES_PSK)
+    auth = CYW43_AUTH_WPA3_SAE_AES_PSK;
+#else
+    auth = CYW43_AUTH_WPA2_AES_PSK;
+#endif
+  } else if ((network->auth & (hw_wifi_auth_wpa2_aes | hw_wifi_auth_wpa2_tkip |
+                               hw_wifi_auth_wpa_aes)) != 0) {
+    auth = CYW43_AUTH_WPA2_AES_PSK;
+  } else if ((network->auth & hw_wifi_auth_wpa_tkip) != 0) {
+    auth = CYW43_AUTH_WPA_TKIP_PSK;
+  }
+
+  if (auth != CYW43_AUTH_OPEN && key_len == 0) {
+    return false;
+  }
+
+  if (_hw_wifi_up(wifi) == false) {
+    cyw43_wifi_set_up(&cyw43_state, CYW43_ITF_STA, true,
+                      _hw_wifi_country_code(wifi->country_code));
+  }
+
+  // Reset prior connection state and store the requested network.
+  sys_memset(&wifi->network, 0, sizeof(wifi->network));
+  sys_memcpy(&wifi->network, network, sizeof(wifi->network));
+  wifi->state = -1;
+  wifi->ts = 0;
+
+  if (cyw43_wifi_join(&cyw43_state, ssid_len,
+                      (const uint8_t *)wifi->network.ssid, key_len,
+                      (const uint8_t *)key, auth, NULL, 0) == 0) {
+    _hw_wifi_set_busy(wifi, hw_wifi_flag_joining, true);
+    success = true;
+  } else {
+    sys_memset(&wifi->network, 0, sizeof(wifi->network));
+  }
+#else
+  (void)wifi;
+  (void)network;
+  (void)password;
+#endif
+
+  return success;
+}
 
 /**
  * @brief Disconnect from a previously-connected Wi‑Fi network.
  */
-bool hw_wifi_disconnect(hw_wifi_t *wifi);
+bool hw_wifi_disconnect(hw_wifi_t *wifi) {
+#ifdef PICO_CYW43_SUPPORTED
+  if (hw_wifi_valid(wifi) == false ||
+      cyw43_is_initialized(&cyw43_state) == false) {
+    return false;
+  }
+
+  // If scanning or joining is in progress, abort and report not connected.
+  if (_hw_wifi_get_busy(wifi, hw_wifi_flag_scanning | hw_wifi_flag_joining)) {
+    cyw43_wifi_leave(&cyw43_state, CYW43_ITF_STA);
+    _hw_wifi_set_busy(wifi, hw_wifi_flag_scanning | hw_wifi_flag_joining,
+                      false);
+    wifi->state = -1;
+    wifi->ts = 0;
+    sys_memset(&wifi->network, 0, sizeof(wifi->network));
+    return false;
+  }
+
+  int state = cyw43_tcpip_link_status(&cyw43_state, CYW43_ITF_STA);
+  if (state != CYW43_LINK_JOIN && state != CYW43_LINK_NOIP &&
+      state != CYW43_LINK_UP) {
+    return false;
+  }
+
+  if (cyw43_wifi_leave(&cyw43_state, CYW43_ITF_STA) != 0) {
+    return false;
+  }
+
+  _hw_wifi_set_busy(wifi, hw_wifi_flag_leaving, true);
+  wifi->state = -1;
+  wifi->ts = 0;
+  return true;
+#else
+  (void)wifi;
+  return false;
+#endif
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 // PRIVATE METHODS

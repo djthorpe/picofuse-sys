@@ -139,6 +139,23 @@ hw_wifi_t *hw_wifi_init_client(const char *country_code,
                                hw_wifi_callback_t callback, void *user_data);
 
 /**
+ * @brief Initialize Wi-Fi from a WPA supplicant device.
+ * @ingroup WiFi
+ * @param device Device identifier for the Wi-Fi interface (ie,
+ * "/var/run/wpa_supplicant/wlan0").
+ * @param callback Callback to notify progress/completion of connection,
+ * disconnection and scanning asynchronous operations (must not be NULL).
+ * @param user_data Opaque user pointer supplied to the callback.
+ * @return Wi-Fi handle or NULL on failure.
+ *
+ * This function initializes the Wi-Fi management subsystem and returns a
+ * handle to the Wi-Fi instance. If initialization fails (for example, if WiFi
+ * is not available), it returns NULL.
+ */
+hw_wifi_t *hw_wifi_init_device(const char *device, hw_wifi_callback_t callback,
+                               void *user_data);
+
+/**
  * @brief Deinitialize and release any resources.
  * @ingroup WiFi
  * @param wifi Wi-Fi handle
