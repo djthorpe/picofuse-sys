@@ -156,6 +156,10 @@ size_t hw_i2c_xfr(hw_i2c_t *i2c, uint8_t addr, void *data, size_t tx, size_t rx,
     return 0;
   }
 
+  if (tx > UINT16_MAX || rx > UINT16_MAX) {
+    return 0;
+  }
+
   if (tx == 0 && rx == 0) {
     return 0;
   }

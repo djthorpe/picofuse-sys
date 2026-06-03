@@ -122,12 +122,17 @@ hw_i2c_t *hw_i2c_init(uint8_t index, hw_gpio_t *sda_pin, hw_gpio_t *scl_pin,
     hw_i2c_deinit(i2c);
   }
 
+  hw_gpio_mode_t sda_mode = hw_gpio_get_mode(sda_pin);
+  hw_gpio_mode_t scl_mode = hw_gpio_get_mode(scl_pin);
+
   hw_gpio_set_mode(sda_pin, HW_GPIO_I2C);
   hw_gpio_set_mode(scl_pin, HW_GPIO_I2C);
 
   i2c_inst_t *instance = i2c_get_instance(index);
   uint32_t actual_baud_rate = i2c_init(instance, baud_rate);
   if (actual_baud_rate == 0) {
+    hw_gpio_set_mode(sda_pin, sda_mode);
+    hw_gpio_set_mode(scl_pin, scl_mode);
     return NULL;
   }
 
