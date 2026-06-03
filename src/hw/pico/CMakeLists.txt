@@ -18,6 +18,7 @@ target_link_libraries(${NAME} PUBLIC
     hardware_gpio
     hardware_i2c
     hardware_uart
+    hardware_spi
     hardware_adc
 )
 

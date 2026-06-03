@@ -146,3 +146,7 @@ picofuse_add_hw_test(hw_002
 	main.c
 )
 
+# Check SPI API behavior on supported and stub backends.
+picofuse_add_hw_test(hw_003
+	main.c
+)
