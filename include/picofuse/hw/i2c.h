@@ -128,9 +128,11 @@ bool hw_i2c_detect(hw_i2c_t *i2c, uint8_t addr);
  * @param tx Number of bytes to transmit from `data`.
  * @param rx Number of bytes to receive into `data + tx`.
  * @param timeout_ms Timeout in milliseconds for the operation. Set to `0` to
- * request an immediate or best-effort transfer with no blocking beyond what
- * the platform backend requires.
- * @return Number of bytes transferred, or `0` on failure.
+ * use the backend's default transfer path, which may block until the
+ * operation completes on platforms that do not provide timed I2C primitives.
+ * @return Number of bytes transferred. Successful write-only transfers return
+ * `tx`, successful read-only transfers return `rx`, and successful combined
+ * write-then-read transfers return `tx + rx`. Returns `0` on failure.
  *
  * This method supports write-only (`tx > 0, rx == 0`), read-only
  * (`tx == 0, rx > 0`), and write-then-read (`tx > 0, rx > 0`) transfers.
@@ -153,7 +155,9 @@ size_t hw_i2c_xfr(hw_i2c_t *i2c, uint8_t addr, void *data, size_t tx, size_t rx,
  * @param reg Register address to read from.
  * @param data Buffer to receive the bytes.
  * @param len Number of bytes to read.
- * @param timeout_ms Timeout in milliseconds for the operation.
+ * @param timeout_ms Timeout in milliseconds for the operation. Set to `0` to
+ * use the backend's default transfer path, which may block until the
+ * operation completes on platforms that do not provide timed I2C primitives.
  * @return Number of bytes read, or `0` on failure.
  *
  * This is a convenience wrapper around `hw_i2c_xfr()` for the common
@@ -170,7 +174,9 @@ size_t hw_i2c_read(hw_i2c_t *i2c, uint8_t addr, uint8_t reg, void *data,
  * @param reg Register address to write to.
  * @param data Buffer containing bytes to write.
  * @param len Number of bytes to write.
- * @param timeout_ms Timeout in milliseconds for the operation.
+ * @param timeout_ms Timeout in milliseconds for the operation. Set to `0` to
+ * use the backend's default transfer path, which may block until the
+ * operation completes on platforms that do not provide timed I2C primitives.
  * @return Number of bytes written, or `0` on failure.
  *
  * This is a convenience wrapper around `hw_i2c_xfr()` for the common
