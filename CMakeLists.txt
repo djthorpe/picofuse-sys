@@ -29,6 +29,10 @@ string(TOLOWER ${CMAKE_SYSTEM_NAME} SYSTEM_NAME_LOWER)
 string(TOUPPER ${CMAKE_SYSTEM_NAME} SYSTEM_NAME_UPPER)
 string(TOLOWER ${CMAKE_SYSTEM_PROCESSOR} PROCESSOR_NAME_LOWER)
 
+if(SYSTEM_NAME_LOWER STREQUAL "darwin")
+    enable_language(OBJC)
+endif()
+
 # Compile options
 add_compile_options(
     "-Wall"
