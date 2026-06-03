@@ -98,8 +98,8 @@ hw_spi_t *hw_spi_init_default(uint32_t baud_rate,
   hw_gpio_t *cs_pin = NULL;
 #endif
 
-  hw_spi_t *spi =
-      hw_spi_init(0, sck_pin, tx_pin, rx_pin, cs_pin, baud_rate, &settings);
+  hw_spi_t *spi = hw_spi_init(PICO_DEFAULT_SPI, sck_pin, tx_pin, rx_pin, cs_pin,
+                              baud_rate, &settings);
   if (spi == NULL) {
     if (hw_gpio_valid(cs_pin)) {
       hw_gpio_deinit(cs_pin);
@@ -113,6 +113,7 @@ hw_spi_t *hw_spi_init_default(uint32_t baud_rate,
     if (hw_gpio_valid(sck_pin)) {
       hw_gpio_deinit(sck_pin);
     }
+    return NULL;
   }
 
   spi->owns_pins = true;

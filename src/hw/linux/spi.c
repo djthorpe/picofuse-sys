@@ -179,7 +179,8 @@ size_t hw_spi_read(hw_spi_t *spi, uint8_t reg, void *data, size_t len,
                    uint32_t timeout_ms) {
   (void)timeout_ms;
 
-  if (!hw_spi_valid(spi) || (len > 0 && data == NULL) || len > UINT32_MAX) {
+  if (!hw_spi_valid(spi) || len == 0 || (len > 0 && data == NULL) ||
+      len > UINT32_MAX) {
     return 0;
   }
 
@@ -209,7 +210,8 @@ size_t hw_spi_write(hw_spi_t *spi, uint8_t reg, const void *data, size_t len,
                     uint32_t timeout_ms) {
   (void)timeout_ms;
 
-  if (!hw_spi_valid(spi) || (len > 0 && data == NULL) || len > UINT32_MAX) {
+  if (!hw_spi_valid(spi) || len == 0 || (len > 0 && data == NULL) ||
+      len > UINT32_MAX) {
     return 0;
   }
 
