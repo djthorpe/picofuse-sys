@@ -3,34 +3,36 @@
 Picofuse is a software system for hardware-independent development of small event-driven applications. It provides a common interface for hardware peripherals and a build system that abstracts away the details of the underlying hardware. There are a variety of modules which define the abstraction:
 
 * `sys`: System-level functions.
-* `hw` : Hardware abstraction layer for peripherals such as GPIO, I2C, SPI, etc.
+* `hw` : Hardware for peripherals such as GPIO, I2C, SPI, etc.
+* `dev` : Device implementation for specific components.
 * `net`: Network stack for TCP/IP communication (under development).
 * `fs` : Filesystem abstraction for persistent storage (under development).
 * `pix`: Graphics library for drawing on displays (planned).
 * `wav`: Audio library for playing and recording sound (planned).
+* `hid`: Human Interface Device library for handling input devices (planned).
 * `app`: Application framework for event-driven programming (under development).
 
 ```mermaid
 block-beta
-  columns 4
+  columns 5
 
-  block:top:4
+  block:top:5
     columns 1
-    app["app: Application"]
+    app["<b>app</b><br/>Application"]
   end
 
-  net["net: Network"] fs["fs: Filesystem"] pix["pix: Graphics"] wav["wav: Audio"]
+  net["<b>net</b><br/>Network"] fs["<b>fs</b><br/>Filesystem"] pix["<b>pix</b><br/>Graphics"] wav["<b>wav</b><br/>Audio"] hid["<b>hid</b><br/>Input devices"]
 
-  block:middle:4
-    columns 1
-    hw["hw: Hardware"]
+  block:middle:5
+    columns 2
+    hw["<b>hw</b><br/>Hardware"]
+    dev["<b>dev</b><br/>Devices"]
   end
 
-  block:bottom:4
+  block:bottom:5
     columns 1
-    sys["sys: System"]
+    sys["<b>sys</b><br/>System"]
   end
-  
 ```
 
 These compile into a static library for each platform or board target, which can be linked into user applications. The build system uses CMake to manage the compilation process and supports multiple platforms, including the Raspberry Pi Pico, Raspberry Pi, Linux and Darwin (Macintosh). The goal is to allow developers to write applications that can run on any supported hardware with minimal changes, by providing a consistent API and handling the platform-specific details within the library.
