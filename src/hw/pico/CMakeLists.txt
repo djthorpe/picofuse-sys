@@ -4,7 +4,7 @@ add_library(${NAME} OBJECT
     adc.c
     gpio.c
     init.c
-    ../stub/i2c.c
+    i2c.c
     uart.c
     wifi.c
 )
@@ -15,6 +15,7 @@ target_include_directories(${NAME} PUBLIC
 )
 target_link_libraries(${NAME} PUBLIC
     hardware_gpio
+    hardware_i2c
     hardware_uart
     hardware_adc
 )

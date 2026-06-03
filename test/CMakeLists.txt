@@ -140,3 +140,8 @@ picofuse_add_hw_test(hw_000
 picofuse_add_hw_test(hw_001
 	main.c
 )
+
+# Check I2C API behavior on supported and stub backends.
+picofuse_add_hw_test(hw_002
+	main.c
+)
