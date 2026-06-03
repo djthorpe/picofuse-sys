@@ -71,7 +71,7 @@ hw_spi_t *hw_spi_init_device(const char *device, uint32_t baud_rate,
                              const hw_spi_config_t *config) {
   hw_spi_mode_t mode = HW_SPI_MODE_0;
   uint8_t bits_per_word = 8u;
-  bool cs_active_low = false;
+  bool cs_active_low = true;
 
   if (config != NULL) {
     cs_active_low = config->cs_active_low;
@@ -95,7 +95,7 @@ hw_spi_t *hw_spi_init_device(const char *device, uint32_t baud_rate,
   }
 
   uint8_t ioctl_mode = (uint8_t)mode;
-  if (cs_active_low) {
+  if (!cs_active_low) {
     ioctl_mode |= SPI_CS_HIGH;
   }
 
@@ -136,6 +136,8 @@ bool hw_spi_valid(const hw_spi_t *spi) {
 
 size_t hw_spi_xfr(hw_spi_t *spi, void *data, size_t tx, size_t rx,
                   uint32_t timeout_ms) {
+  (void)timeout_ms;
+
   if (!hw_spi_valid(spi) || ((tx > 0 || rx > 0) && data == NULL)) {
     return 0;
   }

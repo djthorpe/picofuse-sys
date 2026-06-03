@@ -12,6 +12,7 @@ struct hw_spi_t {
   hw_gpio_t *rx;
   hw_gpio_t *cs;
   bool cs_active_low;
+  bool owns_pins;
   uint32_t baud_rate;
   bool init;
 };
@@ -26,7 +27,7 @@ static struct hw_spi_t spis[NUM_SPIS] = {0};
 
 static hw_spi_config_t _hw_spi_default_config(void) {
   hw_spi_config_t config = {0};
-  config.cs_active_low = false;
+  config.cs_active_low = true;
   config.mode = HW_SPI_MODE_0;
   config.bits_per_word = 8u;
   return config;
@@ -84,6 +85,8 @@ static bool _hw_spi_map_mode(hw_spi_mode_t mode, spi_cpol_t *cpol,
 
 hw_spi_t *hw_spi_init_default(uint32_t baud_rate,
                               const hw_spi_config_t *config) {
+#if defined(PICO_DEFAULT_SPI) && defined(PICO_DEFAULT_SPI_SCK_PIN) &&          \
+    defined(PICO_DEFAULT_SPI_TX_PIN) && defined(PICO_DEFAULT_SPI_RX_PIN)
   hw_spi_config_t settings =
       config != NULL ? *config : _hw_spi_default_config();
   hw_gpio_t *sck_pin = hw_gpio_init(0, PICO_DEFAULT_SPI_SCK_PIN, HW_GPIO_SPI);
@@ -112,7 +115,13 @@ hw_spi_t *hw_spi_init_default(uint32_t baud_rate,
     }
   }
 
+  spi->owns_pins = true;
   return spi;
+#else
+  (void)baud_rate;
+  (void)config;
+  return NULL;
+#endif
 }
 
 hw_spi_t *hw_spi_init(uint8_t index, hw_gpio_t *sck_pin, hw_gpio_t *tx_pin,
@@ -157,13 +166,13 @@ hw_spi_t *hw_spi_init(uint8_t index, hw_gpio_t *sck_pin, hw_gpio_t *tx_pin,
   spi->cs = configured_cs;
   spi->cs_active_low = settings.cs_active_low;
   spi->baud_rate = baud_rate;
+  spi->owns_pins = false;
   spi->init = true;
 
   spi_init(instance, baud_rate);
   spi_set_format(instance, settings.bits_per_word, cpol, cpha, SPI_MSB_FIRST);
 
   if (hw_gpio_valid(spi->cs)) {
-    hw_gpio_set(spi->cs, !spi->cs_active_low);
     _hw_spi_set_cs(spi, false);
   }
 
@@ -184,12 +193,14 @@ void hw_spi_deinit(hw_spi_t *spi) {
   }
 
   spi_deinit(spi->instance);
-  if (hw_gpio_valid(spi->cs)) {
+  if (spi->owns_pins && hw_gpio_valid(spi->cs)) {
     hw_gpio_deinit(spi->cs);
   }
-  hw_gpio_deinit(spi->sck);
-  hw_gpio_deinit(spi->tx);
-  hw_gpio_deinit(spi->rx);
+  if (spi->owns_pins) {
+    hw_gpio_deinit(spi->sck);
+    hw_gpio_deinit(spi->tx);
+    hw_gpio_deinit(spi->rx);
+  }
   sys_memset(spi, 0, sizeof(*spi));
 }
 
@@ -209,7 +220,11 @@ size_t hw_spi_xfr(hw_spi_t *spi, void *data, size_t tx, size_t rx,
                   uint32_t timeout_ms) {
   (void)timeout_ms;
 
-  if (!hw_spi_valid(spi) || ((tx > 0 || rx > 0) && data == NULL)) {
+  if (!hw_spi_valid(spi) || (tx == 0 && rx == 0)) {
+    return 0;
+  }
+
+  if (((tx > 0 || rx > 0) && data == NULL)) {
     return 0;
   }
 
@@ -217,10 +232,14 @@ size_t hw_spi_xfr(hw_spi_t *spi, void *data, size_t tx, size_t rx,
 
   size_t bytes_transferred = 0;
   if (tx > 0 && rx > 0) {
-    int ret =
-        spi_write_read_blocking(spi->instance, data, (uint8_t *)data + tx, rx);
-    if (ret == (int)rx) {
-      bytes_transferred = tx + rx;
+    uint8_t *bytes = data;
+
+    int ret = spi_write_blocking(spi->instance, bytes, tx);
+    if (ret == (int)tx) {
+      ret = spi_read_blocking(spi->instance, 0x00, bytes + tx, rx);
+      if (ret == (int)rx) {
+        bytes_transferred = tx + rx;
+      }
     }
   } else if (tx > 0) {
     int ret = spi_write_blocking(spi->instance, data, tx);
@@ -265,7 +284,7 @@ size_t hw_spi_write(hw_spi_t *spi, uint8_t reg, const void *data, size_t len,
                     uint32_t timeout_ms) {
   (void)timeout_ms;
 
-  if (!hw_spi_valid(spi) || (data == NULL && len > 0)) {
+  if (!hw_spi_valid(spi) || len == 0 || (data == NULL && len > 0)) {
     return 0;
   }
 

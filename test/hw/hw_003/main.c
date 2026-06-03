@@ -15,6 +15,8 @@ bool test_main(void) {
       .bits_per_word = 8,
   };
 
+#if defined(PICO_DEFAULT_SPI) && defined(PICO_DEFAULT_SPI_SCK_PIN) &&          \
+    defined(PICO_DEFAULT_SPI_TX_PIN) && defined(PICO_DEFAULT_SPI_RX_PIN)
   hw_spi_t *default_spi = hw_spi_init_default(100000, &default_config);
   TestAssert(default_spi != NULL,
              "Pico default SPI init should succeed on default pins");
@@ -77,16 +79,28 @@ bool test_main(void) {
 
   hw_spi_deinit(spi);
   TestAssert(!hw_spi_valid(spi), "SPI handle should be invalid after deinit");
-  TestAssert(!hw_gpio_valid(sck0),
-             "SCK pin should be invalid after SPI deinit");
-  TestAssert(!hw_gpio_valid(tx0),
-             "MOSI pin should be invalid after SPI deinit");
-  TestAssert(!hw_gpio_valid(rx0),
-             "MISO pin should be invalid after SPI deinit");
+  TestAssert(hw_gpio_valid(sck0),
+             "SCK pin should remain valid after SPI deinit");
+  TestAssert(hw_gpio_valid(tx0),
+             "MOSI pin should remain valid after SPI deinit");
+  TestAssert(hw_gpio_valid(rx0),
+             "MISO pin should remain valid after SPI deinit");
   if (cs0 != NULL) {
-    TestAssert(!hw_gpio_valid(cs0),
-               "CS pin should be invalid after SPI deinit");
+    TestAssert(hw_gpio_valid(cs0),
+               "CS pin should remain valid after SPI deinit");
   }
+
+  hw_gpio_deinit(sck0);
+  hw_gpio_deinit(tx0);
+  hw_gpio_deinit(rx0);
+  if (cs0 != NULL) {
+    hw_gpio_deinit(cs0);
+  }
+#else
+  TestAssert(
+      hw_spi_init_default(100000, &default_config) == NULL,
+      "Pico default SPI init should be unavailable without default pins");
+#endif
 #elif defined(SYSTEM_NAME_LINUX)
   TestAssert(hw_spi_count() == 0, "Linux hw_spi_count should be 0, got %u",
              hw_spi_count());
