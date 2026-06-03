@@ -36,6 +36,9 @@ typedef struct hw_i2c_t hw_i2c_t;
  * @ingroup I2C
  * @param baud_rate Desired I2C baud rate in Hz.
  * @return I2C handle or NULL on failure.
+ * @note On platforms where I2C buses are selected by device path instead of
+ * index (for example Linux), this function may be unsupported and return
+ * `NULL` by design. Use `hw_i2c_init_device()` on those platforms.
  */
 hw_i2c_t *hw_i2c_init_default(uint32_t baud_rate);
 
