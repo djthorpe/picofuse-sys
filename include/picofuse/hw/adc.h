@@ -32,6 +32,10 @@ typedef struct hw_adc_t hw_adc_t;
  * @brief Get the total number of available ADC channels.
  * @ingroup ADC
  * @return Number of ADC channels available on the current platform.
+ *
+ * The returned count includes both GPIO-mappable ADC channels and any
+ * internal ADC channels exposed by the backend. For example, on Pico
+ * platforms this includes the internal temperature sensor channel.
  */
 uint8_t hw_adc_count(void);
 
@@ -78,6 +82,9 @@ uint8_t hw_adc_gpio_channel(const hw_gpio_t *gpio);
  * @ingroup ADC
  * @param channel ADC channel number.
  * @return GPIO pin number, or 0xFF if the channel has no GPIO mapping.
+ *
+ * Channels that are valid ADC inputs but are not backed by a GPIO pin, such
+ * as internal temperature-sensor channels, return 0xFF here.
  */
 uint8_t hw_adc_gpio_pin(uint8_t channel);
 
