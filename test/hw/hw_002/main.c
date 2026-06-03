@@ -50,6 +50,24 @@ bool test_main(void) {
   hw_gpio_deinit(sda0);
   hw_gpio_deinit(scl0);
   hw_gpio_deinit(bad_scl);
+#elif defined(SYSTEM_NAME_LINUX)
+  TestAssert(hw_i2c_init(0, NULL, NULL, 100000) == NULL,
+             "Linux indexed I2C init should be unsupported");
+  TestAssert(hw_i2c_init_device(NULL, 100000) == NULL,
+             "Linux device-path init should reject NULL device");
+  TestAssert(hw_i2c_init_device("", 100000) == NULL,
+             "Linux device-path init should reject empty device path");
+  TestAssert(hw_i2c_init_device("/dev/definitely-not-an-i2c-device", 100000) ==
+                 NULL,
+             "Linux device-path init should fail for missing device");
+  TestAssert(!hw_i2c_detect(NULL, 0x40),
+             "Linux I2C detect should fail for NULL handle");
+  TestAssert(hw_i2c_xfr(NULL, 0x40, NULL, 0, 0, 0) == 0,
+             "Linux I2C transfer should return 0 for NULL handle");
+  TestAssert(hw_i2c_read(NULL, 0x40, 0x00, NULL, 0, 0) == 0,
+             "Linux I2C read should return 0 for NULL handle");
+  TestAssert(hw_i2c_write(NULL, 0x40, 0x00, NULL, 0, 0) == 0,
+             "Linux I2C write should return 0 for NULL handle");
 #else
   TestAssert(hw_i2c_count() == 0, "stub hw_i2c_count should be 0, got %u",
              hw_i2c_count());

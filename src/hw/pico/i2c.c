@@ -9,8 +9,8 @@
 
 struct hw_i2c_t {
   i2c_inst_t *instance;
-  const hw_gpio_t *sda_pin;
-  const hw_gpio_t *scl_pin;
+  hw_gpio_t *sda_pin;
+  hw_gpio_t *scl_pin;
   uint32_t baud_rate;
   bool owns_pins;
   bool init;
@@ -105,8 +105,8 @@ hw_i2c_t *hw_i2c_init_default(uint32_t baud_rate) {
 #endif
 }
 
-hw_i2c_t *hw_i2c_init(uint8_t index, const hw_gpio_t *sda_pin,
-                      const hw_gpio_t *scl_pin, uint32_t baud_rate) {
+hw_i2c_t *hw_i2c_init(uint8_t index, hw_gpio_t *sda_pin, hw_gpio_t *scl_pin,
+                      uint32_t baud_rate) {
   if (index >= hw_i2c_count() || !hw_gpio_valid(sda_pin) ||
       !hw_gpio_valid(scl_pin) || baud_rate == 0) {
     return NULL;
@@ -122,8 +122,8 @@ hw_i2c_t *hw_i2c_init(uint8_t index, const hw_gpio_t *sda_pin,
     hw_i2c_deinit(i2c);
   }
 
-  hw_gpio_set_mode((hw_gpio_t *)sda_pin, HW_GPIO_I2C);
-  hw_gpio_set_mode((hw_gpio_t *)scl_pin, HW_GPIO_I2C);
+  hw_gpio_set_mode(sda_pin, HW_GPIO_I2C);
+  hw_gpio_set_mode(scl_pin, HW_GPIO_I2C);
 
   i2c_inst_t *instance = i2c_get_instance(index);
   uint32_t actual_baud_rate = i2c_init(instance, baud_rate);
@@ -154,8 +154,8 @@ void hw_i2c_deinit(hw_i2c_t *i2c) {
   i2c_deinit(i2c->instance);
 
   if (i2c->owns_pins) {
-    hw_gpio_deinit((hw_gpio_t *)i2c->sda_pin);
-    hw_gpio_deinit((hw_gpio_t *)i2c->scl_pin);
+    hw_gpio_deinit(i2c->sda_pin);
+    hw_gpio_deinit(i2c->scl_pin);
   }
 
   sys_memset(i2c, 0, sizeof(*i2c));
@@ -234,9 +234,20 @@ size_t hw_i2c_write(hw_i2c_t *i2c, uint8_t addr, uint8_t reg, const void *data,
     return 0;
   }
 
-  uint8_t *buffer = sys_malloc(len + 1);
-  if (buffer == NULL) {
+  if (len == SIZE_MAX) {
     return 0;
+  }
+
+  // Use a stack buffer for small writes to avoid heap allocation overhead
+  size_t total_len = len + 1;
+  uint8_t stack_buffer[32] = {0};
+  uint8_t *buffer = stack_buffer;
+  bool use_heap = total_len > sizeof(stack_buffer);
+  if (use_heap) {
+    buffer = sys_malloc(total_len);
+    if (buffer == NULL) {
+      return 0;
+    }
   }
 
   buffer[0] = reg;
@@ -244,9 +255,11 @@ size_t hw_i2c_write(hw_i2c_t *i2c, uint8_t addr, uint8_t reg, const void *data,
     sys_memcpy(buffer + 1, data, len);
   }
 
-  int ret = _hw_i2c_write(i2c->instance, addr & 0x7Fu, buffer, len + 1, false,
+  int ret = _hw_i2c_write(i2c->instance, addr & 0x7Fu, buffer, total_len, false,
                           timeout_ms);
-  sys_free(buffer);
+  if (use_heap) {
+    sys_free(buffer);
+  }
 
-  return ret == (int)(len + 1) ? len : 0;
+  return ret == (int)total_len ? len : 0;
 }

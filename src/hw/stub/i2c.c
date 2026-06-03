@@ -13,8 +13,8 @@ hw_i2c_t *hw_i2c_init_default(uint32_t baud_rate) {
   return NULL;
 }
 
-hw_i2c_t *hw_i2c_init(uint8_t index, const hw_gpio_t *sda_pin,
-                      const hw_gpio_t *scl_pin, uint32_t baud_rate) {
+hw_i2c_t *hw_i2c_init(uint8_t index, hw_gpio_t *sda_pin, hw_gpio_t *scl_pin,
+                      uint32_t baud_rate) {
   (void)index;
   (void)sda_pin;
   (void)scl_pin;
