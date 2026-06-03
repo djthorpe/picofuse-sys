@@ -3,6 +3,7 @@ set(NAME "picofuse-hw-obj")
 add_library(${NAME} OBJECT
     gpio.c
     init.c
+    ../stub/i2c.c
     uart.c
     wifi.c
 )
