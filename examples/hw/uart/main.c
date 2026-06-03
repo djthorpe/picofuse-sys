@@ -1,3 +1,8 @@
+/**
+ * @file
+ * @brief UART example.
+ */
+
 #include <picofuse/hw.h>
 #include <picofuse/sys.h>
 
@@ -13,6 +18,12 @@ static volatile bool line_ready = false;
 static uint8_t rx_buffer[LINE_SIZE] = {0};
 static uint8_t echo_buffer[LINE_SIZE] = {0};
 
+/**
+ * @brief Write as much as possible to UART without blocking forever.
+ *
+ * The function keeps calling @c hw_uart_write with a zero timeout so partial
+ * progress is accepted and the example can keep servicing incoming data.
+ */
 static void write_best_effort(hw_uart_t *uart, const void *data, size_t size) {
   const uint8_t *bytes = data;
 
@@ -27,6 +38,14 @@ static void write_best_effort(hw_uart_t *uart, const void *data, size_t size) {
   }
 }
 
+/**
+ * @brief Write the full payload to UART or abort if the port stops accepting
+ * data.
+ *
+ * This helper loops until the whole buffer is accepted, using a timeout on
+ * each write so the example can report a stuck UART instead of silently
+ * dropping bytes.
+ */
 static void write_all(hw_uart_t *uart, const void *data, size_t size) {
   const uint8_t *bytes = data;
   size_t written = 0;
@@ -40,6 +59,13 @@ static void write_all(hw_uart_t *uart, const void *data, size_t size) {
   }
 }
 
+/**
+ * @brief Handle UART receive events, implement line editing, and echo lines.
+ *
+ * The callback drains received bytes, handles backspace and carriage return,
+ * copies the completed line into a separate echo buffer, and writes immediate
+ * feedback back to the terminal.
+ */
 static void callback(hw_uart_t *uart, uint32_t events, void *userdata) {
   (void)userdata;
 
@@ -94,6 +120,13 @@ static void callback(hw_uart_t *uart, uint32_t events, void *userdata) {
   }
 }
 
+/**
+ * @brief Set up a UART echo console on GP0/GP1.
+ *
+ * This example shows how to configure GPIO pins for UART use, initialize the
+ * UART with an event callback, transmit a banner, and echo each completed line
+ * back to the terminal.
+ */
 int main(void) {
   hw_uart_config_t config = {
       .events = HW_UART_EVENT_RX_HAS_DATA,

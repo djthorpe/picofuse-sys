@@ -1,3 +1,8 @@
+/**
+ * @file
+ * @brief WiFi join example.
+ */
+
 #include <picofuse/hw.h>
 #include <picofuse/sys.h>
 
@@ -9,6 +14,13 @@
 #error "WIFI_PASSWORD not defined"
 #endif
 
+/**
+ * @brief Report WiFi scan, join, and connection state transitions.
+ *
+ * The callback prints the current event and any discovered access-point
+ * details, which shows how the WiFi API surfaces status changes while a join
+ * request is in flight.
+ */
 void wifi_callback(hw_wifi_t *wifi, hw_wifi_event_t event,
                    const hw_wifi_network_t *network, void *user_data) {
   (void)user_data;
@@ -51,6 +63,13 @@ void wifi_callback(hw_wifi_t *wifi, hw_wifi_event_t event,
   }
 }
 
+/**
+ * @brief Join a WiFi network, wait for events, then disconnect cleanly.
+ *
+ * This example initializes the system and hardware layers, starts a WiFi
+ * client, issues a join request, polls long enough for the connection to
+ * progress, then disconnects and shuts everything down.
+ */
 int main(void) {
   sys_init();
   hw_init();

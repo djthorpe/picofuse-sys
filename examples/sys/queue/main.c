@@ -1,10 +1,21 @@
+/**
+ * @file
+ * @brief Queue example.
+ */
+
 #include <picofuse/sys.h>
 
 typedef struct {
-  sys_event_queue_t *queue;
-  sys_waitgroup_t *wg;
+  sys_event_queue_t *queue; /**< Queue shared by producer and consumer. */
+  sys_waitgroup_t *wg;      /**< Waitgroup used to join the worker. */
 } queue_example_ctx_t;
 
+/**
+ * @brief Consume events from the queue until shutdown is requested.
+ *
+ * The worker blocks on @c sys_event_queue_pop, prints each event ID, then
+ * shuts the queue down once enough events have been received.
+ */
 static void consumer_worker(void *arg) {
   queue_example_ctx_t *ctx = (queue_example_ctx_t *)arg;
   uint32_t consumed = 0;
@@ -27,6 +38,12 @@ static void consumer_worker(void *arg) {
   sys_assert(sys_waitgroup_done(ctx->wg));
 }
 
+/**
+ * @brief Launch the queue consumer on core 1 when available.
+ *
+ * This mirrors the multicore example and shows how the queue worker can be
+ * pinned to a specific core or created normally on single-core targets.
+ */
 static bool launch_consumer(queue_example_ctx_t *ctx) {
   if (sys_thread_numcores() > 1 &&
       sys_thread_create_on_core(consumer_worker, ctx, 1)) {
@@ -36,6 +53,12 @@ static bool launch_consumer(queue_example_ctx_t *ctx) {
   return sys_thread_create(consumer_worker, ctx);
 }
 
+/**
+ * @brief Push numbered events into a queue and let a worker consume them.
+ *
+ * The example shows queue creation, waitgroup coordination, event pushing,
+ * blocking consumption, and clean shutdown of the queue from the consumer.
+ */
 int main(void) {
   sys_init();
 

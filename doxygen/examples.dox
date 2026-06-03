@@ -1,0 +1,66 @@
+/**
+ * @page examples Examples
+ *
+ * @brief Example applications included with picofuse.
+ *
+ * These examples are small, focused programs that show how the main library
+ * pieces fit together. Hardware examples focus on peripheral setup and I/O,
+ * while system examples demonstrate scheduling, queues, timers, and
+ * multicore coordination.
+ *
+ * Each entry below links to a complete source file and adds a short summary of
+ * the API calls it is intended to illustrate.
+ *
+ * @section examples_hw Hardware Examples
+ *
+ * @subsection examples_hw_gpio GPIO output
+ * Uses @c hw_gpio_init to open a pin as an output, @c hw_gpio_set to drive it
+ * high, and @c sys_halt to stop the program once the LED is on.
+ *
+ * @example hw/gpio/main.c
+ *
+ * @subsection examples_hw_uart UART echo console
+ * Shows @c hw_gpio_init for UART pin muxing, @c hw_uart_init for the serial
+ * port, @c hw_uart_read and @c hw_uart_write for line editing, and
+ * @c hw_uart_flush to wait for the output buffer to empty.
+ *
+ * @example hw/uart/main.c
+ *
+ * @subsection examples_hw_wifi_join WiFi join
+ * Demonstrates @c sys_init and @c hw_init, then uses @c hw_wifi_init_client,
+ * @c hw_wifi_connect, @c hw_poll, and @c hw_wifi_disconnect to join a wireless
+ * network while reporting scan, join, connection, and disconnect events
+ * through a callback.
+ *
+ * @example hw/wifi-join/main.c
+ *
+ * @subsection examples_hw_wifi_scan WiFi scan
+ * Shows how to initialize the WiFi client, start a scan with @c hw_wifi_scan,
+ * and poll the hardware layer until the asynchronous results have been
+ * delivered.
+ *
+ * @example hw/wifi-scan/main.c
+ *
+ * @section examples_sys System Examples
+ *
+ * @subsection examples_sys_multicore Multicore worker
+ * Creates a waitgroup with @c sys_waitgroup_init, launches work on another
+ * core using @c sys_thread_create_on_core or @c sys_thread_create, and waits
+ * for both threads to complete.
+ *
+ * @example sys/multicore/main.c
+ *
+ * @subsection examples_sys_queue Event queue
+ * Uses @c sys_event_queue_init to create a queue, @c sys_event_queue_push and
+ * @c sys_event_queue_pop to pass events between producer and consumer, and
+ * @c sys_event_queue_shutdown to stop the worker cleanly.
+ *
+ * @example sys/queue/main.c
+ *
+ * @subsection examples_sys_runloop Runloop timer
+ * Demonstrates @c sys_runloop_run, @c sys_runloop_post, @c sys_timer_init,
+ * @c sys_timer_start, and @c sys_runloop_shutdown to drive an event loop from
+ * a periodic timer.
+ *
+ * @example sys/runloop/main.c
+ */

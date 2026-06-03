@@ -1,6 +1,17 @@
+/**
+ * @file
+ * @brief WiFi scan example.
+ */
+
 #include <picofuse/hw.h>
 #include <picofuse/sys.h>
 
+/**
+ * @brief Print WiFi scan results and connection state changes.
+ *
+ * The callback demonstrates how scan completion and join/connection events are
+ * reported, along with the access-point metadata supplied by the WiFi API.
+ */
 void wifi_callback(hw_wifi_t *wifi, hw_wifi_event_t event,
                    const hw_wifi_network_t *network, void *user_data) {
   if (event & hw_wifi_event_scan) {
@@ -39,6 +50,12 @@ void wifi_callback(hw_wifi_t *wifi, hw_wifi_event_t event,
   }
 }
 
+/**
+ * @brief Trigger a WiFi scan and keep polling until the scan period ends.
+ *
+ * This example initializes the WiFi client, starts a scan, and then polls the
+ * hardware layer so the asynchronous WiFi callbacks can report results.
+ */
 int main(void) {
   sys_init();
   hw_init();
