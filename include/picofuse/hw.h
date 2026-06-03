@@ -10,6 +10,7 @@
 #include "hw/gpio.h"
 #include "hw/i2c.h"
 #include "hw/uart.h"
+#include "hw/usb.h"
 #include "hw/wifi.h"
 
 /**

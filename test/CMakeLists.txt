@@ -145,3 +145,4 @@ picofuse_add_hw_test(hw_001
 picofuse_add_hw_test(hw_002
 	main.c
 )
+

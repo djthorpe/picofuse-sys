@@ -5,6 +5,7 @@ add_library(${NAME} OBJECT
     ../stub/adc.c
     ../stub/gpio.c
     ../stub/i2c.c
+    ../stub/usb.c
     ../stub/uart.c
     ../stub/wifi.c
 )
