@@ -13,10 +13,18 @@ struct hw_wifi_t {};
 // LIFECYCLE
 
 hw_wifi_t *hw_wifi_init_client(const char *country_code,
-                               hw_wifi_callback_t callback, void *userdata) {
+                               hw_wifi_callback_t callback, void *user_data) {
   (void)country_code;
   (void)callback;
-  (void)userdata;
+  (void)user_data;
+  return NULL; // No-op stub implementation for unsupported platforms.
+}
+
+hw_wifi_t *hw_wifi_init_device(const char *device, hw_wifi_callback_t callback,
+                               void *user_data) {
+  (void)device;
+  (void)callback;
+  (void)user_data;
   return NULL; // No-op stub implementation for unsupported platforms.
 }
 

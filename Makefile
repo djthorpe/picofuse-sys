@@ -20,7 +20,7 @@ configure: dep-cmake
 
 .PHONY: build
 build: configure
-	@${CMAKE} --build ${BUILD_DIR} --target all
+	@${CMAKE} --build ${BUILD_DIR} --target all -j 4
 
 .PHONY: test
 test: build
