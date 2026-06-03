@@ -5,6 +5,7 @@ add_library(${NAME} OBJECT
     gpio.c
     init.c
     i2c.c
+    spi.c
     usb.c
     uart.c
     wifi.c

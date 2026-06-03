@@ -35,6 +35,7 @@ add_library(${NAME} OBJECT
     ../stub/adc.c
     ../stub/gpio.c
     i2c.c
+    spi.c
     ../stub/usb.c
     ../stub/uart.c
     ${WIFI_SOURCE}
