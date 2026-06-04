@@ -527,9 +527,7 @@ void _hw_wifi_poll(void) {
   // Change state
   switch (state) {
   case CYW43_LINK_DOWN:
-#ifndef NDEBUG
-    sys_printf("CYW43_LINK_DOWN\n");
-#endif
+    sys_debugf("CYW43_LINK_DOWN");
     // Ends the connection, joining or scanning attempt
     _hw_wifi_set_busy(wifi,
                       hw_wifi_flag_joining | hw_wifi_flag_leaving |
@@ -540,24 +538,18 @@ void _hw_wifi_poll(void) {
     sys_memset(&wifi->network, 0, sizeof(wifi->network));
     break;
   case CYW43_LINK_JOIN:
-#ifndef NDEBUG
-    sys_printf("CYW43_LINK_JOIN\n");
-#endif
+    sys_debugf("CYW43_LINK_JOIN");
     // Starts a connection attempt
     _hw_wifi_set_busy(wifi, hw_wifi_flag_joining, true);
     wifi->callback(wifi, hw_wifi_event_joining, &wifi->network, wifi->userdata);
     break;
   case CYW43_LINK_NOIP:
     // Continues connection attempt
-#ifndef NDEBUG
-    sys_printf("CYW43_LINK_NOIP\n");
-#endif
+    sys_debugf("CYW43_LINK_NOIP");
     break;
   case CYW43_LINK_UP:
     // Ends the connection attempt successfully
-#ifndef NDEBUG
-    sys_printf("CYW43_LINK_UP\n");
-#endif
+    sys_debugf("CYW43_LINK_UP");
     if (_hw_wifi_get_busy(wifi, hw_wifi_flag_joining)) {
       _hw_wifi_set_busy(wifi, hw_wifi_flag_joining, false);
       wifi->state = -1;
@@ -577,9 +569,7 @@ void _hw_wifi_poll(void) {
     break;
   case CYW43_LINK_FAIL:
     // Ends the connection attempt unsuccessfully
-#ifndef NDEBUG
-    sys_printf("CYW43_LINK_FAIL\n");
-#endif
+    sys_debugf("CYW43_LINK_FAIL");
     _hw_wifi_set_busy(wifi, hw_wifi_flag_joining, false);
     wifi->state = -1;
     wifi->callback(wifi, hw_wifi_event_error, &wifi->network, wifi->userdata);
@@ -587,9 +577,7 @@ void _hw_wifi_poll(void) {
     break;
   case CYW43_LINK_NONET:
     // Ends the connection attempt unsuccessfully
-#ifndef NDEBUG
-    sys_printf("CYW43_LINK_NONET\n");
-#endif
+    sys_debugf("CYW43_LINK_NONET");
     _hw_wifi_set_busy(wifi, hw_wifi_flag_joining, false);
     wifi->state = -1;
     wifi->callback(wifi, hw_wifi_event_notfound, &wifi->network,
@@ -598,9 +586,7 @@ void _hw_wifi_poll(void) {
     break;
   case CYW43_LINK_BADAUTH:
     // Ends the connection attempt unsuccessfully
-#ifndef NDEBUG
-    sys_printf("CYW43_LINK_BADAUTH\n");
-#endif
+    sys_debugf("CYW43_LINK_BADAUTH");
     _hw_wifi_set_busy(wifi, hw_wifi_flag_joining, false);
     wifi->state = -1;
     wifi->callback(wifi, hw_wifi_event_badauth, &wifi->network, wifi->userdata);
@@ -608,9 +594,7 @@ void _hw_wifi_poll(void) {
     break;
   default:
     // Ends the connection, joining or scanning attempt
-#ifndef NDEBUG
-    sys_printf("CYW43_LINK_UNKNOWN\n");
-#endif
+    sys_debugf("CYW43_LINK_UNKNOWN");
     _hw_wifi_set_busy(wifi,
                       hw_wifi_flag_joining | hw_wifi_flag_leaving |
                           hw_wifi_flag_scanning,
