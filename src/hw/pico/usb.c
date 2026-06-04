@@ -149,8 +149,6 @@ static bool _hw_usb_build_device(uint8_t daddr, hw_usb_device_t *device) {
   device->device_class = desc.bDeviceClass;
   device->device_subclass = desc.bDeviceSubClass;
   device->device_protocol = desc.bDeviceProtocol;
-  device->bus = 0;
-  device->port = daddr;
 
   _hw_usb_fill_strings(daddr, device);
   return true;
@@ -254,10 +252,7 @@ void tuh_umount_cb(uint8_t daddr) {
   }
 
   // Fallback if the device was not cached.
-  hw_usb_device_t device = {
-      .bus = 0,
-      .port = daddr,
-  };
+  hw_usb_device_t device = {0};
   _hw_usb_active->callback(_hw_usb_active, hw_usb_event_detached, &device,
                            _hw_usb_active->userdata);
 }

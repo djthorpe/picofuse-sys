@@ -30,9 +30,9 @@ static void usb_callback(hw_usb_t *usb, hw_usb_event_t event,
     return;
   }
 
-  sys_printf("USB %s: bus=%u port=%u vid=%04x pid=%04x class=%02x/%02x/%02x\n",
-             action, device->bus, device->port, (unsigned int)device->vid,
-             (unsigned int)device->pid, (unsigned int)device->device_class,
+  sys_printf("USB %s: vid=%04x pid=%04x class=%02x/%02x/%02x\n", action,
+             (unsigned int)device->vid, (unsigned int)device->pid,
+             (unsigned int)device->device_class,
              (unsigned int)device->device_subclass,
              (unsigned int)device->device_protocol);
 

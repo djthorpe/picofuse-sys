@@ -86,8 +86,6 @@ static bool _hw_usb_make_device(libusb_device *dev, hw_usb_device_t *out) {
   out->device_class = dd.bDeviceClass;
   out->device_subclass = dd.bDeviceSubClass;
   out->device_protocol = dd.bDeviceProtocol;
-  out->bus = libusb_get_bus_number(dev);
-  out->port = libusb_get_port_number(dev);
 
   libusb_device_handle *handle = NULL;
   if (libusb_open(dev, &handle) == 0 && handle != NULL) {
