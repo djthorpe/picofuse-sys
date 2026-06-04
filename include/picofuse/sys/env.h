@@ -85,6 +85,14 @@ const char *sys_env_serial(void);
 const char *sys_env_name(void);
 
 /**
+ * @brief Return the system identifier for the current environment.
+ * @ingroup SystemEnv
+ * @return A system identifier string such as "linux", "darwin", or a Pico
+ * board name when running on Pico targets.
+ */
+const char *sys_env_system(void);
+
+/**
  * @brief Return the version of the current environment.
  * @ingroup SystemEnv
  * @return The version of the running program or environment.

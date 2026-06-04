@@ -33,7 +33,7 @@ if(PICOFUSE_USB)
     target_compile_definitions(${NAME} PRIVATE
         CFG_TUSB_CONFIG_FILE=\"host_tusb_config.h\"
     )
-    target_link_libraries(${NAME} PUBLIC
+    target_link_libraries(${NAME} PRIVATE
         tinyusb_host
         tinyusb_board
     )

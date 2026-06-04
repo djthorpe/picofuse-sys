@@ -75,6 +75,14 @@ const char *sys_env_serial(void) {
 
 const char *sys_env_name(void) { return get_program_name(); }
 
+const char *sys_env_system(void) {
+#ifdef PICO_BOARD
+  return PICO_BOARD;
+#else
+  return "pico";
+#endif
+}
+
 const char *sys_env_version(void) { return get_program_version(); }
 
 bool sys_env_signalhandler(sys_env_signal_t mask,
