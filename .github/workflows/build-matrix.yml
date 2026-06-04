@@ -1,0 +1,175 @@
+name: Build Matrix
+
+on:
+    pull_request:
+    push:
+        tags:
+            - "*.*.*"
+    release:
+        types: [published]
+
+jobs:
+    discover-pico-boards:
+        name: Discover Pico Boards
+        runs-on: ubuntu-latest
+        outputs:
+            boards: ${{ steps.discover.outputs.boards }}
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - name: Discover boards from include/boards
+              id: discover
+              shell: bash
+              run: |
+                  set -euo pipefail
+
+                  local_boards=$(find include/boards -maxdepth 1 -type f -name '*.h' -print \
+                    | sort \
+                    | sed -E 's|.*/||; s|\.h$||')
+
+                  explicit_boards=$(printf '%s\n' \
+                    pico \
+                    pico_w \
+                    pico2 \
+                    pico2_w \
+                    pimoroni_pico_plus2_rp2350 \
+                    pimoroni_pico_plus2_w_rp2350 \
+                    pimoroni_picolipo_16mb \
+                    pimoroni_picolipo_4mb \
+                    pimoroni_tiny2040 \
+                    pimoroni_tiny2040_2mb \
+                    pimoroni_tiny2350)
+
+                  boards_json=$(printf '%s\n%s\n' "$local_boards" "$explicit_boards" \
+                    | sed '/^$/d' \
+                    | sort -u \
+                    | jq -R -s -c 'split("\n") | map(select(length > 0))')
+
+                  echo "Detected boards: ${boards_json}"
+                  echo "boards=${boards_json}" >> "$GITHUB_OUTPUT"
+
+    build-linux:
+        name: Linux ${{ matrix.build_type }}
+        runs-on: ubuntu-latest
+        strategy:
+            fail-fast: false
+            matrix:
+                build_type: [Debug, Release]
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+                  submodules: recursive
+
+            - name: Install Linux dependencies
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y cmake make libssl-dev
+
+            - name: Build
+              run: |
+                  make build \
+                    BUILD_DIR=build-linux-${{ matrix.build_type }} \
+                    CMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+                    PICOFUSE_USB=OFF
+
+            - name: Install staging
+              run: |
+                  make install \
+                    BUILD_DIR=build-linux-${{ matrix.build_type }} \
+                    CMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+                    PICOFUSE_USB=OFF \
+                    PREFIX=out/linux-${{ matrix.build_type }}
+
+            - name: Upload artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: picofuse-linux-${{ matrix.build_type }}
+                  path: out/linux-${{ matrix.build_type }}
+
+    build-darwin:
+        name: Darwin ${{ matrix.build_type }}
+        runs-on: macos-latest
+        strategy:
+            fail-fast: false
+            matrix:
+                build_type: [Debug, Release]
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+                  submodules: recursive
+
+            - name: Install Darwin dependencies
+              run: |
+                  brew install openssl@3
+
+            - name: Build
+              run: |
+                  make build \
+                    BUILD_DIR=build-darwin-${{ matrix.build_type }} \
+                    CMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+                    PICOFUSE_USB=OFF
+
+            - name: Install staging
+              run: |
+                  make install \
+                    BUILD_DIR=build-darwin-${{ matrix.build_type }} \
+                    CMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+                    PICOFUSE_USB=OFF \
+                    PREFIX=out/darwin-${{ matrix.build_type }}
+
+            - name: Upload artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: picofuse-darwin-${{ matrix.build_type }}
+                  path: out/darwin-${{ matrix.build_type }}
+
+    build-pico:
+        name: Pico ${{ matrix.board }} ${{ matrix.build_type }}
+        runs-on: ubuntu-latest
+        needs: discover-pico-boards
+        strategy:
+            fail-fast: false
+            matrix:
+                board: ${{ fromJson(needs.discover-pico-boards.outputs.boards) }}
+                build_type: [Debug, Release]
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+                  submodules: recursive
+
+            - name: Install Pico toolchain
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y cmake make gcc-arm-none-eabi
+
+            - name: Build
+              run: |
+                  make build \
+                    BUILD_DIR=build-pico-${{ matrix.board }}-${{ matrix.build_type }} \
+                    CMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+                    PICO_BOARD=${{ matrix.board }} \
+                    PICOFUSE_USB=OFF
+
+            - name: Install staging
+              run: |
+                  make install \
+                    BUILD_DIR=build-pico-${{ matrix.board }}-${{ matrix.build_type }} \
+                    CMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+                    PICO_BOARD=${{ matrix.board }} \
+                    PICOFUSE_USB=OFF \
+                    PREFIX=out/pico-${{ matrix.board }}-${{ matrix.build_type }}
+
+            - name: Upload artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: picofuse-pico-${{ matrix.board }}-${{ matrix.build_type }}
+                  path: out/pico-${{ matrix.board }}-${{ matrix.build_type }}
