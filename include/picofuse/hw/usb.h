@@ -12,15 +12,12 @@
  * @ref hw_usb_event_attached event. Subsequently, the callback fires whenever
  * a device is physically attached or detached.
  *
- * The @ref hw_usb_device_t structure describes a connected device. The
- * @p bus and @p port fields together provide a backend-specific location
- * identifier that can usually be used to distinguish devices with identical
- * VID/PID and correlate a detach event with a prior attach event. Backends
- * that expose a stable topology provide physical-bus/port values; others may
- * use the best available location identifier for the platform. On detach, the
- * @p manufacturer, @p product and @p serial string fields may be empty, as
- * the device is no longer accessible; VID, PID, bus and port are populated
- * whenever the backend can determine them.
+ * The @ref hw_usb_device_t structure describes a connected device. It carries
+ * the USB vendor/product identifiers, the device class metadata, and the
+ * string descriptors that are available from the backend. On detach, the
+ * @p manufacturer, @p product and @p serial string fields may be empty, and
+ * some backends may only be able to provide zeroed identifier fields on a
+ * fallback detach path.
  *
  * Class-specific functionality (HID input, CDC-ACM serial streams, mass
  * storage) is handled by separate modules that consume the device information

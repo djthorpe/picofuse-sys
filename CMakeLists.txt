@@ -48,6 +48,11 @@ if(DEFINED PROGRAM_VERSION)
     add_compile_options("-DPROGRAM_VERSION=\"${PROGRAM_VERSION}\"")
 endif()
 
+if(DEFINED PICO_BOARD)
+    # Pico SDK host/stdio combinations can miss stdbool.h in disabled branches.
+    add_compile_options("-include" "stdbool.h")
+endif()
+
 # Add source code 
 add_subdirectory(src)
 

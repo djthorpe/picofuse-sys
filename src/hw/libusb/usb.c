@@ -3,6 +3,7 @@
 
 #include <libusb.h>
 #include <pthread.h>
+#include <stdatomic.h>
 #include <string.h>
 #include <time.h>
 
@@ -17,7 +18,8 @@ struct hw_usb_t {
   pthread_t thread;
   bool hotplug_registered;
   bool thread_started;
-  bool running;
+  atomic_bool running;
+  atomic_bool cleanup_in_thread;
   bool init;
 };
 
@@ -144,17 +146,36 @@ static bool _hw_usb_emit_attached_devices(hw_usb_t *usb) {
   libusb_free_device_list(list, 1);
 
   // Signal that initial enumeration is complete.
-  if (usb->callback != NULL) {
+  if (hw_usb_valid(usb) && usb->callback != NULL) {
     usb->callback(usb, hw_usb_event_attached, NULL, usb->userdata);
   }
 
   return true;
 }
 
+static void _hw_usb_cleanup(hw_usb_t *usb) {
+  if (usb == NULL) {
+    return;
+  }
+
+  if (usb->hotplug_registered && usb->context != NULL) {
+    libusb_hotplug_deregister_callback(usb->context, usb->hotplug_handle);
+  }
+
+  usb->hotplug_registered = false;
+
+  if (usb->context != NULL) {
+    libusb_exit(usb->context);
+  }
+
+  usb->context = NULL;
+}
+
 static void *_hw_usb_event_thread(void *arg) {
   hw_usb_t *usb = (hw_usb_t *)arg;
 
-  while (usb != NULL && usb->running) {
+  while (usb != NULL &&
+         atomic_load_explicit(&usb->running, memory_order_acquire)) {
     struct timeval timeout = {
         .tv_sec = 0,
         .tv_usec = 200000,
@@ -172,6 +193,15 @@ static void *_hw_usb_event_thread(void *arg) {
       };
       nanosleep(&ts, NULL);
     }
+  }
+
+  if (usb != NULL &&
+      atomic_load_explicit(&usb->cleanup_in_thread, memory_order_acquire)) {
+    _hw_usb_cleanup(usb);
+    usb->thread_started = false;
+    usb->init = false;
+    usb->callback = NULL;
+    usb->userdata = NULL;
   }
 
   return NULL;
@@ -210,12 +240,18 @@ hw_usb_t *hw_usb_init(hw_usb_callback_t callback, void *userdata) {
         &_hw_usb_instance, &_hw_usb_instance.hotplug_handle);
     if (rc == 0) {
       _hw_usb_instance.hotplug_registered = true;
-      _hw_usb_instance.running = true;
+      atomic_store_explicit(&_hw_usb_instance.cleanup_in_thread, false,
+                            memory_order_release);
+      atomic_store_explicit(&_hw_usb_instance.running, true,
+                            memory_order_release);
       if (pthread_create(&_hw_usb_instance.thread, NULL, _hw_usb_event_thread,
                          &_hw_usb_instance) == 0) {
         _hw_usb_instance.thread_started = true;
       } else {
-        _hw_usb_instance.running = false;
+        atomic_store_explicit(&_hw_usb_instance.running, false,
+                              memory_order_release);
+        atomic_store_explicit(&_hw_usb_instance.cleanup_in_thread, false,
+                              memory_order_release);
       }
     }
   }
@@ -228,25 +264,27 @@ void hw_usb_deinit(hw_usb_t *usb) {
     return;
   }
 
-  usb->running = false;
+  atomic_store_explicit(&usb->running, false, memory_order_release);
 
   if (usb->thread_started) {
     if (!pthread_equal(pthread_self(), usb->thread)) {
       pthread_join(usb->thread, NULL);
+      _hw_usb_cleanup(usb);
+      usb->thread_started = false;
+      usb->init = false;
+      usb->callback = NULL;
+      usb->userdata = NULL;
+      sys_memset(usb, 0, sizeof(*usb));
+      return;
     }
-    usb->thread_started = false;
+
+    atomic_store_explicit(&usb->cleanup_in_thread, true, memory_order_release);
+    usb->init = false;
+    return;
   }
 
-  if (usb->hotplug_registered && usb->context != NULL) {
-    libusb_hotplug_deregister_callback(usb->context, usb->hotplug_handle);
-  }
-
-  usb->hotplug_registered = false;
-
-  if (usb->context != NULL) {
-    libusb_exit(usb->context);
-  }
-
+  _hw_usb_cleanup(usb);
+  usb->thread_started = false;
   sys_memset(usb, 0, sizeof(*usb));
 }
 
