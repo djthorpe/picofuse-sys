@@ -15,11 +15,15 @@ endif()
 
 project(picofuse C CXX ASM)
 
+option(PICOFUSE_USB "Enable USB support across all platforms" ON)
+
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 
 if(DEFINED PICO_BOARD)
     pico_sdk_init()
 endif()
+
+message(STATUS "PICOFUSE_USB: ${PICOFUSE_USB}")
 
 # Lowercase and uppercase system name
 # SYSTEM_NAME_PICO // SYSTEM_NAME=pico
@@ -62,9 +66,11 @@ add_subdirectory(examples/sys/queue)
 add_subdirectory(examples/sys/runloop)
 add_subdirectory(examples/hw/gpio)
 add_subdirectory(examples/hw/uart)
+add_subdirectory(examples/hw/i2c-scan)
 add_subdirectory(examples/hw/usb-scan)
 add_subdirectory(examples/hw/wifi-scan)
 add_subdirectory(examples/hw/wifi-join)
+add_subdirectory(examples/dev/bme680)
 
 # Tests
 include(CTest)

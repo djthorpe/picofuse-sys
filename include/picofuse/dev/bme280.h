@@ -129,6 +129,14 @@ void dev_bme280_deinit(dev_bme280_t *bme280);
  */
 bool dev_bme280_valid(const dev_bme280_t *bme280);
 
+/**
+ * @brief Get the detected chip ID.
+ * @ingroup BME280
+ * @param bme280 BME280 handle.
+ * @return Chip ID, or 0 when handle is invalid.
+ */
+uint8_t dev_bme280_chip_id(const dev_bme280_t *bme280);
+
 /** @} */
 
 ///////////////////////////////////////////////////////////////////////////////

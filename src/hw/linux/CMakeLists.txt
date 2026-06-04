@@ -37,11 +37,15 @@ else()
     message(STATUS "wpa_ctrl not found: using Linux Wi-Fi stub backend")
 endif()
 
-if (HAVE_LIBUSB)
+if (PICOFUSE_USB AND HAVE_LIBUSB)
     message(STATUS "Found libusb-1.0: enabling Linux USB backend")
     set(USB_SOURCE ../libusb/usb.c)
 else()
-    message(STATUS "libusb-1.0 not found: using Linux USB stub backend")
+    if (PICOFUSE_USB)
+        message(STATUS "libusb-1.0 not found: using Linux USB stub backend")
+    else()
+        message(STATUS "PICOFUSE_USB is OFF: using Linux USB stub backend")
+    endif()
 endif()
 
 add_library(${NAME} OBJECT
@@ -77,7 +81,7 @@ if (HAVE_WPA_CTRL)
     endif()
 endif()
 
-if (HAVE_LIBUSB)
+if (PICOFUSE_USB AND HAVE_LIBUSB)
     find_package(Threads QUIET)
 
     target_include_directories(${NAME} PRIVATE

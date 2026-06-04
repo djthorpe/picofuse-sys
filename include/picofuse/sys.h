@@ -11,6 +11,7 @@
 #include "sys/atomic.h"
 #include "sys/cond.h"
 #include "sys/date.h"
+#include "sys/debugf.h"
 #include "sys/env.h"
 #include "sys/event.h"
 #include "sys/halt.h"

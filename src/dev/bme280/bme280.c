@@ -453,6 +453,14 @@ bool dev_bme280_valid(const dev_bme280_t *bme280) {
   return false;
 }
 
+uint8_t dev_bme280_chip_id(const dev_bme280_t *bme280) {
+  if (!dev_bme280_valid(bme280)) {
+    return 0u;
+  }
+
+  return bme280->chip_id;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // METHODS
 

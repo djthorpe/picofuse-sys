@@ -8,6 +8,8 @@ CMAKE ?= $(shell which cmake 2>/dev/null)
 DOCKER ?= $(shell which docker 2>/dev/null)
 GIT ?= $(shell which git 2>/dev/null)
 
+# Set make configure PICOFUSE_USB=ON to enable hw_usb support 
+PICOFUSE_USB ?= OFF
 
 ###############################################################################
 # CONFIGURE AND BUILD
@@ -16,7 +18,8 @@ GIT ?= $(shell which git 2>/dev/null)
 configure: dep-cmake
 	@${CMAKE} -B ${BUILD_DIR} \
 		-D CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} \
-		$(if ${PICO_BOARD},-D PICO_BOARD=${PICO_BOARD})
+		$(if ${PICO_BOARD},-D PICO_BOARD=${PICO_BOARD}) \
+		-D PICOFUSE_USB=${PICOFUSE_USB}
 
 .PHONY: build
 build: configure

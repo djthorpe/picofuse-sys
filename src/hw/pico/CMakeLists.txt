@@ -1,12 +1,17 @@
 set(NAME "picofuse-hw-obj")
 
+set(PICOFUSE_PICO_USB_SOURCE ../stub/usb.c)
+if(PICOFUSE_USB)
+    set(PICOFUSE_PICO_USB_SOURCE usb.c)
+endif()
+
 add_library(${NAME} OBJECT
     adc.c
     gpio.c
     init.c
     i2c.c
     spi.c
-    usb.c
+    ${PICOFUSE_PICO_USB_SOURCE}
     uart.c
     wifi.c
 )
@@ -22,9 +27,17 @@ target_link_libraries(${NAME} PUBLIC
     hardware_uart
     hardware_spi
     hardware_adc
-    tinyusb_host
-    tinyusb_board
 )
+
+if(PICOFUSE_USB)
+    target_compile_definitions(${NAME} PRIVATE
+        CFG_TUSB_CONFIG_FILE=\"host_tusb_config.h\"
+    )
+    target_link_libraries(${NAME} PUBLIC
+        tinyusb_host
+        tinyusb_board
+    )
+endif()
 
 # Check if we're building for a board with CYW43 support
 if (PICO_CYW43_SUPPORTED)

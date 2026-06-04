@@ -1,6 +1,7 @@
 set(NAME "picofuse-dev-obj")
 
 add_library(${NAME} OBJECT
+    bme680/bme680.c
     bme280/bme280.c
 )
 

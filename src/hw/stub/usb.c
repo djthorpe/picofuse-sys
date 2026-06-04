@@ -20,3 +20,5 @@ bool hw_usb_valid(const hw_usb_t *usb) {
   (void)usb;
   return false;
 }
+
+void _hw_usb_poll(void) {}
