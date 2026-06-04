@@ -18,10 +18,9 @@ static bool check_random_u32(void) {
     bit_and &= value;
   }
 
-  TestAssert(
-      saw_difference,
-      "sys_random_uint32 returned the same value across all samples: %" PRIu32,
-      first);
+  TestAssert(saw_difference,
+             "sys_random_uint32 returned the same value across all samples: %u",
+             (unsigned int)first);
   TestAssert(bit_or != 0u,
              "sys_random_uint32 produced only zero bits in sample window");
   TestAssert(bit_and != UINT32_MAX,
@@ -51,8 +50,8 @@ static bool check_random_u64(void) {
 
   TestAssert(
       saw_difference,
-      "sys_random_uint64 returned the same value across all samples: %" PRIu64,
-      first);
+      "sys_random_uint64 returned the same value across all samples: %llu",
+      (unsigned long long)first);
   TestAssert(saw_upper_bits,
              "sys_random_uint64 never produced a value with upper 32 bits set");
   TestAssert(bit_or != 0u,

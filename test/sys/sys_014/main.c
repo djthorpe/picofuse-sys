@@ -90,8 +90,8 @@ bool test_main(void) {
 
   TestAssert(wait_elapsed >= 10,
              "sys_waitgroup_wait should block until worker completion, only "
-             "waited %" PRIu64 " ms",
-             wait_elapsed);
+             "waited %llu ms",
+             (unsigned long long)wait_elapsed);
   TestAssert(wait_for_atomic_value(&ctx.completed, 1, 1000),
              "Timed out waiting for waitgroup worker to complete");
   TestAssert(sys_atomic_get(&ctx.worker_ok) == 1,
