@@ -15,6 +15,7 @@ PROGRAM_VERSION ?= $(shell \
 		${GIT} describe --tags --exact-match 2>/dev/null || \
 		${GIT} rev-parse --short HEAD 2>/dev/null; \
 	fi)
+VERSION_NUMBER := $(if $(strip ${PROGRAM_VERSION}),${PROGRAM_VERSION},0.0.0)
 
 ###############################################################################
 # CONFIGURE AND BUILD
@@ -38,6 +39,10 @@ install: build
 .PHONY: test
 test: build
 	@${CMAKE} --build ${BUILD_DIR} --target test
+
+.PHONY: version
+version:
+	@echo ${VERSION_NUMBER}
 
 ###############################################################################
 # DOCUMENTATION
