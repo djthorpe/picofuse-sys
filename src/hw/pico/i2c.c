@@ -182,8 +182,8 @@ bool hw_i2c_detect(hw_i2c_t *i2c, uint8_t addr) {
     return false;
   }
 
-  uint8_t dummy = 0;
-  return _hw_i2c_write(i2c->instance, addr & 0x7Fu, &dummy, 0, false, 100) >= 0;
+  uint8_t probe = 0;
+  return _hw_i2c_read(i2c->instance, addr & 0x7Fu, &probe, 1, false, 100) == 1;
 }
 
 size_t hw_i2c_xfr(hw_i2c_t *i2c, uint8_t addr, void *data, size_t tx, size_t rx,

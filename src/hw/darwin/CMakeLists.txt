@@ -12,11 +12,15 @@ if (LIBUSB_FOUND)
     set(HAVE_LIBUSB ON)
 endif()
 
-if (HAVE_LIBUSB)
+if (PICOFUSE_USB AND HAVE_LIBUSB)
     message(STATUS "Found libusb-1.0: enabling Darwin USB backend")
     set(USB_SOURCE ../libusb/usb.c)
 else()
-    message(STATUS "libusb-1.0 not found: using Darwin USB stub backend")
+    if (PICOFUSE_USB)
+        message(STATUS "libusb-1.0 not found: using Darwin USB stub backend")
+    else()
+        message(STATUS "PICOFUSE_USB is OFF: using Darwin USB stub backend")
+    endif()
 endif()
 
 add_library(${NAME} OBJECT
@@ -33,7 +37,7 @@ target_include_directories(${NAME} PUBLIC
     ${PROJECT_SOURCE_DIR}/include
 )
 
-if (HAVE_LIBUSB)
+if (PICOFUSE_USB AND HAVE_LIBUSB)
     find_package(Threads QUIET)
 
     target_include_directories(${NAME} PRIVATE
