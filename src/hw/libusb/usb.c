@@ -211,7 +211,7 @@ static void *_hw_usb_event_thread(void *arg) {
 // LIFECYCLE
 
 hw_usb_t *hw_usb_init(hw_usb_callback_t callback, void *userdata) {
-  sys_debugf("usb_init: callback=%p userdata=%p", callback, userdata);
+  sys_debugf("usb_init: callback=%p userdata=%p", (void *)callback, userdata);
   hw_usb_deinit(&_hw_usb_instance);
 
   if (callback == NULL) {

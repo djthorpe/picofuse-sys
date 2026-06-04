@@ -55,7 +55,7 @@ hw_uart_t *hw_uart_init(const hw_gpio_t *rx_pin, const hw_gpio_t *tx_pin,
                         uint32_t baud_rate, hw_uart_callback_t callback,
                         void *userdata, const hw_uart_config_t *config) {
   sys_debugf("uart_init: rx=%p tx=%p baud=%u callback=%p userdata=%p config=%p",
-             rx_pin, tx_pin, baud_rate, callback, userdata, config);
+             rx_pin, tx_pin, baud_rate, (void *)callback, userdata, config);
   hw_uart_config_t settings =
       config != NULL ? *config : _hw_uart_default_config();
 

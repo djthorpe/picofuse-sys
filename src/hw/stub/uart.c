@@ -17,7 +17,7 @@ hw_uart_t *hw_uart_init(const hw_gpio_t *rx_pin, const hw_gpio_t *tx_pin,
                         void *userdata, const hw_uart_config_t *config) {
   sys_debugf("uart_init: rx=%p tx=%p baud=%u callback=%p userdata=%p config=%p "
              "unsupported on this platform",
-             rx_pin, tx_pin, baud_rate, callback, userdata, config);
+             rx_pin, tx_pin, baud_rate, (void *)callback, userdata, config);
   (void)rx_pin;
   (void)tx_pin;
   (void)baud_rate;

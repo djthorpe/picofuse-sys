@@ -100,7 +100,7 @@ static int _hw_wifi_scan_callback(void *env,
 hw_wifi_t *hw_wifi_init_client(const char *country_code,
                                hw_wifi_callback_t callback, void *userdata) {
   sys_debugf("wifi_init_client: country_code=%s callback=%p userdata=%p",
-             country_code != NULL ? country_code : "(null)", callback,
+             country_code != NULL ? country_code : "(null)", (void *)callback,
              userdata);
 #ifdef PICO_CYW43_SUPPORTED
   // Deinitialize if already initialized
@@ -138,7 +138,7 @@ hw_wifi_t *hw_wifi_init_client(const char *country_code,
 hw_wifi_t *hw_wifi_init_device(const char *device, hw_wifi_callback_t callback,
                                void *user_data) {
   sys_debugf("wifi_init_device: device=%s callback=%p userdata=%p",
-             device != NULL ? device : "(null)", callback, user_data);
+             device != NULL ? device : "(null)", (void *)callback, user_data);
   (void)device;
   (void)callback;
   (void)user_data;

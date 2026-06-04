@@ -11,7 +11,7 @@ struct hw_usb_t {};
 
 hw_usb_t *hw_usb_init(hw_usb_callback_t callback, void *userdata) {
   sys_debugf("usb_init: callback=%p userdata=%p unsupported on this platform",
-             callback, userdata);
+             (void *)callback, userdata);
   (void)callback;
   (void)userdata;
   return NULL;

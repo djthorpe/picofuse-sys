@@ -17,7 +17,8 @@ hw_wifi_t *hw_wifi_init_client(const char *country_code,
   sys_debugf(
       "wifi_init_client: country_code=%s callback=%p userdata=%p unsupported "
       "on this platform",
-      country_code != NULL ? country_code : "(null)", callback, user_data);
+      country_code != NULL ? country_code : "(null)", (void *)callback,
+      user_data);
   (void)country_code;
   (void)callback;
   (void)user_data;
@@ -28,7 +29,7 @@ hw_wifi_t *hw_wifi_init_device(const char *device, hw_wifi_callback_t callback,
                                void *user_data) {
   sys_debugf("wifi_init_device: device=%s callback=%p userdata=%p unsupported "
              "on this platform",
-             device != NULL ? device : "(null)", callback, user_data);
+             device != NULL ? device : "(null)", (void *)callback, user_data);
   (void)device;
   (void)callback;
   (void)user_data;
