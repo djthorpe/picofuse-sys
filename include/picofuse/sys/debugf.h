@@ -21,7 +21,7 @@ static inline void _sys_debugf_impl(const char *format, ...) {
   va_start(args, format);
   (void)sys_vprintf(format, args);
   va_end(args);
-  sys_printf("\\n");
+  sys_printf("\n");
 }
 
 #define sys_debugf(...) _sys_debugf_impl(__VA_ARGS__)

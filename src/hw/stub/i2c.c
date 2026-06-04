@@ -1,4 +1,5 @@
 #include <picofuse/hw.h>
+#include <picofuse/sys.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 // TYPES
@@ -9,12 +10,16 @@ struct hw_i2c_t {};
 // LIFECYCLE
 
 hw_i2c_t *hw_i2c_init_default(uint32_t baud_rate) {
+  sys_debugf("i2c_init_default: unsupported on this platform (baud=%u)",
+             baud_rate);
   (void)baud_rate;
   return NULL;
 }
 
 hw_i2c_t *hw_i2c_init(uint8_t index, hw_gpio_t *sda_pin, hw_gpio_t *scl_pin,
                       uint32_t baud_rate) {
+  sys_debugf("i2c_init: unsupported on this platform (index=%u baud=%u)", index,
+             baud_rate);
   (void)index;
   (void)sda_pin;
   (void)scl_pin;
@@ -23,12 +28,18 @@ hw_i2c_t *hw_i2c_init(uint8_t index, hw_gpio_t *sda_pin, hw_gpio_t *scl_pin,
 }
 
 hw_i2c_t *hw_i2c_init_device(const char *device, uint32_t baud_rate) {
+  sys_debugf(
+      "i2c_init_device: unsupported on this platform (device=%s baud=%u)",
+      device != NULL ? device : "(null)", baud_rate);
   (void)device;
   (void)baud_rate;
   return NULL;
 }
 
-void hw_i2c_deinit(hw_i2c_t *i2c) { (void)i2c; }
+void hw_i2c_deinit(hw_i2c_t *i2c) {
+  sys_debugf("i2c_deinit: i2c=%p unsupported on this platform", i2c);
+  (void)i2c;
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 // PROPERTIES
