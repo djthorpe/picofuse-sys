@@ -58,7 +58,7 @@ The following dependencies should be installed, assuming you're using macOS (wit
 | Mosquitto (optional, for MQTT support) | `brew install mosquitto` | `sudo apt install libmosquitto-dev` |
 | USB (optional, for USB support) | `brew install libusb pkgconf` | `sudo apt install libusb-1.0-0-dev pkg-config` |
 
-## Build
+## Build and Install
 
 For Pico targets, install the ARM embedded GCC toolchain first. On macOS with
 Homebrew:
@@ -68,28 +68,16 @@ brew install --cask gcc-arm-embedded
 ```
 
 If the toolchain is not on your `PATH`, pass its `bin` directory with
-`-DPICO_TOOLCHAIN_PATH=/path/to/toolchain/bin` when configuring.
+`PICO_TOOLCHAIN_PATH=/path/to/toolchain/bin` in the make command.
 
-Configure the project into a dedicated `build` directory:
+Build and install on Linux or Darwin with Make:
 
 ```sh
-cmake -S . -B build -DPICO_BOARD=<board>
+PREFIX=/opt/picofuse make install
 ```
 
-Build from that directory with:
+For Pico targets, include `PICO_BOARD`:
 
 ```sh
-cmake --build build
-```
-
-## Clean
-
-```sh
-cmake --build build --target clean
-```
-
-To fully reset the build tree:
-
-```sh
-rm -rf build
+PREFIX=/opt/picofuse PICO_BOARD=<board> make install
 ```

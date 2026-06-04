@@ -1,6 +1,6 @@
 # Installation prefix and build directory
 BUILD_DIR ?= build
-PREFIX ?= /opt/picofuse
+PREFIX ?= $(BUILD_DIR)
 CMAKE_BUILD_TYPE ?= Release
 
 # Tools
@@ -10,6 +10,11 @@ GIT ?= $(shell which git 2>/dev/null)
 
 # Set make configure PICOFUSE_USB=ON to enable hw_usb support 
 PICOFUSE_USB ?= OFF
+PROGRAM_VERSION ?= $(shell \
+	if test -x "${GIT}"; then \
+		${GIT} describe --tags --exact-match 2>/dev/null || \
+		${GIT} rev-parse --short HEAD 2>/dev/null; \
+	fi)
 
 ###############################################################################
 # CONFIGURE AND BUILD
@@ -18,12 +23,17 @@ PICOFUSE_USB ?= OFF
 configure: dep-cmake
 	@${CMAKE} -B ${BUILD_DIR} \
 		-D CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} \
+		$(if ${PROGRAM_VERSION},-D PROGRAM_VERSION=${PROGRAM_VERSION}) \
 		$(if ${PICO_BOARD},-D PICO_BOARD=${PICO_BOARD}) \
 		-D PICOFUSE_USB=${PICOFUSE_USB}
 
 .PHONY: build
 build: configure
 	@${CMAKE} --build ${BUILD_DIR} --target all -j 4
+
+.PHONY: install
+install: build
+	@${CMAKE} --install ${BUILD_DIR} --prefix ${PREFIX}
 
 .PHONY: test
 test: build

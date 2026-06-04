@@ -1,0 +1,10 @@
+prefix=${pcfiledir}/../..
+exec_prefix=${prefix}
+libdir=${exec_prefix}/@CMAKE_INSTALL_LIBDIR@
+includedir=${prefix}/@CMAKE_INSTALL_INCLUDEDIR@
+
+Name: picofuse-sys
+Description: Picofuse hardware/system/device abstraction library
+Version: @PICOFUSE_PC_VERSION@
+Libs: -L${libdir} -l@PICOFUSE_PC_LIB_NAME@
+Cflags: -I${includedir}
