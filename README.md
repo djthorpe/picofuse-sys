@@ -56,6 +56,7 @@ The following dependencies should be installed, assuming you're using macOS (wit
 | OpenSSL (required) | `brew install openssl@3` | `sudo apt install libssl-dev` |
 | WPA Supplicant (optional, for WiFi support) | N/A | `sudo apt install libwpa-client-dev` |
 | Mosquitto (optional, for MQTT support) | `brew install mosquitto` | `sudo apt install libmosquitto-dev` |
+| USB (optional, for USB support) | `brew install libusb pkgconf` | `sudo apt install libusb-1.0-0-dev pkg-config` |
 
 ## Build
 

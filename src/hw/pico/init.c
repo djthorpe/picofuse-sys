@@ -9,6 +9,7 @@
 // FORWARD DECLARATIONS
 
 void _hw_wifi_poll(void);
+void _hw_usb_poll(void);
 
 ///////////////////////////////////////////////////////////////////////////////
 // LIFECYCLE
@@ -39,6 +40,8 @@ void hw_exit(void) {
  * @brief Occasional polling function for the hardware system.
  */
 void hw_poll(void) {
+  _hw_usb_poll();
+
 #if PICO_CYW43_SUPPORTED
   cyw43_arch_poll();
   _hw_wifi_poll();

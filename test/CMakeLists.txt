@@ -150,3 +150,8 @@ picofuse_add_hw_test(hw_002
 picofuse_add_hw_test(hw_003
 	main.c
 )
+
+# Check USB API lifecycle behavior on supported and stub backends.
+picofuse_add_hw_test(hw_004
+	main.c
+)
