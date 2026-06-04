@@ -30,7 +30,6 @@
 #define BME280_SPI_WRITE_MASK 0x7Fu
 
 #define BME280_MEASUREMENT_TIMEOUT_MS 100u
-#define BME280_DEFAULT_SEA_LEVEL_PRESSURE 101325.0f
 
 ///////////////////////////////////////////////////////////////////////////////
 // TYPES
@@ -79,20 +78,20 @@ struct dev_bme280_t {
 
 static dev_bme280_config_t _dev_bme280_default_config(void) {
   dev_bme280_config_t config = {0};
-  config.temperature_oversampling = DRIVER_BME280_OVERSAMPLING_1X;
-  config.pressure_oversampling = DRIVER_BME280_OVERSAMPLING_1X;
-  config.humidity_oversampling = DRIVER_BME280_OVERSAMPLING_1X;
-  config.filter = DRIVER_BME280_FILTER_OFF;
+  config.temperature_oversampling = DEV_BME280_OVERSAMPLING_1X;
+  config.pressure_oversampling = DEV_BME280_OVERSAMPLING_1X;
+  config.humidity_oversampling = DEV_BME280_OVERSAMPLING_1X;
+  config.filter = DEV_BME280_FILTER_OFF;
   config.temperature_offset_c = 0.0f;
   return config;
 }
 
-static bool _dev_bme280_valid_oversampling(driver_bme280_oversampling_t value) {
-  return value <= DRIVER_BME280_OVERSAMPLING_16X;
+static bool _dev_bme280_valid_oversampling(dev_bme280_oversampling_t value) {
+  return value <= DEV_BME280_OVERSAMPLING_16X;
 }
 
-static bool _dev_bme280_valid_filter(driver_bme280_filter_t value) {
-  return value <= DRIVER_BME280_FILTER_16;
+static bool _dev_bme280_valid_filter(dev_bme280_filter_t value) {
+  return value <= DEV_BME280_FILTER_16;
 }
 
 static dev_bme280_config_t
@@ -319,26 +318,6 @@ static bool _dev_bme280_configure(dev_bme280_t *bme280,
   return _dev_bme280_write_register(bme280, BME280_REG_CTRL_MEAS, ctrl_meas);
 }
 
-static float _dev_bme280_pow_1_5255(float x) {
-  float ln_x = x - 1.0f;
-  float ln_x2 = ln_x * ln_x;
-  ln_x = ln_x - ln_x2 * 0.5f + ln_x2 * ln_x * 0.333333f;
-
-  float exp_arg = ln_x * 0.1903f;
-  float exp_arg2 = exp_arg * exp_arg;
-  return 1.0f + exp_arg + exp_arg2 * 0.5f + exp_arg2 * exp_arg * 0.166667f;
-}
-
-static float _dev_bme280_pow_5255(float x) {
-  float ln_x = x - 1.0f;
-  float ln_x2 = ln_x * ln_x;
-  ln_x = ln_x - ln_x2 * 0.5f + ln_x2 * ln_x * 0.333333f;
-
-  float exp_arg = ln_x * 5.255f;
-  float exp_arg2 = exp_arg * exp_arg;
-  return 1.0f + exp_arg + exp_arg2 * 0.5f + exp_arg2 * exp_arg * 0.166667f;
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 // LIFECYCLE
 
@@ -355,6 +334,7 @@ dev_bme280_t *dev_bme280_init_i2c(hw_i2c_t *i2c,
 
   bme280->bus = DEV_BME280_BUS_I2C;
   bme280->i2c = i2c;
+  bme280->init = true;
 
   uint8_t chip_id = 0u;
   bme280->i2c_addr = BME280_I2C_ADDR_PRIMARY;
@@ -374,7 +354,6 @@ dev_bme280_t *dev_bme280_init_i2c(hw_i2c_t *i2c,
   }
 
   bme280->chip_id = chip_id;
-  bme280->init = true;
 
   if (!_dev_bme280_configure(bme280, config)) {
     dev_bme280_deinit(bme280);
@@ -423,11 +402,14 @@ dev_bme280_t *dev_bme280_init_spi(hw_spi_t *spi, hw_gpio_t *cs_pin,
 }
 
 void dev_bme280_deinit(dev_bme280_t *bme280) {
-  if (!dev_bme280_valid(bme280)) {
+  if (bme280 == NULL) {
     return;
   }
 
-  (void)_dev_bme280_write_register(bme280, BME280_REG_CTRL_MEAS, 0x00u);
+  if (dev_bme280_valid(bme280)) {
+    (void)_dev_bme280_write_register(bme280, BME280_REG_CTRL_MEAS, 0x00u);
+  }
+
   sys_memset(bme280, 0, sizeof(*bme280));
   sys_free(bme280);
 }
@@ -513,24 +495,4 @@ bool dev_bme280_read_data(dev_bme280_t *bme280, dev_bme280_data_t *data) {
   }
 
   return true;
-}
-
-float dev_bme280_calculate_altitude(const dev_bme280_data_t *data,
-                                    float sea_level_pressure) {
-  sys_assert(data != NULL);
-
-  if (sea_level_pressure == 0.0f) {
-    sea_level_pressure = BME280_DEFAULT_SEA_LEVEL_PRESSURE;
-  }
-
-  float ratio = data->pressure_pa / sea_level_pressure;
-  return 44330.0f * (1.0f - _dev_bme280_pow_1_5255(ratio));
-}
-
-float dev_bme280_calculate_sea_level_pressure(const dev_bme280_data_t *data,
-                                              float altitude) {
-  sys_assert(data != NULL);
-
-  float ratio = 1.0f - (altitude / 44330.0f);
-  return data->pressure_pa / _dev_bme280_pow_5255(ratio);
 }
