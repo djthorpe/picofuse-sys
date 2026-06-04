@@ -5,6 +5,7 @@
 #ifdef PICO_CYW43_SUPPORTED
 #include "cyw43.h"
 #include "cyw43_country.h"
+#include <pico/cyw43_arch.h>
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -45,12 +46,20 @@ static uint32_t _hw_wifi_status_interval_ms = (1000 * 60);
 // FORWARD DECLARATIONS
 
 #ifdef PICO_CYW43_SUPPORTED
+static inline int _hw_wifi_link_status(void) {
+  int status;
+  cyw43_arch_lwip_begin();
+  status = cyw43_tcpip_link_status(&cyw43_state, CYW43_ITF_STA);
+  cyw43_arch_lwip_end();
+  return status;
+}
+
 /**
  * @brief Return true if the link is up
  */
 static inline bool _hw_wifi_up(hw_wifi_t *wifi) {
   (void)wifi;
-  return cyw43_tcpip_link_status(&cyw43_state, CYW43_ITF_STA) == CYW43_LINK_UP;
+  return _hw_wifi_link_status() == CYW43_LINK_UP;
 }
 
 /**
@@ -90,6 +99,9 @@ static int _hw_wifi_scan_callback(void *env,
 
 hw_wifi_t *hw_wifi_init_client(const char *country_code,
                                hw_wifi_callback_t callback, void *userdata) {
+  sys_debugf("wifi_init_client: country_code=%s callback=%p userdata=%p",
+             country_code != NULL ? country_code : "(null)", callback,
+             userdata);
 #ifdef PICO_CYW43_SUPPORTED
   // Deinitialize if already initialized
   hw_wifi_deinit(&_hw_wifi_instance);
@@ -125,6 +137,8 @@ hw_wifi_t *hw_wifi_init_client(const char *country_code,
 /** @brief Stub function in Pico SDK */
 hw_wifi_t *hw_wifi_init_device(const char *device, hw_wifi_callback_t callback,
                                void *user_data) {
+  sys_debugf("wifi_init_device: device=%s callback=%p userdata=%p",
+             device != NULL ? device : "(null)", callback, user_data);
   (void)device;
   (void)callback;
   (void)user_data;
@@ -136,6 +150,7 @@ bool hw_wifi_valid(hw_wifi_t *wifi) {
 }
 
 void hw_wifi_deinit(hw_wifi_t *wifi) {
+  sys_debugf("wifi_deinit: wifi=%p", wifi);
   if (!hw_wifi_valid(wifi)) {
     return;
   }
@@ -143,9 +158,11 @@ void hw_wifi_deinit(hw_wifi_t *wifi) {
 #ifdef PICO_CYW43_SUPPORTED
   if (cyw43_is_initialized(&cyw43_state)) {
     // Stop any in-flight connect/scan activity and disconnect from STA.
+    cyw43_arch_lwip_begin();
     cyw43_wifi_leave(&cyw43_state, CYW43_ITF_STA);
     cyw43_wifi_set_up(&cyw43_state, CYW43_ITF_STA, false,
                       _hw_wifi_country_code(wifi->country_code));
+    cyw43_arch_lwip_end();
   }
 
   _hw_wifi_set_busy(
@@ -180,15 +197,21 @@ bool hw_wifi_scan(hw_wifi_t *wifi) {
 
   if (_hw_wifi_up(wifi) == false) {
     // Bring Wi‑Fi up in STA (client)mode
+    cyw43_arch_lwip_begin();
     cyw43_wifi_set_up(&cyw43_state, CYW43_ITF_STA, true,
                       _hw_wifi_country_code(wifi->country_code));
+    cyw43_arch_lwip_end();
   }
 
   // TODO: set power management cyw43_wifi_pm
 
   // Pass the wifi handle as the callback environment
   cyw43_wifi_scan_options_t opts = {0};
-  if (cyw43_wifi_scan(&cyw43_state, &opts, wifi, _hw_wifi_scan_callback) == 0) {
+  cyw43_arch_lwip_begin();
+  int scan_result =
+      cyw43_wifi_scan(&cyw43_state, &opts, wifi, _hw_wifi_scan_callback);
+  cyw43_arch_lwip_end();
+  if (scan_result == 0) {
     _hw_wifi_set_busy(wifi, hw_wifi_flag_scanning, true);
     wifi->state = -1;
     success = true;
@@ -245,8 +268,10 @@ bool hw_wifi_connect(hw_wifi_t *wifi, const hw_wifi_network_t *network,
   }
 
   if (_hw_wifi_up(wifi) == false) {
+    cyw43_arch_lwip_begin();
     cyw43_wifi_set_up(&cyw43_state, CYW43_ITF_STA, true,
                       _hw_wifi_country_code(wifi->country_code));
+    cyw43_arch_lwip_end();
   }
 
   // Reset prior connection state and store the requested network.
@@ -255,9 +280,13 @@ bool hw_wifi_connect(hw_wifi_t *wifi, const hw_wifi_network_t *network,
   wifi->state = -1;
   wifi->ts = 0;
 
-  if (cyw43_wifi_join(&cyw43_state, ssid_len,
-                      (const uint8_t *)wifi->network.ssid, key_len,
-                      (const uint8_t *)key, auth, NULL, 0) == 0) {
+  cyw43_arch_lwip_begin();
+  int join_result = cyw43_wifi_join(
+      &cyw43_state, ssid_len, (const uint8_t *)wifi->network.ssid, key_len,
+      (const uint8_t *)key, auth, NULL, 0);
+  cyw43_arch_lwip_end();
+
+  if (join_result == 0) {
     _hw_wifi_set_busy(wifi, hw_wifi_flag_joining, true);
     success = true;
   } else {
@@ -284,7 +313,9 @@ bool hw_wifi_disconnect(hw_wifi_t *wifi) {
 
   // If scanning or joining is in progress, abort and report not connected.
   if (_hw_wifi_get_busy(wifi, hw_wifi_flag_scanning | hw_wifi_flag_joining)) {
+    cyw43_arch_lwip_begin();
     cyw43_wifi_leave(&cyw43_state, CYW43_ITF_STA);
+    cyw43_arch_lwip_end();
     _hw_wifi_set_busy(wifi, hw_wifi_flag_scanning | hw_wifi_flag_joining,
                       false);
     wifi->state = -1;
@@ -293,13 +324,16 @@ bool hw_wifi_disconnect(hw_wifi_t *wifi) {
     return false;
   }
 
-  int state = cyw43_tcpip_link_status(&cyw43_state, CYW43_ITF_STA);
+  int state = _hw_wifi_link_status();
   if (state != CYW43_LINK_JOIN && state != CYW43_LINK_NOIP &&
       state != CYW43_LINK_UP) {
     return false;
   }
 
-  if (cyw43_wifi_leave(&cyw43_state, CYW43_ITF_STA) != 0) {
+  cyw43_arch_lwip_begin();
+  int leave_result = cyw43_wifi_leave(&cyw43_state, CYW43_ITF_STA);
+  cyw43_arch_lwip_end();
+  if (leave_result != 0) {
     return false;
   }
 
@@ -335,8 +369,10 @@ static uint32_t _hw_wifi_country_code(const char *country_code) {
 static uint8_t _hw_wifi_get_channel(hw_wifi_t *wifi) {
   sys_assert(hw_wifi_valid(wifi));
   uint32_t channel = 0;
+  cyw43_arch_lwip_begin();
   cyw43_ioctl(&cyw43_state, CYW43_IOCTL_GET_CHANNEL, sizeof(channel),
               (uint8_t *)&channel, CYW43_ITF_STA);
+  cyw43_arch_lwip_end();
   return (uint8_t)channel;
 }
 
@@ -347,7 +383,9 @@ static void _hw_wifi_get_bssid(hw_wifi_t *wifi, uint8_t bssid[6]) {
   sys_assert(hw_wifi_valid(wifi));
   sys_assert(bssid != NULL);
   sys_memset(bssid, 0, 6);
+  cyw43_arch_lwip_begin();
   cyw43_wifi_get_bssid(&cyw43_state, bssid);
+  cyw43_arch_lwip_end();
 }
 
 /**
@@ -356,7 +394,10 @@ static void _hw_wifi_get_bssid(hw_wifi_t *wifi, uint8_t bssid[6]) {
 static int16_t _hw_wifi_get_rssi(hw_wifi_t *wifi) {
   sys_assert(hw_wifi_valid(wifi));
   int32_t rssi = 0;
-  if (cyw43_wifi_get_rssi(&cyw43_state, &rssi) == 0) {
+  cyw43_arch_lwip_begin();
+  int rssi_result = cyw43_wifi_get_rssi(&cyw43_state, &rssi);
+  cyw43_arch_lwip_end();
+  if (rssi_result == 0) {
     return (int16_t)rssi;
   }
   return 0;
@@ -463,7 +504,11 @@ void _hw_wifi_poll(void) {
 
   // If we're scanning and scan becomes inactive then end the scanning
   if (_hw_wifi_get_busy(wifi, hw_wifi_flag_scanning)) {
-    if (cyw43_wifi_scan_active(&cyw43_state) == false) {
+    bool scan_active;
+    cyw43_arch_lwip_begin();
+    scan_active = cyw43_wifi_scan_active(&cyw43_state);
+    cyw43_arch_lwip_end();
+    if (scan_active == false) {
       _hw_wifi_set_busy(wifi, hw_wifi_flag_scanning, false);
       wifi->callback(wifi, hw_wifi_event_scan, NULL,
                      wifi->userdata); // Notify scan completion
@@ -472,7 +517,7 @@ void _hw_wifi_poll(void) {
   }
 
   // Get current link state, and act if it's changed
-  int state = cyw43_tcpip_link_status(&cyw43_state, CYW43_ITF_STA);
+  int state = _hw_wifi_link_status();
   if (state == wifi->state) {
     return;
   } else {

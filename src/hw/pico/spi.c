@@ -87,6 +87,9 @@ hw_spi_t *hw_spi_init_default(uint32_t baud_rate,
                               const hw_spi_config_t *config) {
 #if defined(PICO_DEFAULT_SPI) && defined(PICO_DEFAULT_SPI_SCK_PIN) &&          \
     defined(PICO_DEFAULT_SPI_TX_PIN) && defined(PICO_DEFAULT_SPI_RX_PIN)
+  sys_debugf("spi_init_default: index=%u sck=%u tx=%u rx=%u baud=%u",
+             PICO_DEFAULT_SPI, PICO_DEFAULT_SPI_SCK_PIN,
+             PICO_DEFAULT_SPI_TX_PIN, PICO_DEFAULT_SPI_RX_PIN, baud_rate);
   hw_spi_config_t settings =
       config != NULL ? *config : _hw_spi_default_config();
   hw_gpio_t *sck_pin = hw_gpio_init(0, PICO_DEFAULT_SPI_SCK_PIN, HW_GPIO_SPI);
@@ -121,6 +124,7 @@ hw_spi_t *hw_spi_init_default(uint32_t baud_rate,
 #else
   (void)baud_rate;
   (void)config;
+  sys_debugf("spi_init_default: unsupported on this target");
   return NULL;
 #endif
 }
@@ -128,6 +132,10 @@ hw_spi_t *hw_spi_init_default(uint32_t baud_rate,
 hw_spi_t *hw_spi_init(uint8_t index, hw_gpio_t *sck_pin, hw_gpio_t *tx_pin,
                       hw_gpio_t *rx_pin, hw_gpio_t *cs_pin, uint32_t baud_rate,
                       const hw_spi_config_t *config) {
+  sys_debugf("spi_init: index=%u baud=%u sck_valid=%u tx_valid=%u rx_valid=%u "
+             "cs_valid=%u",
+             index, baud_rate, hw_gpio_valid(sck_pin), hw_gpio_valid(tx_pin),
+             hw_gpio_valid(rx_pin), hw_gpio_valid(cs_pin));
   hw_spi_config_t settings =
       config != NULL ? *config : _hw_spi_default_config();
   spi_inst_t *instance = _hw_spi_instance_for_index(index);
@@ -189,6 +197,7 @@ hw_spi_t *hw_spi_init_device(const char *device, uint32_t baud_rate,
 }
 
 void hw_spi_deinit(hw_spi_t *spi) {
+  sys_debugf("spi_deinit: spi=%p", spi);
   if (!hw_spi_valid(spi)) {
     return;
   }

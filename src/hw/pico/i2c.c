@@ -79,6 +79,9 @@ uint8_t hw_i2c_count(void) {
 hw_i2c_t *hw_i2c_init_default(uint32_t baud_rate) {
 #if defined(PICO_DEFAULT_I2C) && defined(PICO_DEFAULT_I2C_SDA_PIN) &&          \
     defined(PICO_DEFAULT_I2C_SCL_PIN)
+  sys_debugf("i2c_init_default: index=%u sda=%u scl=%u baud=%u",
+             PICO_DEFAULT_I2C, PICO_DEFAULT_I2C_SDA_PIN,
+             PICO_DEFAULT_I2C_SCL_PIN, baud_rate);
   hw_gpio_t *sda_pin = hw_gpio_init(0, PICO_DEFAULT_I2C_SDA_PIN, HW_GPIO_I2C);
   if (sda_pin == NULL) {
     return NULL;
@@ -100,6 +103,8 @@ hw_i2c_t *hw_i2c_init_default(uint32_t baud_rate) {
   i2c->owns_pins = true;
   return i2c;
 #else
+  sys_debugf("i2c_init_default: unsupported on this target (baud=%u)",
+             baud_rate);
   (void)baud_rate;
   return NULL;
 #endif
@@ -107,6 +112,8 @@ hw_i2c_t *hw_i2c_init_default(uint32_t baud_rate) {
 
 hw_i2c_t *hw_i2c_init(uint8_t index, hw_gpio_t *sda_pin, hw_gpio_t *scl_pin,
                       uint32_t baud_rate) {
+  sys_debugf("i2c_init: index=%u baud=%u sda_valid=%u scl_valid=%u", index,
+             baud_rate, hw_gpio_valid(sda_pin), hw_gpio_valid(scl_pin));
   if (index >= hw_i2c_count() || !hw_gpio_valid(sda_pin) ||
       !hw_gpio_valid(scl_pin) || baud_rate == 0) {
     return NULL;
@@ -152,6 +159,7 @@ hw_i2c_t *hw_i2c_init_device(const char *device, uint32_t baud_rate) {
 }
 
 void hw_i2c_deinit(hw_i2c_t *i2c) {
+  sys_debugf("i2c_deinit: i2c=%p", i2c);
   if (!hw_i2c_valid(i2c)) {
     return;
   }
@@ -182,8 +190,14 @@ bool hw_i2c_detect(hw_i2c_t *i2c, uint8_t addr) {
     return false;
   }
 
+  // Some devices ACK reads, others only ACK writes during scan-style probing.
   uint8_t probe = 0;
-  return _hw_i2c_read(i2c->instance, addr & 0x7Fu, &probe, 1, false, 100) == 1;
+  if (_hw_i2c_read(i2c->instance, addr & 0x7Fu, &probe, 1, false, 100) == 1) {
+    return true;
+  }
+
+  probe = 0;
+  return _hw_i2c_write(i2c->instance, addr & 0x7Fu, &probe, 1, false, 100) == 1;
 }
 
 size_t hw_i2c_xfr(hw_i2c_t *i2c, uint8_t addr, void *data, size_t tx, size_t rx,
