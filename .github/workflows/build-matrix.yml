@@ -1,10 +1,6 @@
 name: Build Matrix
 
 on:
-    pull_request:
-    push:
-        tags:
-            - "*.*.*"
     release:
         types: [published]
 

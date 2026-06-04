@@ -34,6 +34,16 @@ endif()
 
 set(PICOFUSE_PC_LIB_NAME "${PICOFUSE_LIBRARY_BASENAME}")
 
+# Resolve prefix relative to ${pcfiledir} for relocatable pkg-config files,
+# including multi-component libdirs (e.g. lib/x86_64-linux-gnu).
+set(PICOFUSE_PC_PREFIX_REL "..")
+string(REPLACE "/" ";" PICOFUSE_INSTALL_LIBDIR_PARTS "${CMAKE_INSTALL_LIBDIR}")
+foreach(PICOFUSE_LIBDIR_PART IN LISTS PICOFUSE_INSTALL_LIBDIR_PARTS)
+    if(NOT PICOFUSE_LIBDIR_PART STREQUAL "")
+        string(APPEND PICOFUSE_PC_PREFIX_REL "/..")
+    endif()
+endforeach()
+
 configure_file(
     ${PROJECT_SOURCE_DIR}/cmake/picofuse-sys.pc.in
     ${CMAKE_CURRENT_BINARY_DIR}/${PICOFUSE_PC_FILE_NAME}
