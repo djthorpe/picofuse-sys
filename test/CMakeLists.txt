@@ -155,3 +155,8 @@ picofuse_add_hw_test(hw_003
 picofuse_add_hw_test(hw_004
 	main.c
 )
+
+# Check PWM API behavior: init, config, period, duty, enable, and callbacks.
+picofuse_add_hw_test(hw_005
+	main.c
+)

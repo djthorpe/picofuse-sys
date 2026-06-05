@@ -27,6 +27,8 @@ add_library(${NAME} OBJECT
     ../stub/init.c
     ../stub/adc.c
     ../stub/gpio.c
+    ../stub/led.c
+    ../stub/pwm.c
     ../stub/i2c.c
     ../stub/spi.c
     ${USB_SOURCE}
