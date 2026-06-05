@@ -3,6 +3,7 @@ set(NAME "picofuse-dev-obj")
 add_library(${NAME} OBJECT
     bme680/bme680.c
     bme280/bme280.c
+    uc8151/uc8151.c
 )
 
 target_include_directories(${NAME} PUBLIC

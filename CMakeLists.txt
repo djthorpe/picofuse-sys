@@ -98,6 +98,7 @@ add_subdirectory(examples/hw/usb-scan)
 add_subdirectory(examples/hw/wifi-scan)
 add_subdirectory(examples/hw/wifi-join)
 add_subdirectory(examples/dev/bme680)
+add_subdirectory(examples/dev/picoinky)
 
 # Tests
 include(CTest)

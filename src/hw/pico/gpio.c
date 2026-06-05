@@ -166,7 +166,8 @@ void hw_gpio_set_mode(hw_gpio_t *gpio, hw_gpio_mode_t mode) {
   // Cancel the interrupt
   if (mode != HW_GPIO_INPUT && mode != HW_GPIO_PULLUP &&
       mode != HW_GPIO_PULLDOWN) {
-    gpio_set_irq_enabled_with_callback(gpio->pin, 0xFF, false, NULL);
+    gpio_set_irq_enabled(gpio->pin, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL,
+                         false);
   }
 
   // Set the GPIO mode

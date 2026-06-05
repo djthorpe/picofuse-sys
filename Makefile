@@ -30,7 +30,7 @@ configure: dep-cmake
 
 .PHONY: build
 build: configure
-	@${CMAKE} --build ${BUILD_DIR} --target all -j 4
+	@${CMAKE} --build ${BUILD_DIR} --target all -j 8
 
 .PHONY: install
 install: build
