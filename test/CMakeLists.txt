@@ -160,3 +160,8 @@ picofuse_add_hw_test(hw_004
 picofuse_add_hw_test(hw_005
 	main.c
 )
+
+# Check block storage API behavior: capacity, init, erase/read/write, and deinit.
+picofuse_add_hw_test(hw_006
+	main.c
+)

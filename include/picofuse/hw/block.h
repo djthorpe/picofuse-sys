@@ -12,11 +12,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // TYPES
 
-/**
- * @brief Opaque block handle type.
- * @ingroup Block
- * @headerfile block.h hw/hw.h
- */
 typedef struct hw_block_t hw_block_t;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -24,6 +19,15 @@ typedef struct hw_block_t hw_block_t;
 
 /** @name Properties
  * @{ */
+
+/**
+ * @brief Determine whether a block handle is valid.
+ * @ingroup Block
+ * @param block Block handle.
+ * @retval true The block handle is valid.
+ * @retval false The block handle is invalid.
+ */
+bool hw_block_valid(const hw_block_t *block);
 
 /**
  * @brief Return the number of addressable blocks.
@@ -80,5 +84,12 @@ bool hw_block_erase(hw_block_t *block, size_t index);
  * @retval false Invalid arguments or backend failure.
  */
 bool hw_block_write(hw_block_t *block, size_t index, const void *src);
+
+/**
+ * @brief Deinitialize a block handle.
+ * @ingroup Block
+ * @param block Block handle.
+ */
+void hw_block_deinit(hw_block_t *block);
 
 /** @} */

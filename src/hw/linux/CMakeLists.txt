@@ -49,6 +49,7 @@ else()
 endif()
 
 add_library(${NAME} OBJECT
+    ../any/block.c
     ../stub/init.c
     ../stub/adc.c
     ../stub/flash.c
