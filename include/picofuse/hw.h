@@ -9,6 +9,7 @@
 #include "hw/adc.h"
 #include "hw/gpio.h"
 #include "hw/i2c.h"
+#include "hw/led.h"
 #include "hw/pwm.h"
 #include "hw/spi.h"
 #include "hw/uart.h"
