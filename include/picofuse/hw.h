@@ -7,6 +7,8 @@
  */
 #pragma once
 #include "hw/adc.h"
+#include "hw/block.h"
+#include "hw/flash.h"
 #include "hw/gpio.h"
 #include "hw/i2c.h"
 #include "hw/led.h"

@@ -6,7 +6,9 @@ if(PICOFUSE_USB)
 endif()
 
 add_library(${NAME} OBJECT
+    ../any/block.c
     adc.c
+    flash.c
     gpio.c
     init.c
     i2c.c
@@ -24,6 +26,8 @@ target_include_directories(${NAME} PUBLIC
 )
 target_link_libraries(${NAME} PUBLIC
     pico_stdlib
+    pico_flash
+    hardware_flash
     hardware_gpio
     hardware_i2c
     hardware_pio
