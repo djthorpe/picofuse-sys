@@ -9,20 +9,17 @@ struct hw_pwm_t {};
 ///////////////////////////////////////////////////////////////////////////////
 // LIFECYCLE
 
-hw_pwm_t *hw_pwm_init(hw_gpio_t *gpio, const hw_pwm_config_t *config) {
-  sys_debugf("pwm_init: unsupported on this platform (gpio=%p config=%p)",
-             (void *)gpio, (const void *)config);
+hw_pwm_t *hw_pwm_init(hw_gpio_t *gpio, hw_pwm_callback_t callback,
+                      void *userdata, const hw_pwm_config_t *config) {
+  sys_debugf("pwm_init: unsupported on this platform (gpio=%p callback=%p "
+             "userdata=%p config=%p)",
+             (void *)gpio, (void *)callback, userdata, (const void *)config);
+  if (callback != NULL && !hw_pwm_irq_supported()) {
+    return NULL;
+  }
   (void)gpio;
-  (void)config;
-  return NULL;
-}
-
-hw_pwm_t *hw_pwm_init_device(const char *device,
-                             const hw_pwm_config_t *config) {
-  sys_debugf(
-      "pwm_init_device: unsupported on this platform (device=%s config=%p)",
-      device != NULL ? device : "(null)", (const void *)config);
-  (void)device;
+  (void)callback;
+  (void)userdata;
   (void)config;
   return NULL;
 }
@@ -90,19 +87,4 @@ bool hw_pwm_get_enabled(const hw_pwm_t *pwm) {
 ///////////////////////////////////////////////////////////////////////////////
 // INTERRUPTS
 
-bool hw_pwm_irq_supported(const hw_pwm_t *pwm) {
-  (void)pwm;
-  return false;
-}
-
-void hw_pwm_set_callback(hw_pwm_t *pwm, hw_pwm_callback_t callback,
-                         void *userdata) {
-  (void)pwm;
-  (void)callback;
-  (void)userdata;
-}
-
-void hw_pwm_set_irq_enabled(hw_pwm_t *pwm, bool enabled) {
-  (void)pwm;
-  (void)enabled;
-}
+bool hw_pwm_irq_supported(void) { return false; }

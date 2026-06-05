@@ -10,7 +10,7 @@ add_library(${NAME} OBJECT
     gpio.c
     init.c
     i2c.c
-    ../stub/pwm.c
+    pwm.c
     spi.c
     ${PICOFUSE_PICO_USB_SOURCE}
     uart.c
@@ -28,6 +28,7 @@ target_link_libraries(${NAME} PUBLIC
     hardware_uart
     hardware_spi
     hardware_adc
+    hardware_pwm
 )
 
 if(PICOFUSE_USB)

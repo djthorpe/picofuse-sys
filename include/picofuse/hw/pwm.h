@@ -54,22 +54,14 @@ typedef void (*hw_pwm_callback_t)(hw_pwm_t *pwm, void *userdata);
  * @brief Initialize a PWM output on a GPIO pin.
  * @ingroup PWM
  * @param gpio GPIO handle for a PWM-capable pin.
+ * @param callback Optional callback invoked on wrap events.
+ * @param userdata User context pointer forwarded to @p callback.
  * @param config Optional PWM configuration. Pass `NULL` to use defaults.
- * @return PWM handle or NULL on failure.
+ * @return PWM handle or NULL on failure. If @p callback is not `NULL`,
+ * backends that do not support wrap interrupt callbacks return `NULL`.
  */
-hw_pwm_t *hw_pwm_init(hw_gpio_t *gpio, const hw_pwm_config_t *config);
-
-/**
- * @brief Initialize a PWM output from a platform-specific device path.
- * @ingroup PWM
- * @param device Device identifier such as `/sys/class/pwm/pwmchip0/pwm0`.
- * @param config Optional PWM configuration. Pass `NULL` to use defaults.
- * @return PWM handle or NULL on failure.
- *
- * This entry point is intended for platforms where PWM endpoints are exposed
- * as device paths instead of being discovered from a GPIO mapping.
- */
-hw_pwm_t *hw_pwm_init_device(const char *device, const hw_pwm_config_t *config);
+hw_pwm_t *hw_pwm_init(hw_gpio_t *gpio, hw_pwm_callback_t callback,
+                      void *userdata, const hw_pwm_config_t *config);
 
 /**
  * @brief Deinitialize a PWM handle.
@@ -188,28 +180,9 @@ bool hw_pwm_get_enabled(const hw_pwm_t *pwm);
 /**
  * @brief Check whether PWM wrap interrupt callbacks are supported.
  * @ingroup PWM
- * @param pwm PWM handle.
- * @retval true Wrap interrupts are supported for this handle.
+ * @retval true Wrap interrupts are supported on this platform.
  * @retval false Wrap interrupts are unsupported.
  */
-bool hw_pwm_irq_supported(const hw_pwm_t *pwm);
-
-/**
- * @brief Set a PWM wrap callback handler.
- * @ingroup PWM
- * @param pwm PWM handle.
- * @param callback Callback invoked on wrap events, or `NULL` to disable.
- * @param userdata User context pointer forwarded to @p callback.
- */
-void hw_pwm_set_callback(hw_pwm_t *pwm, hw_pwm_callback_t callback,
-                         void *userdata);
-
-/**
- * @brief Enable or disable PWM wrap interrupts.
- * @ingroup PWM
- * @param pwm PWM handle.
- * @param enabled `true` to enable wrap interrupts, `false` to disable.
- */
-void hw_pwm_set_irq_enabled(hw_pwm_t *pwm, bool enabled);
+bool hw_pwm_irq_supported(void);
 
 /** @} */
