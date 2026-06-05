@@ -32,6 +32,7 @@ struct hw_led_t {
   hw_pwm_t *pwm;
   sys_timer_t *blink_timer;
   PIO neopixel_pio;
+  uint neopixel_offset;
   int8_t neopixel_sm;
   pix_color_t neopixel_color[HW_LED_NEOPIXEL_MAX_PIXELS];
 };
@@ -40,8 +41,6 @@ struct hw_led_t {
 // GLOBALS
 
 static struct hw_led_t _hw_led_pool[HW_LED_POOL_CAPACITY] = {0};
-static bool _hw_led_neopixel_program_loaded[2] = {false, false};
-static uint _hw_led_neopixel_program_offset[2] = {0u, 0u};
 static critical_section_t _hw_led_lock;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -65,13 +64,6 @@ static hw_led_t *_hw_led_alloc(void) {
   return NULL;
 }
 
-static uint8_t _hw_led_neopixel_pio_index(PIO pio) {
-  if (pio == pio0) {
-    return 0u;
-  }
-  return 1u;
-}
-
 static uint32_t _hw_led_neopixel_pack_color(pix_color_t color) {
   uint8_t r = (uint8_t)((color >> 24) & 0xFFu);
   uint8_t g = (uint8_t)((color >> 16) & 0xFFu);
@@ -79,52 +71,27 @@ static uint32_t _hw_led_neopixel_pack_color(pix_color_t color) {
   return ((uint32_t)g << 16) | ((uint32_t)r << 8) | (uint32_t)b;
 }
 
-static bool _hw_led_neopixel_program_ensure(PIO pio, uint *out_offset) {
-  uint8_t pio_idx = _hw_led_neopixel_pio_index(pio);
-  if (_hw_led_neopixel_program_loaded[pio_idx]) {
-    *out_offset = _hw_led_neopixel_program_offset[pio_idx];
-    return true;
-  }
-
-  if (!pio_can_add_program(pio, &led_neopixel_program)) {
-    return false;
-  }
-
-  uint offset = pio_add_program(pio, &led_neopixel_program);
-  _hw_led_neopixel_program_loaded[pio_idx] = true;
-  _hw_led_neopixel_program_offset[pio_idx] = offset;
-  *out_offset = offset;
-  return true;
-}
-
 static bool _hw_led_neopixel_pio_init(hw_led_t *led) {
   if (led == NULL || !hw_gpio_valid(led->gpio)) {
     return false;
   }
 
-  PIO pio_candidates[2] = {pio0, pio1};
-  for (uint8_t i = 0; i < 2; i++) {
-    PIO pio = pio_candidates[i];
-    int sm = pio_claim_unused_sm(pio, false);
-    if (sm < 0) {
-      continue;
-    }
+  uint8_t pin = hw_gpio_get_pin_num(led->gpio);
+  PIO pio = NULL;
+  uint sm = 0u;
+  uint offset = 0u;
 
-    uint offset = 0u;
-    if (!_hw_led_neopixel_program_ensure(pio, &offset)) {
-      pio_sm_unclaim(pio, (uint)sm);
-      continue;
-    }
-
-    uint8_t pin = hw_gpio_get_pin_num(led->gpio);
-    led_neopixel_program_init(pio, (uint)sm, offset, pin, 800000.0f);
-
-    led->neopixel_pio = pio;
-    led->neopixel_sm = (int8_t)sm;
-    return true;
+  if (!pio_claim_free_sm_and_add_program_for_gpio_range(
+          &led_neopixel_program, &pio, &sm, &offset, pin, 1u, true)) {
+    sys_debugf("led_neopixel_pio_init: no PIO/SM for pin=%u", pin);
+    return false;
   }
 
-  return false;
+  led_neopixel_program_init(pio, sm, offset, pin, 800000.0f);
+  led->neopixel_pio = pio;
+  led->neopixel_sm = (int8_t)sm;
+  led->neopixel_offset = offset;
+  return true;
 }
 
 static bool _hw_led_neopixel_index_valid(const hw_led_t *led, uint8_t index) {
@@ -148,10 +115,19 @@ static bool _hw_led_neopixel_flush(const hw_led_t *led) {
     return false;
   }
 
+  const uint32_t fifo_wait_timeout_us = 3000u;
   for (uint8_t i = 0; i < led->led_count; i++) {
     pix_color_t color = _hw_led_neopixel_effective_color(led, i);
     uint32_t grb = _hw_led_neopixel_pack_color(color);
-    pio_sm_put_blocking(led->neopixel_pio, (uint)led->neopixel_sm, grb << 8u);
+
+    uint64_t start = time_us_64();
+    while (pio_sm_is_tx_fifo_full(led->neopixel_pio, (uint)led->neopixel_sm)) {
+      if ((time_us_64() - start) > fifo_wait_timeout_us) {
+        return false;
+      }
+    }
+
+    pio_sm_put(led->neopixel_pio, (uint)led->neopixel_sm, grb << 8u);
   }
 
   sleep_us(80u);
@@ -287,6 +263,7 @@ hw_led_t *hw_led_init_gpio(hw_gpio_t *gpio) {
   led->pwm = NULL;
   led->blink_timer = NULL;
   led->neopixel_pio = NULL;
+  led->neopixel_offset = 0u;
   led->neopixel_sm = -1;
   return led;
 }
@@ -318,6 +295,7 @@ hw_led_t *hw_led_init_neopixel(hw_gpio_t *gpio, uint8_t led_count) {
   led->pwm = NULL;
   led->blink_timer = NULL;
   led->neopixel_pio = NULL;
+  led->neopixel_offset = 0u;
   led->neopixel_sm = -1;
 
   critical_section_enter_blocking(&_hw_led_lock);
@@ -372,6 +350,7 @@ hw_led_t *hw_led_init_wifi(void) {
   led->pwm = NULL;
   led->blink_timer = NULL;
   led->neopixel_pio = NULL;
+  led->neopixel_offset = 0u;
   led->neopixel_sm = -1;
   return led;
 #else
@@ -407,6 +386,7 @@ hw_led_t *hw_led_init_pwm(hw_pwm_t *pwm) {
   led->pwm = pwm;
   led->blink_timer = NULL;
   led->neopixel_pio = NULL;
+  led->neopixel_offset = 0u;
   led->neopixel_sm = -1;
   return led;
 }
@@ -500,8 +480,9 @@ void hw_led_deinit(hw_led_t *led) {
     (void)_hw_led_neopixel_flush(led);
 
     if (led->neopixel_pio != NULL && led->neopixel_sm >= 0) {
-      pio_sm_set_enabled(led->neopixel_pio, (uint)led->neopixel_sm, false);
-      pio_sm_unclaim(led->neopixel_pio, (uint)led->neopixel_sm);
+      pio_remove_program_and_unclaim_sm(
+          &led_neopixel_program, led->neopixel_pio, (uint)led->neopixel_sm,
+          led->neopixel_offset);
     }
   }
 
@@ -521,6 +502,7 @@ void hw_led_deinit(hw_led_t *led) {
   led->pwm = NULL;
   led->blink_timer = NULL;
   led->neopixel_pio = NULL;
+  led->neopixel_offset = 0u;
   led->neopixel_sm = -1;
   critical_section_exit(&_hw_led_lock);
 }
