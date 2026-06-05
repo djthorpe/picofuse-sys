@@ -370,7 +370,6 @@ hw_led_t *hw_led_init_pwm(hw_pwm_t *pwm) {
 
   hw_led_t *led = _hw_led_alloc();
   if (led == NULL) {
-    hw_pwm_deinit(pwm);
     return NULL;
   }
 

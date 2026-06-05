@@ -118,13 +118,13 @@ void hw_led_deinit(hw_led_t *led);
  * @{ */
 
 /**
- * @brief Return the default board LED GPIO pin.
+ * @brief Return the default board LED control pin.
  * @ingroup LED
  * @param out_type Optional destination for detected LED type.
  * @param out_count Optional destination for LED count. Defaults to 1 for
  * available LEDs, or 0 when no default LED is available.
- * @return The default board LED GPIO pin, or @ref HW_LED_GPIO_NONE when no
- * direct GPIO LED is available.
+ * @return The default board LED control pin, or @ref HW_LED_GPIO_NONE when no
+ * default on-board LED is available.
  */
 uint8_t hw_led_gpio_default(hw_led_type_t *out_type, uint8_t *out_count);
 
