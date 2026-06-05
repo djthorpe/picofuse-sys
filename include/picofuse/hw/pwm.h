@@ -5,8 +5,26 @@
  * @ingroup Hardware
  *
  * Pulse Width Modulation (PWM) interface for hardware platforms.
+ *
+ * PWM is a digital waveform technique that approximates an analog level by
+ * rapidly toggling an output between low and high. Each PWM cycle has:
+ * - A period: total cycle duration.
+ * - A duty cycle: percentage of that period spent high.
+ *
+ * For example, 1 kHz PWM with 25% duty is high for 250 us and low for 750 us
+ * every cycle. Common uses include LED dimming, motor speed control, and tone
+ * generation.
+ *
  * This module provides functions to initialize PWM outputs, configure period
- * and duty cycle, and control output state.
+ * and duty cycle, control output state, and optionally receive wrap callbacks
+ * at period boundaries.
+ *
+ * @note Pico backend details (RP2040/RP2350):
+ * The hardware groups GPIOs into PWM slices. Each slice has two output
+ * channels (A and B) that share the same period (wrap) and divider settings
+ * but have independent duty levels. Because period settings are shared per
+ * slice, changing period on one channel affects the other channel in the same
+ * slice.
  */
 #pragma once
 #include "gpio.h"
@@ -39,8 +57,9 @@ typedef struct {
  * @brief PWM wrap callback function pointer.
  * @ingroup PWM
  *
- * Backends that support PWM wrap interrupts can invoke this callback when a
- * PWM period completes.
+ * Backends that support PWM wrap interrupts can invoke this callback on each
+ * counter wrap event, when the PWM counter rolls from its top value back to
+ * zero (the boundary between PWM periods).
  */
 typedef void (*hw_pwm_callback_t)(hw_pwm_t *pwm, void *userdata);
 
@@ -54,7 +73,8 @@ typedef void (*hw_pwm_callback_t)(hw_pwm_t *pwm, void *userdata);
  * @brief Initialize a PWM output on a GPIO pin.
  * @ingroup PWM
  * @param gpio GPIO handle for a PWM-capable pin.
- * @param callback Optional callback invoked on wrap events.
+ * @param callback Optional callback invoked on PWM counter wrap (top -> 0)
+ * events, typically once per completed PWM period.
  * @param userdata User context pointer forwarded to @p callback.
  * @param config Optional PWM configuration. Pass `NULL` to use defaults.
  * @return PWM handle or NULL on failure. If @p callback is not `NULL`,
