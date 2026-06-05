@@ -147,4 +147,20 @@ uint8_t hw_led_gpio_default(hw_led_type_t *out_type, uint8_t *out_count);
  */
 bool hw_led_set(hw_led_t *led, uint8_t index, bool enabled);
 
+/**
+ * @brief Blink an LED using a timer.
+ * @ingroup LED
+ * @param led LED handle.
+ * @param index NeoPixel index to update. Ignored for non-NeoPixel LED types.
+ * @param period_ms Blink period in milliseconds.
+ * @param repeating When `true`, blink repeats until @ref hw_led_set is called
+ * to stop it. When `false`, LED is turned on immediately and turned off once
+ * after one period.
+ * @retval true Blink started.
+ * @retval false Handle is invalid, blink is already active on this handle, or
+ * timer setup failed.
+ */
+bool hw_led_blink(hw_led_t *led, uint8_t index, uint32_t period_ms,
+                  bool repeating);
+
 /** @} */

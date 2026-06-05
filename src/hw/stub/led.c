@@ -31,6 +31,15 @@ bool hw_led_set(hw_led_t *led, uint8_t index, bool enabled) {
   return false;
 }
 
+bool hw_led_blink(hw_led_t *led, uint8_t index, uint32_t period_ms,
+                  bool repeating) {
+  (void)led;
+  (void)index;
+  (void)period_ms;
+  (void)repeating;
+  return false;
+}
+
 uint8_t hw_led_gpio_default(hw_led_type_t *out_type, uint8_t *out_count) {
   if (out_type != NULL) {
     *out_type = HW_LED_TYPE_NONE;

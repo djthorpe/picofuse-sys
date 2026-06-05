@@ -1,6 +1,7 @@
 #include <hardware/clocks.h>
 #include <hardware/pio.h>
 #include <pico.h>
+#include <pico/critical_section.h>
 #include <pico/time.h>
 #include <picofuse/hw.h>
 #include <picofuse/pix.h>
@@ -21,11 +22,15 @@
 struct hw_led_t {
   bool initialized;
   bool owns_gpio;
+  bool blink_repeating;
+  bool blink_phase_on;
   uint8_t led_count;
+  uint8_t blink_index;
   uint8_t wifi_pin;
   hw_led_type_t type;
   hw_gpio_t *gpio;
   hw_pwm_t *pwm;
+  sys_timer_t *blink_timer;
   PIO neopixel_pio;
   int8_t neopixel_sm;
   pix_color_t neopixel_color[HW_LED_NEOPIXEL_MAX_PIXELS];
@@ -37,16 +42,26 @@ struct hw_led_t {
 static struct hw_led_t _hw_led_pool[HW_LED_POOL_CAPACITY] = {0};
 static bool _hw_led_neopixel_program_loaded[2] = {false, false};
 static uint _hw_led_neopixel_program_offset[2] = {0u, 0u};
+static critical_section_t _hw_led_lock;
 
 ///////////////////////////////////////////////////////////////////////////////
 // HELPER FUNCTIONS
 
+void _hw_led_module_init(void) { critical_section_init(&_hw_led_lock); }
+
+void _hw_led_module_exit(void) {}
+
 static hw_led_t *_hw_led_alloc(void) {
+  critical_section_enter_blocking(&_hw_led_lock);
   for (uint8_t i = 0; i < HW_LED_POOL_CAPACITY; i++) {
     if (!_hw_led_pool[i].initialized) {
+      // Reserve this slot so concurrent allocators cannot return it.
+      _hw_led_pool[i].initialized = true;
+      critical_section_exit(&_hw_led_lock);
       return &_hw_led_pool[i];
     }
   }
+  critical_section_exit(&_hw_led_lock);
   return NULL;
 }
 
@@ -161,6 +176,91 @@ static bool _hw_led_neopixel_set_onoff(hw_led_t *led, uint8_t index,
   return _hw_led_neopixel_flush(led);
 }
 
+static bool _hw_led_apply_state(hw_led_t *led, uint8_t index, bool enabled) {
+  if (led == NULL || !led->initialized) {
+    return false;
+  }
+
+  switch (led->type) {
+  case HW_LED_TYPE_GPIO:
+    (void)index;
+    if (!hw_gpio_valid(led->gpio)) {
+      return false;
+    }
+    hw_gpio_set(led->gpio, enabled);
+    return true;
+  case HW_LED_TYPE_PWM:
+    (void)index;
+    if (!hw_pwm_valid(led->pwm)) {
+      return false;
+    }
+    hw_pwm_set_enabled(led->pwm, enabled);
+    hw_pwm_set_duty_percent(led->pwm, enabled ? 100.0f : 0.0f);
+    return true;
+  case HW_LED_TYPE_WIFI:
+    (void)index;
+#ifdef PICO_CYW43_SUPPORTED
+    if (led->wifi_pin == HW_LED_GPIO_NONE) {
+      return false;
+    }
+    cyw43_arch_gpio_put(led->wifi_pin, enabled ? 1 : 0);
+    return true;
+#else
+    return false;
+#endif
+  case HW_LED_TYPE_NEOPIXEL:
+    return _hw_led_neopixel_set_onoff(led, index, enabled);
+  case HW_LED_TYPE_NONE:
+  default:
+    return false;
+  }
+}
+
+static void _hw_led_blink_stop(hw_led_t *led) {
+  sys_timer_t *timer = NULL;
+
+  critical_section_enter_blocking(&_hw_led_lock);
+  if (led != NULL && led->blink_timer != NULL) {
+    timer = led->blink_timer;
+    led->blink_timer = NULL;
+    led->blink_repeating = false;
+    led->blink_phase_on = false;
+  }
+  critical_section_exit(&_hw_led_lock);
+
+  if (timer != NULL) {
+    sys_timer_deinit(timer);
+  }
+}
+
+static void _hw_led_blink_timer_cb(sys_timer_t *timer) {
+  hw_led_t *led = (hw_led_t *)sys_timer_get_userdata(timer);
+  if (led == NULL) {
+    sys_timer_deinit(timer);
+    return;
+  }
+
+  bool should_deinit = false;
+
+  critical_section_enter_blocking(&_hw_led_lock);
+  if (!led->initialized || led->blink_timer != timer) {
+    should_deinit = true;
+  } else if (!led->blink_repeating) {
+    (void)_hw_led_apply_state(led, led->blink_index, false);
+    led->blink_timer = NULL;
+    led->blink_phase_on = false;
+    should_deinit = true;
+  } else {
+    led->blink_phase_on = !led->blink_phase_on;
+    (void)_hw_led_apply_state(led, led->blink_index, led->blink_phase_on);
+  }
+  critical_section_exit(&_hw_led_lock);
+
+  if (should_deinit) {
+    sys_timer_deinit(timer);
+  }
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // LIFECYCLE
 
@@ -177,11 +277,15 @@ hw_led_t *hw_led_init_gpio(hw_gpio_t *gpio) {
 
   led->initialized = true;
   led->owns_gpio = false;
+  led->blink_repeating = false;
+  led->blink_phase_on = false;
   led->led_count = 1;
+  led->blink_index = 0;
   led->wifi_pin = HW_LED_GPIO_NONE;
   led->type = HW_LED_TYPE_GPIO;
   led->gpio = gpio;
   led->pwm = NULL;
+  led->blink_timer = NULL;
   led->neopixel_pio = NULL;
   led->neopixel_sm = -1;
   return led;
@@ -204,15 +308,21 @@ hw_led_t *hw_led_init_neopixel(hw_gpio_t *gpio, uint8_t led_count) {
 
   led->initialized = true;
   led->owns_gpio = false;
+  led->blink_repeating = false;
+  led->blink_phase_on = false;
   led->led_count = led_count;
+  led->blink_index = 0;
   led->wifi_pin = HW_LED_GPIO_NONE;
   led->type = HW_LED_TYPE_NEOPIXEL;
   led->gpio = gpio;
   led->pwm = NULL;
+  led->blink_timer = NULL;
   led->neopixel_pio = NULL;
   led->neopixel_sm = -1;
 
+  critical_section_enter_blocking(&_hw_led_lock);
   if (!_hw_led_neopixel_pio_init(led)) {
+    critical_section_exit(&_hw_led_lock);
     led->initialized = false;
     return NULL;
   }
@@ -222,9 +332,11 @@ hw_led_t *hw_led_init_neopixel(hw_gpio_t *gpio, uint8_t led_count) {
   }
 
   if (!_hw_led_neopixel_flush(led)) {
+    critical_section_exit(&_hw_led_lock);
     led->initialized = false;
     return NULL;
   }
+  critical_section_exit(&_hw_led_lock);
 
   return led;
 }
@@ -250,11 +362,15 @@ hw_led_t *hw_led_init_wifi(void) {
 
   led->initialized = true;
   led->owns_gpio = false;
+  led->blink_repeating = false;
+  led->blink_phase_on = false;
   led->led_count = 1;
+  led->blink_index = 0;
   led->wifi_pin = led_pin;
   led->type = HW_LED_TYPE_WIFI;
   led->gpio = NULL;
   led->pwm = NULL;
+  led->blink_timer = NULL;
   led->neopixel_pio = NULL;
   led->neopixel_sm = -1;
   return led;
@@ -281,11 +397,15 @@ hw_led_t *hw_led_init_pwm(hw_pwm_t *pwm) {
 
   led->initialized = true;
   led->owns_gpio = false;
+  led->blink_repeating = false;
+  led->blink_phase_on = false;
   led->led_count = 1;
+  led->blink_index = 0;
   led->wifi_pin = HW_LED_GPIO_NONE;
   led->type = HW_LED_TYPE_PWM;
   led->gpio = NULL;
   led->pwm = pwm;
+  led->blink_timer = NULL;
   led->neopixel_pio = NULL;
   led->neopixel_sm = -1;
   return led;
@@ -364,6 +484,10 @@ void hw_led_deinit(hw_led_t *led) {
     return;
   }
 
+  _hw_led_blink_stop(led);
+
+  critical_section_enter_blocking(&_hw_led_lock);
+
   if (led->pwm != NULL) {
     hw_pwm_deinit(led->pwm);
   }
@@ -387,56 +511,101 @@ void hw_led_deinit(hw_led_t *led) {
 
   led->initialized = false;
   led->owns_gpio = false;
+  led->blink_repeating = false;
+  led->blink_phase_on = false;
   led->led_count = 0;
+  led->blink_index = 0;
   led->wifi_pin = HW_LED_GPIO_NONE;
   led->type = HW_LED_TYPE_NONE;
   led->gpio = NULL;
   led->pwm = NULL;
+  led->blink_timer = NULL;
   led->neopixel_pio = NULL;
   led->neopixel_sm = -1;
+  critical_section_exit(&_hw_led_lock);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 // METHODS
 
 bool hw_led_set(hw_led_t *led, uint8_t index, bool enabled) {
-  if (led == NULL || !led->initialized) {
+  _hw_led_blink_stop(led);
+  critical_section_enter_blocking(&_hw_led_lock);
+  bool ok = _hw_led_apply_state(led, index, enabled);
+  critical_section_exit(&_hw_led_lock);
+  return ok;
+}
+
+bool hw_led_blink(hw_led_t *led, uint8_t index, uint32_t period_ms,
+                  bool repeating) {
+  if (period_ms == 0u) {
     return false;
   }
 
-  switch (led->type) {
-  case HW_LED_TYPE_GPIO:
-    (void)index;
-    if (!hw_gpio_valid(led->gpio)) {
-      return false;
-    }
-    hw_gpio_set(led->gpio, enabled);
-    return true;
-  case HW_LED_TYPE_PWM:
-    (void)index;
-    if (!hw_pwm_valid(led->pwm)) {
-      return false;
-    }
-    hw_pwm_set_enabled(led->pwm, enabled);
-    hw_pwm_set_duty_percent(led->pwm, enabled ? 100.0f : 0.0f);
-    return true;
-  case HW_LED_TYPE_WIFI:
-    (void)index;
-#ifdef PICO_CYW43_SUPPORTED
-    if (led->wifi_pin == HW_LED_GPIO_NONE) {
-      return false;
-    }
-    cyw43_arch_gpio_put(led->wifi_pin, enabled ? 1 : 0);
-    return true;
-#else
-    return false;
-#endif
-  case HW_LED_TYPE_NEOPIXEL:
-    return _hw_led_neopixel_set_onoff(led, index, enabled);
-  case HW_LED_TYPE_NONE:
-  default:
+  critical_section_enter_blocking(&_hw_led_lock);
+  if (led == NULL || !led->initialized) {
+    critical_section_exit(&_hw_led_lock);
     return false;
   }
+
+  // Only one active blink operation is supported per LED handle.
+  if (led->blink_timer != NULL) {
+    critical_section_exit(&_hw_led_lock);
+    return false;
+  }
+
+  if (led->type == HW_LED_TYPE_NEOPIXEL &&
+      !_hw_led_neopixel_index_valid(led, index)) {
+    critical_section_exit(&_hw_led_lock);
+    return false;
+  }
+  critical_section_exit(&_hw_led_lock);
+
+  // Allocate a timer
+  sys_timer_t *timer = sys_timer_init(period_ms, led, _hw_led_blink_timer_cb);
+  if (timer == NULL) {
+    return false;
+  }
+
+  // Switch on the LED immediately and start blinking. If starting the timer
+  // fails, revert.
+  critical_section_enter_blocking(&_hw_led_lock);
+  if (led == NULL || !led->initialized || led->blink_timer != NULL) {
+    critical_section_exit(&_hw_led_lock);
+    sys_timer_deinit(timer);
+    return false;
+  }
+
+  if (!_hw_led_apply_state(led, index, true)) {
+    critical_section_exit(&_hw_led_lock);
+    sys_timer_deinit(timer);
+    return false;
+  }
+
+  // Initialize blink state and associate timer with LED
+  led->blink_timer = timer;
+  led->blink_repeating = repeating;
+  led->blink_phase_on = true;
+  led->blink_index = index;
+  critical_section_exit(&_hw_led_lock);
+
+  // Start the timer and revert state if it fails
+  if (!sys_timer_start(timer)) {
+    critical_section_enter_blocking(&_hw_led_lock);
+    bool own_timer = (led != NULL && led->blink_timer == timer);
+    if (own_timer) {
+      led->blink_timer = NULL;
+      led->blink_repeating = false;
+      led->blink_phase_on = false;
+      (void)_hw_led_apply_state(led, index, false);
+    }
+    critical_section_exit(&_hw_led_lock);
+
+    sys_timer_deinit(timer);
+    return false;
+  }
+
+  return true;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

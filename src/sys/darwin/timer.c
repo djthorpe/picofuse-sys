@@ -103,7 +103,8 @@ bool sys_timer_start(sys_timer_t *timer) {
   }
 
   int64_t interval_ns = (int64_t)timer->interval_ms * 1000000LL;
-  dispatch_source_set_timer(source, dispatch_time(DISPATCH_TIME_NOW, interval_ns),
+  dispatch_source_set_timer(source,
+                            dispatch_time(DISPATCH_TIME_NOW, interval_ns),
                             (uint64_t)interval_ns, 0);
   dispatch_set_context(source, timer);
   dispatch_source_set_event_handler_f(source, _sys_timer_callback);
@@ -115,4 +116,11 @@ bool sys_timer_start(sys_timer_t *timer) {
 
 bool sys_timer_valid(sys_timer_t *timer) {
   return timer != NULL && timer->init && timer->source != NULL;
+}
+
+void *sys_timer_get_userdata(sys_timer_t *timer) {
+  if (timer == NULL || !timer->init) {
+    return NULL;
+  }
+  return timer->userdata;
 }
