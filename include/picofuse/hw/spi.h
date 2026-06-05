@@ -148,6 +148,26 @@ uint8_t hw_spi_count(void);
  */
 bool hw_spi_valid(const hw_spi_t *spi);
 
+/**
+ * @brief Get the configured SPI frame size in bits.
+ * @ingroup SPI
+ * @param spi SPI handle.
+ * @return Configured frame size in bits, or `0` if unavailable/invalid.
+ */
+uint8_t hw_spi_get_bits_per_word(const hw_spi_t *spi);
+
+/**
+ * @brief Reconfigure SPI mode and frame size on an initialized SPI handle.
+ * @ingroup SPI
+ * @param spi SPI handle.
+ * @param mode SPI mode selection.
+ * @param bits_per_word SPI frame size in bits.
+ * @retval true Reconfiguration succeeded.
+ * @retval false Reconfiguration failed.
+ */
+bool hw_spi_set_format(hw_spi_t *spi, hw_spi_mode_t mode,
+                       uint8_t bits_per_word);
+
 /** @} */
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -200,5 +220,21 @@ size_t hw_spi_read(hw_spi_t *spi, uint8_t reg, void *data, size_t len,
  */
 size_t hw_spi_write(hw_spi_t *spi, uint8_t reg, const void *data, size_t len,
                     uint32_t timeout_ms);
+
+/**
+ * @brief Write raw SPI words from a pre-packed buffer.
+ * @ingroup SPI
+ * @param spi SPI handle.
+ * @param words Buffer containing SPI words in host-endian `uint16_t` slots.
+ * @param len Number of words to write.
+ * @param timeout_ms Timeout in milliseconds for the operation. Set to `0` to
+ * use the backend's default transfer path.
+ * @return Number of words written, or `0` on failure.
+ *
+ * This helper is intended for controllers that use non-8-bit frames (for
+ * example 9-bit command/data framing).
+ */
+size_t hw_spi_write_words(hw_spi_t *spi, const uint16_t *words, size_t len,
+                          uint32_t timeout_ms);
 
 /** @} */

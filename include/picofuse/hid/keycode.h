@@ -293,7 +293,7 @@ typedef enum {
 // FUNCTION DECLARATIONS
 
 /**
- * Convert a keycode to a control character.
+ * Convert a keycode to modifier/input state flags.
  */
 static inline hid_state_t keycode_to_state(uint16_t keycode) {
   switch (keycode) {

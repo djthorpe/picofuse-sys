@@ -59,6 +59,19 @@ bool hw_spi_valid(const hw_spi_t *spi) {
   return false;
 }
 
+uint8_t hw_spi_get_bits_per_word(const hw_spi_t *spi) {
+  (void)spi;
+  return 0u;
+}
+
+bool hw_spi_set_format(hw_spi_t *spi, hw_spi_mode_t mode,
+                       uint8_t bits_per_word) {
+  (void)spi;
+  (void)mode;
+  (void)bits_per_word;
+  return false;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // METHODS
 
@@ -87,6 +100,15 @@ size_t hw_spi_write(hw_spi_t *spi, uint8_t reg, const void *data, size_t len,
   (void)spi;
   (void)reg;
   (void)data;
+  (void)len;
+  (void)timeout_ms;
+  return 0;
+}
+
+size_t hw_spi_write_words(hw_spi_t *spi, const uint16_t *words, size_t len,
+                          uint32_t timeout_ms) {
+  (void)spi;
+  (void)words;
   (void)len;
   (void)timeout_ms;
   return 0;

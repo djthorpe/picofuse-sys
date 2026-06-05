@@ -2,6 +2,7 @@
 #include <hardware/platform_defs.h>
 #include <hardware/sync.h>
 #include <pico/critical_section.h>
+#include <pico/multicore.h>
 #include <picofuse/hw.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -263,9 +264,12 @@ static bool _hw_flash_block_erase_cb(hw_block_t *block, void *userdata,
   size_t block_size = state->erase_size_bytes;
   uintptr_t byte_offset = state->offset_bytes + index * block_size;
 
+  // Flash erase/program requires no core executes from XIP flash while active.
+  multicore_lockout_start_blocking();
   uint32_t irq_state = save_and_disable_interrupts();
   flash_range_erase((uint32_t)byte_offset, block_size);
   restore_interrupts(irq_state);
+  multicore_lockout_end_blocking();
   critical_section_exit(&_hw_flash_lock);
 
   return true;
@@ -293,9 +297,12 @@ static bool _hw_flash_block_write_cb(hw_block_t *block, void *userdata,
 
   uintptr_t byte_offset = state->offset_bytes + index * block_size;
 
+  // Flash erase/program requires no core executes from XIP flash while active.
+  multicore_lockout_start_blocking();
   uint32_t irq_state = save_and_disable_interrupts();
   flash_range_program((uint32_t)byte_offset, (const uint8_t *)src, block_size);
   restore_interrupts(irq_state);
+  multicore_lockout_end_blocking();
   critical_section_exit(&_hw_flash_lock);
 
   return true;

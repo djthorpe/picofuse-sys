@@ -102,6 +102,7 @@ add_subdirectory(examples/hw/wifi-join)
 add_subdirectory(examples/dev/bme680)
 add_subdirectory(examples/dev/presto-touch)
 add_subdirectory(examples/dev/picoinky)
+add_subdirectory(examples/dev/presto-display)
 
 # Tests
 include(CTest)

@@ -1,0 +1,57 @@
+; ST7701 output and timing PIO programs for use with the Presto display driver.
+; https://github.com/pimoroni/presto/tree/main/drivers/st7701
+; 
+; Output 16-bit parallel, bit-reversed RGB565 data every 4th clock.
+; Wait for IRQ 4 from the timing SM between each row.
+; Side-set controls data enable.
+.program st7701_parallel
+.side_set 1
+
+.wrap_target
+  mov x, y      side 1  ; y must be preset to (width/2)-1
+  wait 1 irq 4  side 1  ; sync to timing SM row IRQ
+loop:
+  out isr, 32 side 1
+  mov pins, ::isr side 1 [1]
+  in null, 16 side 1     [1]
+  mov pins, ::isr side 1 [1]
+  jmp x-- loop  side 1
+  mov pins, null side 1
+.wrap
+
+; Output 18-bit style parallel data path variant.
+.program st7701_parallel_18bpp
+.side_set 1
+
+.wrap_target
+  mov x, y      side 0  ; y must be preset to (width/2)-1
+  wait 1 irq 4  side 0  ; sync to timing SM row IRQ
+loop:
+  out isr, 32 side 1
+  mov pins, ::isr side 1 [1]
+  out isr, 32 side 1     [1]
+  mov pins, ::isr side 1 [1]
+  jmp x-- loop  side 1
+  mov pins, null side 1
+.wrap
+
+; Set two sync pins and then wait for cycles encoded in the input word:
+; 31: VSync
+; 30: HSync
+; 29-16: Delay in pixel clocks (total loop duration is delay + 3)
+; 15-0: instruction for out exec, e.g.:
+;       nop   : 0xb042
+;       irq n : 0xd00n
+; Side-set is the data clock and runs continuously.
+.program st7701_timing
+.side_set 1
+.origin 0
+
+.wrap_target
+  out pins, 2         side 0    ; set VS and HS
+  out x, 14           side 1    ; loop count
+sync_loop:
+  nop                 side 0
+  jmp x--, sync_loop  side 1
+  out exec, 16        side 0
+.wrap

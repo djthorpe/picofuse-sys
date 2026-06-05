@@ -137,6 +137,31 @@ bool hw_spi_valid(const hw_spi_t *spi) {
   return spi != NULL && spi->init && spi->fd >= 0;
 }
 
+uint8_t hw_spi_get_bits_per_word(const hw_spi_t *spi) {
+  if (!hw_spi_valid(spi)) {
+    return 0u;
+  }
+
+  return spi->bits_per_word;
+}
+
+bool hw_spi_set_format(hw_spi_t *spi, hw_spi_mode_t mode,
+                       uint8_t bits_per_word) {
+  if (!hw_spi_valid(spi) || bits_per_word == 0u) {
+    return false;
+  }
+
+  uint8_t ioctl_mode = (uint8_t)mode;
+  if (ioctl(spi->fd, SPI_IOC_WR_MODE, &ioctl_mode) < 0 ||
+      ioctl(spi->fd, SPI_IOC_WR_BITS_PER_WORD, &bits_per_word) < 0) {
+    return false;
+  }
+
+  spi->mode = mode;
+  spi->bits_per_word = bits_per_word;
+  return true;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // METHODS
 
@@ -237,6 +262,29 @@ size_t hw_spi_write(hw_spi_t *spi, uint8_t reg, const void *data, size_t len,
   xfr[1].cs_change = 1u;
 
   if (ioctl(spi->fd, SPI_IOC_MESSAGE((len > 0) ? 2 : 1), xfr) < 0) {
+    return 0;
+  }
+
+  return len;
+}
+
+size_t hw_spi_write_words(hw_spi_t *spi, const uint16_t *words, size_t len,
+                          uint32_t timeout_ms) {
+  (void)timeout_ms;
+
+  if (!hw_spi_valid(spi) || words == NULL || len == 0 ||
+      spi->bits_per_word > 16 || len > (SIZE_MAX / sizeof(uint16_t))) {
+    return 0;
+  }
+
+  struct spi_ioc_transfer xfr = {0};
+  xfr.tx_buf = (uintptr_t)words;
+  xfr.len = (uint32_t)(len * sizeof(uint16_t));
+  xfr.speed_hz = spi->baud_rate;
+  xfr.bits_per_word = spi->bits_per_word;
+  xfr.cs_change = 1u;
+
+  if (ioctl(spi->fd, SPI_IOC_MESSAGE(1), &xfr) < 0) {
     return 0;
   }
 
