@@ -11,4 +11,5 @@
 #pragma once
 #include "dev/bme280.h"
 #include "dev/bme680.h"
+#include "dev/ft6236.h"
 #include "dev/uc8151.h"
