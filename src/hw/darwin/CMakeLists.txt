@@ -26,6 +26,7 @@ endif()
 add_library(${NAME} OBJECT
     ../stub/init.c
     ../stub/adc.c
+    ../stub/flash.c
     ../stub/gpio.c
     ../stub/led.c
     ../stub/pwm.c
