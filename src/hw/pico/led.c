@@ -1,5 +1,5 @@
-#include <picofuse/hw.h>
 #include <pico.h>
+#include <picofuse/hw.h>
 
 uint8_t hw_led_gpio_default(void) {
 #ifdef PICO_DEFAULT_LED_PIN
