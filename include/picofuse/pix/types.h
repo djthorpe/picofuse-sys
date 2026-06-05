@@ -51,7 +51,7 @@ typedef enum {
 typedef struct {
   void *data;       ///< Pointer to frame memory.
   pix_size_t size;  ///< Frame dimensions in pixels.
-  size_t stride;    ///< Bytes per row.
+  size_t stride;    ///< Byte pitch between adjacent major-axis elements.
   pix_format_t fmt; ///< Pixel format used by @ref data.
 } pix_frame_t;
 

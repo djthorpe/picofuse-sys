@@ -512,7 +512,7 @@ bool dev_uc8151_paint_rect(dev_uc8151_t *uc8151, const pix_frame_t *frame,
   }
 
   if (x1 > uc8151->width || y1 > uc8151->height ||
-      region_size.w > frame->size.w || region_size.h > frame->size.h) {
+      frame->size.w != region_size.w || frame->size.h != region_size.h) {
     return false;
   }
 
