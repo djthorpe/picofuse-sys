@@ -116,3 +116,10 @@ bool sys_timer_start(sys_timer_t *timer) {
 bool sys_timer_valid(sys_timer_t *timer) {
   return timer != NULL && timer->init && timer->running;
 }
+
+void *sys_timer_get_userdata(sys_timer_t *timer) {
+  if (timer == NULL || !timer->init) {
+    return NULL;
+  }
+  return timer->userdata;
+}
