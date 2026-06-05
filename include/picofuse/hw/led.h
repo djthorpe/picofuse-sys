@@ -6,6 +6,7 @@
  */
 #pragma once
 #include "gpio.h"
+#include "pwm.h"
 #include <stdint.h>
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -16,6 +17,16 @@
  * @ingroup LED
  */
 #define HW_LED_GPIO_NONE 0xFFu
+
+/**
+ * @brief Capacity of the LED handle pool.
+ * @ingroup LED
+ *
+ * Override by defining `HW_LED_POOL_CAPACITY` at compile time.
+ */
+#ifndef HW_LED_POOL_CAPACITY
+#define HW_LED_POOL_CAPACITY 8u
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////
 // TYPES
@@ -72,10 +83,12 @@ hw_led_t *hw_led_init_wifi(void);
 /**
  * @brief Initialize a PWM controlled LED.
  * @ingroup LED
- * @param gpio GPIO handle for a PWM-capable LED pin.
+ * @param pwm PWM handle for the LED.
+ *
+ * The PWM output is forced to an off state during initialization.
  * @return LED handle, or `NULL` when unsupported or invalid.
  */
-hw_led_t *hw_led_init_pwm(hw_gpio_t *gpio);
+hw_led_t *hw_led_init_pwm(hw_pwm_t *pwm);
 
 /**
  * @brief Initialize the default on-board LED.
@@ -127,10 +140,11 @@ uint8_t hw_led_gpio_default(hw_led_type_t *out_type, uint8_t *out_count);
  * @brief Set LED state on or off.
  * @ingroup LED
  * @param led LED handle.
+ * @param index NeoPixel index to update. Ignored for non-NeoPixel LED types.
  * @param enabled `true` turns LED on, `false` turns LED off.
  * @retval true State update was applied.
  * @retval false Handle is invalid or LED type is unsupported.
  */
-bool hw_led_set(hw_led_t *led, bool enabled);
+bool hw_led_set(hw_led_t *led, uint8_t index, bool enabled);
 
 /** @} */
