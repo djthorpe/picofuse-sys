@@ -100,6 +100,14 @@ bool sys_timer_start(sys_timer_t *timer);
  */
 bool sys_timer_valid(sys_timer_t *timer);
 
+/**
+ * @brief Return user data associated with a timer.
+ * @ingroup SystemTimer
+ * @param timer Timer to query.
+ * @return User data pointer provided to @ref sys_timer_init, or `NULL`.
+ */
+void *sys_timer_get_userdata(sys_timer_t *timer);
+
 /** @} */
 
 #ifdef __cplusplus

@@ -28,10 +28,15 @@ target_link_libraries(${NAME} PUBLIC
     hardware_flash
     hardware_gpio
     hardware_i2c
+    hardware_pio
     hardware_uart
     hardware_spi
     hardware_adc
     hardware_pwm
+)
+
+pico_generate_pio_header(${NAME}
+    ${CMAKE_CURRENT_LIST_DIR}/led_neopixel.pio
 )
 
 if(PICOFUSE_USB)

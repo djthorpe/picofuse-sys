@@ -8,6 +8,8 @@
 ///////////////////////////////////////////////////////////////////////////////
 // FORWARD DECLARATIONS
 
+void _hw_led_module_init(void);
+void _hw_led_module_exit(void);
 void _hw_wifi_poll(void);
 void _hw_usb_poll(void);
 
@@ -19,6 +21,7 @@ void _hw_usb_poll(void);
  */
 void hw_init(void) {
   adc_init();
+  _hw_led_module_init();
 
 #if PICO_CYW43_SUPPORTED
   if (cyw43_arch_init()) {
@@ -31,6 +34,7 @@ void hw_init(void) {
  * @brief Cleans up the hardware system on shutdown.
  */
 void hw_exit(void) {
+  _hw_led_module_exit();
 #if PICO_CYW43_SUPPORTED
   cyw43_arch_deinit();
 #endif

@@ -51,9 +51,10 @@ int main(void) {
   hw_init();
 
 #ifdef SYSTEM_NAME_PICO
-  uint8_t led_pin = hw_led_gpio_default();
-  if (led_pin == HW_LED_GPIO_NONE) {
-    sys_printf("PWM fade example requires a PWM-capable on-board LED pin\n");
+  hw_led_type_t led_type = HW_LED_TYPE_NONE;
+  uint8_t led_pin = hw_led_gpio_default(&led_type, NULL);
+  if (led_type != HW_LED_TYPE_GPIO || led_pin == HW_LED_GPIO_NONE) {
+    sys_printf("PWM fade example requires a GPIO on-board LED pin\n");
     hw_exit();
     sys_exit();
     return 0;

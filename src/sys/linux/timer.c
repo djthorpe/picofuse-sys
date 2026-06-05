@@ -179,3 +179,14 @@ bool sys_timer_valid(sys_timer_t *timer) {
   pthread_mutex_unlock(&_sys_timer_pool_lock);
   return valid;
 }
+
+void *sys_timer_get_userdata(sys_timer_t *timer) {
+  if (timer == NULL) {
+    return NULL;
+  }
+
+  pthread_mutex_lock(&_sys_timer_pool_lock);
+  void *userdata = timer->init ? timer->userdata : NULL;
+  pthread_mutex_unlock(&_sys_timer_pool_lock);
+  return userdata;
+}
