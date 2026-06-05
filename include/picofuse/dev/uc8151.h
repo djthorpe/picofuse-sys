@@ -53,6 +53,7 @@ typedef struct {
   bool inverted;                   ///< Start with color inversion enabled.
   bool blocking;                   ///< Wait for refresh completion in paint.
   dev_uc8151_update_speed_t speed; ///< Initial update speed profile.
+  dev_uc8151_rotation_t rotation;  ///< Initial display rotation.
 } dev_uc8151_config_t;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -68,17 +69,14 @@ typedef struct {
  * @param dc_pin GPIO used for data/command selection.
  * @param reset_pin GPIO used for hardware reset.
  * @param busy_pin Busy GPIO input for ready/busy state.
- * @param width Display width in pixels.
- * @param height Display height in pixels.
- * @param rotation Initial display rotation.
+ * @param size Display size in pixels.
  * @param config Optional pointer to additional initialization options. Pass
  * `NULL` to use default values.
  * @return UC8151 handle or NULL on failure.
  */
 dev_uc8151_t *dev_uc8151_init(hw_spi_t *spi, hw_gpio_t *dc_pin,
                               hw_gpio_t *reset_pin, hw_gpio_t *busy_pin,
-                              uint16_t width, uint16_t height,
-                              dev_uc8151_rotation_t rotation,
+                              pix_size_t size,
                               const dev_uc8151_config_t *config);
 
 /**

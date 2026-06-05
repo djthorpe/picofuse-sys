@@ -305,6 +305,7 @@ _dev_uc8151_resolve_config(const dev_uc8151_config_t *config) {
       .inverted = false,
       .blocking = true,
       .speed = DEV_UC8151_UPDATE_SPEED_DEFAULT,
+      .rotation = DEV_UC8151_ROTATION_0,
   };
 
   if (config == NULL) {
@@ -315,6 +316,9 @@ _dev_uc8151_resolve_config(const dev_uc8151_config_t *config) {
   resolved.blocking = config->blocking;
   if (_dev_uc8151_valid_update_speed(config->speed)) {
     resolved.speed = config->speed;
+  }
+  if (_dev_uc8151_valid_rotation(config->rotation)) {
+    resolved.rotation = config->rotation;
   }
 
   return resolved;
@@ -353,21 +357,22 @@ bool dev_uc8151_valid(const dev_uc8151_t *uc8151) {
 
 dev_uc8151_t *dev_uc8151_init(hw_spi_t *spi, hw_gpio_t *dc_pin,
                               hw_gpio_t *reset_pin, hw_gpio_t *busy_pin,
-                              uint16_t width, uint16_t height,
-                              dev_uc8151_rotation_t rotation,
+                              pix_size_t size,
                               const dev_uc8151_config_t *config) {
   if (!hw_spi_valid(spi) || !hw_gpio_valid(dc_pin) ||
-      !hw_gpio_valid(reset_pin) || !hw_gpio_valid(busy_pin) || width == 0u ||
-      height == 0u || !_dev_uc8151_valid_rotation(rotation)) {
+      !hw_gpio_valid(reset_pin) || !hw_gpio_valid(busy_pin) || size.w == 0u ||
+      size.h == 0u) {
     return NULL;
   }
 
+  dev_uc8151_config_t resolved = _dev_uc8151_resolve_config(config);
+
   sys_debugf("[uc8151] init request width=%u height=%u rot=%u busy=%u",
-             (unsigned int)width, (unsigned int)height, (unsigned int)rotation,
+             (unsigned int)size.w, (unsigned int)size.h,
+             (unsigned int)resolved.rotation,
              (unsigned int)hw_gpio_get(busy_pin));
 
   sys_debugf("[uc8151] init resolve_config");
-  dev_uc8151_config_t resolved = _dev_uc8151_resolve_config(config);
 
   sys_debugf("[uc8151] init calloc begin");
   dev_uc8151_t *uc8151 = sys_calloc(1u, sizeof(*uc8151));
@@ -381,9 +386,9 @@ dev_uc8151_t *dev_uc8151_init(hw_spi_t *spi, hw_gpio_t *dc_pin,
   uc8151->dc_pin = dc_pin;
   uc8151->reset_pin = reset_pin;
   uc8151->busy_pin = busy_pin;
-  uc8151->width = width;
-  uc8151->height = height;
-  uc8151->rotation = rotation;
+  uc8151->width = size.w;
+  uc8151->height = size.h;
+  uc8151->rotation = resolved.rotation;
   uc8151->speed = resolved.speed;
   uc8151->inverted = resolved.inverted;
   uc8151->blocking = resolved.blocking;
