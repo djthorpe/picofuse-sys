@@ -10,6 +10,7 @@ add_library(${NAME} OBJECT
     gpio.c
     init.c
     i2c.c
+    led.c
     pwm.c
     spi.c
     ${PICOFUSE_PICO_USB_SOURCE}

@@ -417,7 +417,7 @@ static void _hw_pwm_set_callback(hw_pwm_t *pwm, hw_pwm_callback_t callback,
 ///////////////////////////////////////////////////////////////////////////////
 // INTERNAL INTERRUPT HANDLER
 
-void _hw_pwm_callback_handler(void) {
+static void _hw_pwm_callback_handler(void) {
   uint32_t status = pwm_get_irq_status_mask();
   for (uint8_t slice = 0; slice < NUM_PWM_SLICES; slice++) {
     if (status & (1u << slice)) {

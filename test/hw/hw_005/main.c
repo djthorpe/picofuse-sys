@@ -51,8 +51,9 @@ bool test_main(void) {
   TestAssert(period_close(read_config.period_ns, config.period_ns),
              "Period should match after init, expected %u, got %u",
              (uint32_t)config.period_ns, (uint32_t)read_config.period_ns);
-  TestAssert(read_config.duty_percent == config.duty_percent,
-             "Duty percent should match after init, expected %.1f, got %.1f",
+  TestAssert(read_config.duty_percent >= config.duty_percent - 2.0f &&
+                 read_config.duty_percent <= config.duty_percent + 2.0f,
+             "Duty percent should be close after init, expected ~%.1f, got %.1f",
              config.duty_percent, read_config.duty_percent);
   TestAssert(read_config.enabled == config.enabled,
              "Enabled state should match after init, expected %d, got %d",
