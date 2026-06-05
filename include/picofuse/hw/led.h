@@ -5,6 +5,7 @@
  * @ingroup Hardware
  */
 #pragma once
+#include "gpio.h"
 #include <stdint.h>
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -17,12 +18,119 @@
 #define HW_LED_GPIO_NONE 0xFFu
 
 ///////////////////////////////////////////////////////////////////////////////
-// QUERY
+// TYPES
+
+/**
+ * @brief Default board LED access type.
+ * @ingroup LED
+ */
+typedef enum {
+  HW_LED_TYPE_NONE = 0, ///< No default board LED is available.
+  HW_LED_TYPE_WIFI,     ///< LED is controlled through CYW43 Wi-Fi GPIO.
+  HW_LED_TYPE_NEOPIXEL, ///< LED is a WS2812/NeoPixel data pin.
+  HW_LED_TYPE_GPIO,     ///< LED is a directly controlled GPIO pin.
+  HW_LED_TYPE_PWM,      ///< LED is controlled through PWM on a GPIO pin.
+} hw_led_type_t;
+
+/**
+ * @brief Opaque LED handle.
+ * @ingroup LED
+ * @headerfile led.h hw/hw.h
+ */
+typedef struct hw_led_t hw_led_t;
+
+///////////////////////////////////////////////////////////////////////////////
+// LIFECYCLE
+
+/** @name Lifecycle
+ * @{ */
+
+/**
+ * @brief Initialize a direct GPIO LED.
+ * @ingroup LED
+ * @param gpio GPIO handle for the LED pin.
+ * @return LED handle, or `NULL` when unsupported or invalid.
+ */
+hw_led_t *hw_led_init_gpio(hw_gpio_t *gpio);
+
+/**
+ * @brief Initialize a NeoPixel/WS2812 LED data pin.
+ * @ingroup LED
+ * @param gpio GPIO handle for the NeoPixel data pin.
+ * @param led_count Number of NeoPixels in the daisy chain.
+ * @return LED handle, or `NULL` when unsupported or invalid.
+ */
+hw_led_t *hw_led_init_neopixel(hw_gpio_t *gpio, uint8_t led_count);
+
+/**
+ * @brief Initialize a Wi-Fi controlled LED.
+ * @ingroup LED
+ * @return LED handle when CYW43 support is available, otherwise `NULL`.
+ */
+hw_led_t *hw_led_init_wifi(void);
+
+/**
+ * @brief Initialize a PWM controlled LED.
+ * @ingroup LED
+ * @param gpio GPIO handle for a PWM-capable LED pin.
+ * @return LED handle, or `NULL` when unsupported or invalid.
+ */
+hw_led_t *hw_led_init_pwm(hw_gpio_t *gpio);
+
+/**
+ * @brief Initialize the default on-board LED.
+ * @ingroup LED
+ *
+ * The backend detects the default LED type and initializes the corresponding
+ * LED path automatically.
+ *
+ * @return LED handle, or `NULL` when no default on-board LED is available or
+ * initialization fails.
+ */
+hw_led_t *hw_led_init_default(void);
+
+/**
+ * @brief Deinitialize an LED handle.
+ * @ingroup LED
+ * @param led LED handle.
+ */
+void hw_led_deinit(hw_led_t *led);
+
+/** @} */
+
+///////////////////////////////////////////////////////////////////////////////
+// PROPERTIES
+
+/** @name Properties
+ * @{ */
 
 /**
  * @brief Return the default board LED GPIO pin.
  * @ingroup LED
+ * @param out_type Optional destination for detected LED type.
+ * @param out_count Optional destination for LED count. Defaults to 1 for
+ * available LEDs, or 0 when no default LED is available.
  * @return The default board LED GPIO pin, or @ref HW_LED_GPIO_NONE when no
  * direct GPIO LED is available.
  */
-uint8_t hw_led_gpio_default(void);
+uint8_t hw_led_gpio_default(hw_led_type_t *out_type, uint8_t *out_count);
+
+/** @} */
+
+///////////////////////////////////////////////////////////////////////////////
+// METHODS
+
+/** @name Methods
+ * @{ */
+
+/**
+ * @brief Set LED state on or off.
+ * @ingroup LED
+ * @param led LED handle.
+ * @param enabled `true` turns LED on, `false` turns LED off.
+ * @retval true State update was applied.
+ * @retval false Handle is invalid or LED type is unsupported.
+ */
+bool hw_led_set(hw_led_t *led, bool enabled);
+
+/** @} */
