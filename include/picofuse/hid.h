@@ -7,5 +7,6 @@
  * HID-related interfaces belong here.
  */
 #pragma once
+#include "hid/device.h"
 #include "hid/event.h"
 #include "hid/keycode.h"
