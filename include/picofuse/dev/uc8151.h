@@ -91,23 +91,6 @@ void dev_uc8151_deinit(dev_uc8151_t *uc8151);
 /** @} */
 
 ///////////////////////////////////////////////////////////////////////////////
-// PROPERTIES
-
-/** @name Properties
- * @{ */
-
-/**
- * @brief Check whether a UC8151 handle is valid.
- * @ingroup UC8151
- * @param uc8151 UC8151 handle.
- * @retval true The handle is valid.
- * @retval false The handle is invalid.
- */
-bool dev_uc8151_valid(const dev_uc8151_t *uc8151);
-
-/** @} */
-
-///////////////////////////////////////////////////////////////////////////////
 // METHODS
 
 /** @name Methods

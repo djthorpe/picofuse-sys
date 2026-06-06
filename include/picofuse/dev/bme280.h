@@ -129,15 +129,6 @@ void dev_bme280_deinit(dev_bme280_t *bme280);
  * @{ */
 
 /**
- * @brief Check whether a BME280 handle is valid.
- * @ingroup BME280
- * @param bme280 BME280 handle.
- * @retval true The handle is valid.
- * @retval false The handle is invalid.
- */
-bool dev_bme280_valid(const dev_bme280_t *bme280);
-
-/**
  * @brief Get the detected chip ID.
  * @ingroup BME280
  * @param bme280 BME280 handle.

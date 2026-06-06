@@ -72,6 +72,7 @@ struct dev_uc8151_t {
 // PRIVATE
 
 static void _dev_uc8151_reset(dev_uc8151_t *uc8151);
+static bool _dev_uc8151_ready(const dev_uc8151_t *uc8151);
 
 static bool _dev_uc8151_valid_rotation(dev_uc8151_rotation_t rotation) {
   return rotation == DEV_UC8151_ROTATION_0 ||
@@ -85,7 +86,7 @@ _dev_uc8151_valid_update_speed(dev_uc8151_update_speed_t update_speed) {
 
 static bool _dev_uc8151_send_command(dev_uc8151_t *uc8151, uint8_t command,
                                      const uint8_t *data, size_t data_len) {
-  if (!dev_uc8151_valid(uc8151)) {
+  if (!_dev_uc8151_ready(uc8151)) {
     return false;
   }
 
@@ -114,7 +115,7 @@ static bool _dev_uc8151_send_command(dev_uc8151_t *uc8151, uint8_t command,
 
 static bool _dev_uc8151_send_data(dev_uc8151_t *uc8151, const uint8_t *data,
                                   size_t data_len) {
-  if (!dev_uc8151_valid(uc8151) || data == NULL || data_len == 0u) {
+  if (!_dev_uc8151_ready(uc8151) || data == NULL || data_len == 0u) {
     return false;
   }
 
@@ -125,7 +126,7 @@ static bool _dev_uc8151_send_data(dev_uc8151_t *uc8151, const uint8_t *data,
 }
 
 static bool _dev_uc8151_is_busy(const dev_uc8151_t *uc8151) {
-  if (!dev_uc8151_valid(uc8151)) {
+  if (!_dev_uc8151_ready(uc8151)) {
     return false;
   }
 
@@ -134,7 +135,7 @@ static bool _dev_uc8151_is_busy(const dev_uc8151_t *uc8151) {
 }
 
 static bool _dev_uc8151_wait_ready(dev_uc8151_t *uc8151) {
-  if (!dev_uc8151_valid(uc8151)) {
+  if (!_dev_uc8151_ready(uc8151)) {
     return false;
   }
 
@@ -275,7 +276,7 @@ static bool _dev_uc8151_setup(dev_uc8151_t *uc8151) {
 }
 
 static bool _dev_uc8151_power_off(dev_uc8151_t *uc8151) {
-  if (!dev_uc8151_valid(uc8151)) {
+  if (!_dev_uc8151_ready(uc8151)) {
     return false;
   }
 
@@ -345,7 +346,7 @@ static void _dev_uc8151_reset(dev_uc8151_t *uc8151) {
 ///////////////////////////////////////////////////////////////////////////////
 // PROPERTIES
 
-bool dev_uc8151_valid(const dev_uc8151_t *uc8151) {
+static bool _dev_uc8151_ready(const dev_uc8151_t *uc8151) {
   return uc8151 != NULL && uc8151->init && hw_spi_valid(uc8151->spi) &&
          hw_gpio_valid(uc8151->dc_pin) && hw_gpio_valid(uc8151->reset_pin) &&
          hw_gpio_valid(uc8151->busy_pin) && uc8151->width > 0u &&
@@ -418,7 +419,7 @@ dev_uc8151_t *dev_uc8151_init(hw_spi_t *spi, hw_gpio_t *dc_pin,
 }
 
 void dev_uc8151_reset(dev_uc8151_t *uc8151) {
-  if (!dev_uc8151_valid(uc8151)) {
+  if (!_dev_uc8151_ready(uc8151)) {
     return;
   }
 
@@ -446,7 +447,7 @@ void dev_uc8151_deinit(dev_uc8151_t *uc8151) {
 // METHODS
 
 bool dev_uc8151_paint(dev_uc8151_t *uc8151, const pix_frame_t *frame) {
-  if (!dev_uc8151_valid(uc8151) || !_dev_uc8151_validate_frame(frame)) {
+  if (!_dev_uc8151_ready(uc8151) || !_dev_uc8151_validate_frame(frame)) {
     return false;
   }
 
@@ -493,7 +494,7 @@ bool dev_uc8151_paint(dev_uc8151_t *uc8151, const pix_frame_t *frame) {
 
 bool dev_uc8151_paint_rect(dev_uc8151_t *uc8151, const pix_frame_t *frame,
                            pix_point_t origin, pix_size_t region_size) {
-  if (!dev_uc8151_valid(uc8151) || !_dev_uc8151_validate_frame(frame)) {
+  if (!_dev_uc8151_ready(uc8151) || !_dev_uc8151_validate_frame(frame)) {
     return false;
   }
 

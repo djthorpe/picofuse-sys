@@ -30,7 +30,7 @@ int main(void) {
   config.heater_duration_ms = DEV_BME680_HEATER_DUR_120MS;
 
   dev_bme680_t *bme680 = dev_bme680_init_i2c(i2c, &config);
-  if (!dev_bme680_valid(bme680)) {
+  if (bme680 == NULL) {
     sys_printf("BME680 init failed\n");
     hw_i2c_deinit(i2c);
     hw_exit();
