@@ -170,3 +170,8 @@ picofuse_add_hw_test(hw_005
 picofuse_add_hw_test(hw_006
 	main.c
 )
+
+# Check HID init constraints, pool capacity, and slot reuse behavior.
+picofuse_add_hid_test(hid_001
+	main.c
+)

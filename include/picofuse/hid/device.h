@@ -106,6 +106,7 @@ bool hid_poll(hid_t *instance);
 /**
  * @brief Register a generic HID child device using callback operations.
  * @ingroup HID
+ * @param instance HID instance that owns the registration.
  * @param name Device name.
  * @param id Device identifier.
  * @param type Device type classification.
@@ -115,59 +116,64 @@ bool hid_poll(hid_t *instance);
  * @param callbacks Callback operation table.
  * @return Registered HID device descriptor, or NULL on failure.
  */
-hid_device_t *hid_register(const char *name, uint32_t id, hid_type_t type,
-                           uint32_t polling_interval_ms, void *userdata,
-                           hid_device_callbacks_t callbacks);
+hid_device_t *hid_register(hid_t *instance, const char *name, uint32_t id,
+                           hid_type_t type, uint32_t polling_interval_ms,
+                           void *userdata, hid_device_callbacks_t callbacks);
 
 /**
  * @brief Register a GPIO pin as HID input.
  * @ingroup HID
+ * @param instance HID instance that owns the GPIO registration.
  * @param bank GPIO bank index.
  * @param pin GPIO pin index.
  * @param keycode HID keycode reported for this input.
  * @return Registered HID device descriptor, or NULL on failure.
  */
-hid_device_t *hid_register_gpio_input(uint8_t bank, uint8_t pin,
-                                      uint16_t keycode);
+hid_device_t *hid_register_gpio_input(hid_t *instance, uint8_t bank,
+                                      uint8_t pin, uint16_t keycode);
 
 /**
  * @brief Register a GPIO pin as HID input with pull-up.
  * @ingroup HID
+ * @param instance HID instance that owns the GPIO registration.
  * @param bank GPIO bank index.
  * @param pin GPIO pin index.
  * @param keycode HID keycode reported for this input.
  * @return Registered HID device descriptor, or NULL on failure.
  */
-hid_device_t *hid_register_gpio_pullup(uint8_t bank, uint8_t pin,
-                                       uint16_t keycode);
+hid_device_t *hid_register_gpio_pullup(hid_t *instance, uint8_t bank,
+                                       uint8_t pin, uint16_t keycode);
 
 /**
  * @brief Register a GPIO pin as HID input with pull-down.
  * @ingroup HID
+ * @param instance HID instance that owns the GPIO registration.
  * @param bank GPIO bank index.
  * @param pin GPIO pin index.
  * @param keycode HID keycode reported for this input.
  * @return Registered HID device descriptor, or NULL on failure.
  */
-hid_device_t *hid_register_gpio_pulldown(uint8_t bank, uint8_t pin,
-                                         uint16_t keycode);
+hid_device_t *hid_register_gpio_pulldown(hid_t *instance, uint8_t bank,
+                                         uint8_t pin, uint16_t keycode);
 
 /**
  * @brief Register a user button as a HID input source.
  * @ingroup HID
+ * @param instance HID instance that owns the user-button registration.
  * @param keycode HID keycode reported for this input.
  * @return Registered HID device descriptor, or NULL on failure.
  */
-hid_device_t *hid_register_user_button(uint16_t keycode);
+hid_device_t *hid_register_user_button(hid_t *instance, uint16_t keycode);
 
 /**
- * @brief Unregister and remove a HID device.
+ * @brief Deregister and remove a HID device.
  * @ingroup HID
+ * @param instance HID instance that owns the device.
  * @param device HID device handle.
  * @retval true Device was removed.
- * @retval false Device handle was invalid.
+ * @retval false Instance or device handle was invalid.
  */
-bool hid_unregister(hid_device_t *device);
+bool hid_deregister(hid_t *instance, hid_device_t *device);
 
 /** @} */
 
