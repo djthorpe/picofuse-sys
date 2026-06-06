@@ -5,6 +5,7 @@ add_library(${NAME} OBJECT
     any/event.c
     any/gpio.c
     any/keycode.c
+    any/timer.c
 )
 
 target_include_directories(${NAME} PUBLIC

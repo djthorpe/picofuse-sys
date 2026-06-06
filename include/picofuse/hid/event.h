@@ -16,6 +16,7 @@ typedef enum {
   hid_event_type_keycode = 1,
   hid_event_type_touch = 2,
   hid_event_type_metric = 3,
+  hid_event_type_timer = 4,
 } hid_event_type_t;
 
 /**
@@ -45,6 +46,13 @@ typedef struct {
 } hid_metric_t;
 
 /**
+ * @brief Timer-oriented HID event payload.
+ */
+typedef struct {
+  void *userdata; ///< Timer userdata associated with this event.
+} hid_timer_t;
+
+/**
  * @brief Represents a single HID input event.
  */
 typedef struct {
@@ -54,6 +62,7 @@ typedef struct {
     hid_keycode_t keycode;
     hid_touch_t touch;
     hid_metric_t metric;
+    hid_timer_t timer;
   } data;
 } hid_event_t;
 

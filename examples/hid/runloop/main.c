@@ -11,6 +11,10 @@
 #define I2C_BAUD_RATE 100000u
 #define POLL_INTERVAL_MS 20u
 #define BME680_POLL_INTERVAL_MS 30000u
+#define HID_TIMER_INTERVAL_MS 1000u
+#define HID_TIMER_ID 0x54494D45u
+#define HID_TIMER_ONESHOT_INTERVAL_MS 5000u
+#define HID_TIMER_ONESHOT_ID 0x35534543u
 #define EXIT_KEYCODE KEYCODE_ESC
 
 static sys_event_queue_t *_hid_queue = NULL;
@@ -19,8 +23,13 @@ static hid_device_t *_user_button = NULL;
 static hw_i2c_t *_i2c = NULL;
 static hid_device_t *_tca9555_hid = NULL;
 static hid_device_t *_bme680_hid = NULL;
+static hid_device_t *_timer_hid = NULL;
+static hid_device_t *_timer_oneshot_hid = NULL;
 static sys_timer_t *_poll_timer = NULL;
 static sys_atomic_t _event_count;
+
+static const char *_timer_userdata = "periodic_1s";
+static const char *_timer_oneshot_userdata = "oneshot_5s";
 
 static uint8_t _poll_sentinel;
 
@@ -66,6 +75,26 @@ static void on_init(uint8_t worker_index) {
                hid_keycode_to_string(EXIT_KEYCODE));
   } else {
     sys_printf("hid user button not available for this board\n");
+  }
+
+  _timer_hid = hid_register_timer(_hid, HID_TIMER_ID, HID_TIMER_INTERVAL_MS,
+                                  true, (void *)_timer_userdata);
+  if (_timer_hid != NULL) {
+    sys_printf("hid timer registered (id=0x%08X interval=%u ms)\n",
+               (unsigned int)HID_TIMER_ID, (unsigned int)HID_TIMER_INTERVAL_MS);
+  } else {
+    sys_printf("hid timer registration failed\n");
+  }
+
+  _timer_oneshot_hid = hid_register_timer(_hid, HID_TIMER_ONESHOT_ID,
+                                          HID_TIMER_ONESHOT_INTERVAL_MS, false,
+                                          (void *)_timer_oneshot_userdata);
+  if (_timer_oneshot_hid != NULL) {
+    sys_printf("hid one-shot timer registered (id=0x%08X interval=%u ms)\n",
+               (unsigned int)HID_TIMER_ONESHOT_ID,
+               (unsigned int)HID_TIMER_ONESHOT_INTERVAL_MS);
+  } else {
+    sys_printf("hid one-shot timer registration failed\n");
   }
 
   _i2c = hw_i2c_init_default(I2C_BAUD_RATE);
@@ -161,6 +190,18 @@ static void on_event(sys_event_t event) {
                  (metric_event->name != NULL) ? metric_event->name : "unknown",
                  (double)metric_event->value,
                  (metric_event->unit != NULL) ? metric_event->unit : "");
+    } else if (hid_event->type == hid_event_type_timer) {
+      const char *timer_payload = (const char *)hid_event->data.timer.userdata;
+
+      if (hid_event->device != NULL) {
+        (void)hid_device_info(hid_event->device, &device_name, &device_id,
+                              &device_type);
+      }
+
+      sys_printf("hid timer %u: core=%u src=%s id=0x%08X payload=%s\n",
+                 (unsigned int)count, (unsigned int)sys_thread_core(),
+                 device_name, (unsigned int)device_id,
+                 (timer_payload != NULL) ? timer_payload : "none");
     }
 
     hid_event_free(hid_event);
@@ -193,6 +234,23 @@ static void on_exit(uint8_t worker_index) {
   if (_hid != NULL && _bme680_hid != NULL) {
     (void)hid_deregister(_hid, _bme680_hid);
     _bme680_hid = NULL;
+  }
+
+  if (_hid != NULL && _timer_hid != NULL) {
+    (void)hid_deregister(_hid, _timer_hid);
+    _timer_hid = NULL;
+  }
+
+  if (_hid != NULL && _timer_oneshot_hid != NULL) {
+    const char *name = NULL;
+    uint32_t id = 0u;
+    hid_type_t type = hid_type_none;
+
+    // One-shot timer may already have self-deregistered after first fire.
+    if (hid_device_info(_timer_oneshot_hid, &name, &id, &type)) {
+      (void)hid_deregister(_hid, _timer_oneshot_hid);
+    }
+    _timer_oneshot_hid = NULL;
   }
 
   if (_i2c != NULL) {

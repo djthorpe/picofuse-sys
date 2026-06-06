@@ -4,8 +4,7 @@
  * @ingroup HID
  */
 #pragma once
-
-#include <picofuse/sys/event.h>
+#include <picofuse/sys.h>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -52,6 +51,7 @@ typedef enum {
   hid_type_none = 0,
   hid_type_gpio = 1,
   hid_type_other = 2,
+  hid_type_timer = 3,
 } hid_type_t;
 
 /**
@@ -165,6 +165,22 @@ hid_device_t *hid_register_gpio_pulldown(hid_t *instance, uint8_t bank,
  * @return Registered HID device descriptor, or NULL on failure.
  */
 hid_device_t *hid_register_user_button(hid_t *instance, uint16_t keycode);
+
+/**
+ * @brief Register a timer-backed HID source.
+ * @ingroup HID
+ * @param instance HID instance that owns the timer registration.
+ * @param id Device identifier.
+ * @param interval_ms Timer period in milliseconds.
+ * @param repeating True for periodic timers, false for one-shot timers.
+ * @param userdata Opaque user data stored with the timer.
+ * @return Registered HID device descriptor, or NULL on failure.
+ *
+ * This API is currently a stub and returns NULL.
+ */
+hid_device_t *hid_register_timer(hid_t *instance, uint32_t id,
+                                 uint32_t interval_ms, bool repeating,
+                                 void *userdata);
 
 /**
  * @brief Deregister and remove a HID device.

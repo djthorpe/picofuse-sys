@@ -93,6 +93,43 @@ bool _hid_find_device_by_id(uint32_t id, hid_t **out_instance,
   return false;
 }
 
+bool _hid_find_device_by_timer(sys_timer_t *timer, hid_t **out_instance,
+                               hid_device_t **out_device) {
+  size_t i;
+  size_t j;
+
+  if (timer == NULL || out_instance == NULL || out_device == NULL) {
+    return false;
+  }
+
+  *out_instance = NULL;
+  *out_device = NULL;
+
+  for (i = 0u; i < HID_CAPACITY; ++i) {
+    if (!_hid_valid(&_hid[i])) {
+      continue;
+    }
+
+    for (j = 0u; j < HID_DEVICE_CAPACITY; ++j) {
+      if (_hid[i].devices[j].type == hid_type_none) {
+        continue;
+      }
+      if (_hid[i].devices[j].type != hid_type_timer) {
+        continue;
+      }
+      if ((sys_timer_t *)_hid[i].devices[j].userdata != timer) {
+        continue;
+      }
+
+      *out_instance = &_hid[i];
+      *out_device = &_hid[i].devices[j];
+      return true;
+    }
+  }
+
+  return false;
+}
+
 /**
  * @brief Retain a free device slot from an instance-local device pool.
  */
@@ -406,6 +443,10 @@ void *hid_device_userdata(const hid_device_t *device) {
 
     if (device->type == hid_type_none) {
       return NULL;
+    }
+
+    if (device->type == hid_type_timer && device->userdata != NULL) {
+      return sys_timer_get_userdata((sys_timer_t *)device->userdata);
     }
 
     return device->userdata;

@@ -15,6 +15,8 @@ struct hid_device_t {
   uint32_t polling_interval_ms;
   uint64_t last_event_ms;
   void *userdata;
+  bool timer_repeating;
+  bool timer_remove_after_event;
   hw_gpio_t *gpio;
   hid_device_callbacks_t callbacks;
 };
@@ -30,6 +32,8 @@ bool _hid_has_valid_instances(void);
 hid_t *_hid_device_instance(const hid_device_t *device);
 bool _hid_find_device_by_id(uint32_t id, hid_t **out_instance,
                             hid_device_t **out_device);
+bool _hid_find_device_by_timer(sys_timer_t *timer, hid_t **out_instance,
+                               hid_device_t **out_device);
 hid_device_t *_hid_device_retain(hid_t *instance, const char *name,
                                  hid_type_t type);
 void _hid_device_release(hid_t *instance, hid_device_t *device);

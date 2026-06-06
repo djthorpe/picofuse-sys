@@ -98,4 +98,16 @@ bool hid_event_queue_metric_float(hid_device_t *device, const char *name,
 /**
  * @brief Free a HID event object allocated by hid_event_alloc.
  */
-void hid_event_free(hid_event_t *event) { sys_free(event); }
+void hid_event_free(hid_event_t *event) {
+  if (event != NULL && event->type == hid_event_type_timer &&
+      event->device != NULL && event->device->timer_remove_after_event) {
+    hid_t *instance = _hid_device_instance(event->device);
+
+    if (instance != NULL) {
+      event->device->timer_remove_after_event = false;
+      (void)hid_deregister(instance, event->device);
+    }
+  }
+
+  sys_free(event);
+}
