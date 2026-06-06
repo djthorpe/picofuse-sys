@@ -37,9 +37,16 @@ typedef struct {
 } button_map_t;
 
 static const button_map_t _buttons[] = {
-    {PIN_SW_UP, "UP"},     {PIN_SW_LEFT, "LEFT"},     {PIN_SW_RIGHT, "RIGHT"},
-    {PIN_SW_DOWN, "DOWN"}, {PIN_SW_SELECT, "SELECT"}, {PIN_SW_START, "START"},
-    {PIN_SW_A, "B"},       {PIN_SW_X, "Y"},           {PIN_SW_B, "A"},
+    {PIN_SW_UP, "UP"},
+    {PIN_SW_LEFT, "LEFT"},
+    {PIN_SW_RIGHT, "RIGHT"},
+    {PIN_SW_DOWN, "DOWN"},
+    {PIN_SW_SELECT, "SELECT"},
+    {PIN_SW_START, "START"},
+    // Board wiring maps these expander bits to opposite printed labels.
+    {PIN_SW_A, "B"},
+    {PIN_SW_X, "Y"},
+    {PIN_SW_B, "A"},
     {PIN_SW_Y, "X"},
 };
 
