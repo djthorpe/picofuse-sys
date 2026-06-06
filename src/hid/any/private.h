@@ -10,6 +10,7 @@ struct hid_device_t {
   const char *name;
   uint32_t id;
   uint16_t keycode;
+  hid_state_t state;
   hid_type_t type;
   uint32_t polling_interval_ms;
   uint64_t last_event_ms;
