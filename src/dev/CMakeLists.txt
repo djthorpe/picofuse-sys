@@ -5,6 +5,7 @@ add_library(${NAME} OBJECT
     bme680/hid.c
     bme280/bme280.c
     ft6236/ft6236.c
+    ft6236/hid.c
     st7701/st7701.c
     tca9555/pimoroni_pad.c
     tca9555/tca9555.c

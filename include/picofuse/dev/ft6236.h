@@ -125,4 +125,18 @@ bool dev_ft6236_poll(dev_ft6236_t *ft6236,
                      hid_event_t events[DEV_FT6236_MAX_POINTS],
                      uint8_t *out_touch_count);
 
+/**
+ * @brief Register an FT6236-compatible touch controller as a HID source.
+ * @ingroup FT6236
+ * @param hid HID instance that owns the registration.
+ * @param i2c I2C interface used to initialize the touch controller.
+ * @param int_pin Optional interrupt GPIO handle. Pass `NULL` to always poll.
+ * @param config Optional pointer to initialization options. Pass `NULL` to
+ * use default values.
+ * @return Registered HID device descriptor, or `NULL` on failure.
+ */
+hid_device_t *dev_ft6236_hid_register(hid_t *hid, hw_i2c_t *i2c,
+                                      hw_gpio_t *int_pin,
+                                      const dev_ft6236_config_t *config);
+
 /** @} */

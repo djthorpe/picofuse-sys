@@ -18,6 +18,7 @@
 
 static hid_t *_hid = NULL;
 static hw_i2c_t *_i2c = NULL;
+static hw_i2c_t *_touch_i2c = NULL;
 
 static const char *_timer_userdata = "periodic_1s";
 static const char *_timer_oneshot_userdata = "oneshot_5s";
@@ -102,8 +103,6 @@ static void on_init(uint8_t worker_index) {
     (void)hid_device_info(tca9555_hid, &name, &id, &type);
     sys_printf("tca9555 detected on default i2c bus (addr=0x%02X)\n",
                (unsigned int)id);
-  } else {
-    sys_printf("pimoroni_pad registration failed (no tca9555 detected)\n");
   }
 
   bme680_hid =
@@ -115,9 +114,59 @@ static void on_init(uint8_t worker_index) {
     (void)hid_device_info(bme680_hid, &name, &id, &type);
     sys_printf("bme680 detected on default i2c bus (chip=0x%02X, poll=%u ms)\n",
                (unsigned int)id, (unsigned int)BME680_POLL_INTERVAL_MS);
-  } else {
-    sys_printf("bme680 registration failed on default i2c bus\n");
   }
+
+#if defined(PIMORONI_PRESTO_TOUCH_I2C) &&                                      \
+    defined(PIMORONI_PRESTO_TOUCH_SDA_PIN) &&                                  \
+    defined(PIMORONI_PRESTO_TOUCH_SCL_PIN) &&                                  \
+    defined(PIMORONI_PRESTO_TOUCH_INT_PIN) &&                                  \
+    defined(PIMORONI_PRESTO_TOUCH_I2C_ADDR)
+  {
+    hw_gpio_t *touch_sda =
+        hw_gpio_init(0u, PIMORONI_PRESTO_TOUCH_SDA_PIN, HW_GPIO_I2C);
+    hw_gpio_t *touch_scl =
+        hw_gpio_init(0u, PIMORONI_PRESTO_TOUCH_SCL_PIN, HW_GPIO_I2C);
+    hw_gpio_t *touch_int =
+        hw_gpio_init(0u, PIMORONI_PRESTO_TOUCH_INT_PIN, HW_GPIO_PULLUP);
+
+    if (!hw_gpio_valid(touch_sda) || !hw_gpio_valid(touch_scl) ||
+        !hw_gpio_valid(touch_int)) {
+      sys_printf("ft6236 touch GPIO init failed\n");
+      hw_gpio_deinit(touch_int);
+      hw_gpio_deinit(touch_scl);
+      hw_gpio_deinit(touch_sda);
+    } else {
+      _touch_i2c = hw_i2c_init(PIMORONI_PRESTO_TOUCH_I2C, touch_sda, touch_scl,
+                               I2C_BAUD_RATE);
+      if (!hw_i2c_valid(_touch_i2c)) {
+        sys_printf("ft6236 touch I2C init failed\n");
+        hw_gpio_deinit(touch_int);
+        hw_gpio_deinit(touch_scl);
+        hw_gpio_deinit(touch_sda);
+        _touch_i2c = NULL;
+      } else {
+        dev_ft6236_config_t touch_config = {0};
+        dev_ft6236_default_config(&touch_config);
+        touch_config.i2c_address = PIMORONI_PRESTO_TOUCH_I2C_ADDR;
+
+        hid_device_t *touch_hid =
+            dev_ft6236_hid_register(_hid, _touch_i2c, touch_int, &touch_config);
+        if (touch_hid != NULL) {
+          const char *name = NULL;
+          uint32_t id = 0u;
+          hid_type_t type = hid_type_none;
+          (void)hid_device_info(touch_hid, &name, &id, &type);
+          sys_printf("ft6236 touch registered (addr=0x%02X, i2c=%u)\n",
+                     (unsigned int)id, (unsigned int)PIMORONI_PRESTO_TOUCH_I2C);
+        } else {
+          sys_printf("ft6236 touch registration failed\n");
+          hw_i2c_deinit(_touch_i2c);
+          _touch_i2c = NULL;
+        }
+      }
+    }
+  }
+#endif
 }
 
 /**
@@ -198,6 +247,10 @@ static void on_exit(uint8_t worker_index) {
   }
 
   hid_deinit(_hid);
+  if (_touch_i2c != NULL) {
+    hw_i2c_deinit(_touch_i2c);
+    _touch_i2c = NULL;
+  }
   hw_i2c_deinit(_i2c);
   hw_exit();
 }

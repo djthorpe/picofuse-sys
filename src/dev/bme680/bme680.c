@@ -593,6 +593,28 @@ static bool _dev_bme680_configure(dev_bme680_t *bme680) {
   return true;
 }
 
+static bool _dev_bme680_warmup(dev_bme680_t *bme680) {
+  dev_bme680_data_t data;
+
+  if (bme680 == NULL) {
+    return false;
+  }
+
+  // Take two measurements on init so the sensor has settled before polling.
+  if (!dev_bme680_read_data(bme680, &data)) {
+    sys_debugf("bme680: warmup read 1 failed");
+    return false;
+  }
+
+  if (!dev_bme680_read_data(bme680, &data)) {
+    sys_debugf("bme680: warmup read 2 failed");
+    return false;
+  }
+
+  (void)_dev_bme680_cache_and_collect_changes(bme680, &data);
+  return true;
+}
+
 void dev_bme680_default_config(dev_bme680_config_t *config) {
   if (config == NULL) {
     return;
@@ -669,6 +691,12 @@ dev_bme680_t *dev_bme680_init_i2c(hw_i2c_t *i2c,
     return NULL;
   }
 
+  if (!_dev_bme680_warmup(bme680)) {
+    sys_debugf("bme680: warmup failed");
+    dev_bme680_deinit(bme680);
+    return NULL;
+  }
+
   return bme680;
 }
 
@@ -714,6 +742,11 @@ dev_bme680_t *dev_bme680_init_spi(hw_spi_t *spi, hw_gpio_t *cs_pin,
   }
 
   if (!_dev_bme680_configure(bme680)) {
+    dev_bme680_deinit(bme680);
+    return NULL;
+  }
+
+  if (!_dev_bme680_warmup(bme680)) {
     dev_bme680_deinit(bme680);
     return NULL;
   }

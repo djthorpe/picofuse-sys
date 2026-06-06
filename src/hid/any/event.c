@@ -96,6 +96,39 @@ bool hid_event_queue_metric_float(hid_device_t *device, const char *name,
 }
 
 /**
+ * @brief Queue a touch-based HID event on the owning instance queue.
+ */
+bool hid_event_queue_touch(hid_device_t *device, hid_state_t state,
+                           pix_point_t point, uint8_t slot) {
+  hid_t *instance;
+  hid_event_t *event = (hid_event_t *)sys_calloc(1u, sizeof(hid_event_t));
+
+  if (device == NULL || event == NULL) {
+    hid_event_free(event);
+    return false;
+  }
+
+  instance = _hid_device_instance(device);
+  if (instance == NULL || !sys_event_queue_valid(instance->queue)) {
+    hid_event_free(event);
+    return false;
+  }
+
+  event->device = device;
+  event->type = hid_event_type_touch;
+  event->data.touch.state = state;
+  event->data.touch.point = point;
+  event->data.touch.slot = slot;
+
+  if (!sys_event_queue_try_push(instance->queue, (sys_event_t)event)) {
+    hid_event_free(event);
+    return false;
+  }
+
+  return true;
+}
+
+/**
  * @brief Free a HID event object allocated by hid_event_alloc.
  */
 void hid_event_free(hid_event_t *event) {

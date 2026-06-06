@@ -180,6 +180,10 @@ void dev_ft6236_deinit(dev_ft6236_t *ft6236) {
     return;
   }
 
+  if (hw_gpio_valid(ft6236->int_pin)) {
+    hw_gpio_deinit(ft6236->int_pin);
+  }
+
   sys_memset(ft6236, 0, sizeof(*ft6236));
   sys_free(ft6236);
 }

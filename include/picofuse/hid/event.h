@@ -94,6 +94,18 @@ bool hid_event_queue_metric_float(hid_device_t *device, const char *name,
                                   const char *unit, float value);
 
 /**
+ * @brief Queue a touch HID event to the owning HID instance queue.
+ * @param device HID device associated with the event.
+ * @param state Touch state flags for this event.
+ * @param point Touch coordinates in pixels.
+ * @param slot Touch slot index.
+ * @retval true Event queued successfully.
+ * @retval false Queueing failed.
+ */
+bool hid_event_queue_touch(hid_device_t *device, hid_state_t state,
+                           pix_point_t point, uint8_t slot);
+
+/**
  * @brief Free a HID event allocated internally by HID queue helpers.
  * @param event Event pointer to release.
  */
