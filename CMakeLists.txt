@@ -92,6 +92,9 @@ add_subdirectory(examples/sys/multicore)
 add_subdirectory(examples/sys/queue)
 add_subdirectory(examples/sys/runloop)
 
+# Add Pico SDK-only repro examples
+add_subdirectory(examples/picosdk)
+
 # Add hid examples
 add_subdirectory(examples/hid/runloop)
 

@@ -755,7 +755,7 @@ dev_bme680_t *dev_bme680_init_spi(hw_spi_t *spi, hw_gpio_t *cs_pin,
 }
 
 void dev_bme680_deinit(dev_bme680_t *bme680) {
-  if (!_dev_bme680_bus_ready(bme680) || bme680->chip_id != BME680_CHIP_ID) {
+  if (bme680 == NULL || !bme680->init) {
     return;
   }
 
