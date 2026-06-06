@@ -102,7 +102,7 @@ sys_timer_t *sys_timer_init(uint32_t interval_ms, void *userdata,
   for (size_t offset = 0; offset < SYS_TIMER_CAPACITY; offset++) {
     size_t index = (_sys_timer_pool_index + offset) % SYS_TIMER_CAPACITY;
     sys_timer_t *timer = &_sys_timer_pool[index];
-    if (timer->init) {
+    if (timer->init || timer->callback_active) {
       continue;
     }
 
@@ -141,7 +141,9 @@ void sys_timer_deinit(sys_timer_t *timer) {
 
   pthread_mutex_lock(&_sys_timer_pool_lock);
   timer->init = false;
-  timer->callback_active = false;
+  if (!in_callback) {
+    timer->callback_active = false;
+  }
   pthread_mutex_unlock(&_sys_timer_pool_lock);
 }
 

@@ -15,6 +15,7 @@
 #define TCA9555_I2C_ADDR_MAX 0x27u
 
 #define TCA9555_POLL_INTERVAL_MS 100u
+#define TCA9555_I2C_TIMEOUT_MS 20u
 
 ///////////////////////////////////////////////////////////////////////////////
 // TYPES
@@ -52,7 +53,7 @@ static bool _dev_tca9555_read_u16(dev_tca9555_t *tca9555, uint8_t reg,
 
   uint8_t data[2] = {0};
   if (hw_i2c_read(tca9555->i2c, tca9555->i2c_addr, reg, data, sizeof(data),
-                  0u) != sizeof(data)) {
+                  TCA9555_I2C_TIMEOUT_MS) != sizeof(data)) {
     return false;
   }
 
@@ -68,7 +69,7 @@ static bool _dev_tca9555_write_u16(dev_tca9555_t *tca9555, uint8_t reg,
 
   uint8_t data[2] = {(uint8_t)(value & 0xFFu), (uint8_t)((value >> 8) & 0xFFu)};
   return hw_i2c_write(tca9555->i2c, tca9555->i2c_addr, reg, data, sizeof(data),
-                      0u) == sizeof(data);
+                      TCA9555_I2C_TIMEOUT_MS) == sizeof(data);
 }
 
 static bool _dev_tca9555_probe_and_set_addr(dev_tca9555_t *tca9555,
