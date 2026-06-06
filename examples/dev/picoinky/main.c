@@ -171,7 +171,7 @@ int main(void) {
   dev_uc8151_t *display =
       dev_uc8151_init(spi, inky_dc, inky_reset, inky_busy,
                       (pix_size_t){INKY_WIDTH, INKY_HEIGHT}, NULL);
-  if (!dev_uc8151_valid(display)) {
+  if (display == NULL) {
     sys_debugf("[picoinky] uc8151 init failed");
   } else {
     sys_debugf("[picoinky] uc8151 init ok");

@@ -150,15 +150,6 @@ void dev_bme680_deinit(dev_bme680_t *bme680);
  * @{ */
 
 /**
- * @brief Check whether a BME680 handle is valid.
- * @ingroup BME680
- * @param bme680 BME680 handle.
- * @retval true The handle is valid.
- * @retval false The handle is invalid.
- */
-bool dev_bme680_valid(const dev_bme680_t *bme680);
-
-/**
  * @brief Get the detected chip ID.
  * @ingroup BME680
  * @param bme680 BME680 handle.

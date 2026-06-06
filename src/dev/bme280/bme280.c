@@ -121,6 +121,24 @@ static bool _dev_bme280_is_spi(const dev_bme280_t *bme280) {
   return bme280 != NULL && bme280->bus == DEV_BME280_BUS_SPI;
 }
 
+static bool _dev_bme280_ready(const dev_bme280_t *bme280) {
+  if (bme280 == NULL || !bme280->init) {
+    return false;
+  }
+
+  if (bme280->bus == DEV_BME280_BUS_I2C) {
+    return hw_i2c_valid(bme280->i2c) &&
+           (bme280->i2c_addr == BME280_I2C_ADDR_PRIMARY ||
+            bme280->i2c_addr == BME280_I2C_ADDR_SECONDARY);
+  }
+
+  if (bme280->bus == DEV_BME280_BUS_SPI) {
+    return hw_spi_valid(bme280->spi);
+  }
+
+  return false;
+}
+
 static void _dev_bme280_spi_cs_set(dev_bme280_t *bme280, bool active) {
   if (bme280 == NULL || !hw_gpio_valid(bme280->cs_pin)) {
     return;
@@ -132,7 +150,7 @@ static void _dev_bme280_spi_cs_set(dev_bme280_t *bme280, bool active) {
 
 static bool _dev_bme280_write_register(dev_bme280_t *bme280, uint8_t reg,
                                        uint8_t value) {
-  if (!dev_bme280_valid(bme280)) {
+  if (!_dev_bme280_ready(bme280)) {
     return false;
   }
 
@@ -149,7 +167,7 @@ static bool _dev_bme280_write_register(dev_bme280_t *bme280, uint8_t reg,
 
 static bool _dev_bme280_read_registers(dev_bme280_t *bme280, uint8_t reg,
                                        uint8_t *data, size_t len) {
-  if (!dev_bme280_valid(bme280) || data == NULL || len == 0u) {
+  if (!_dev_bme280_ready(bme280) || data == NULL || len == 0u) {
     return false;
   }
 
@@ -406,7 +424,7 @@ void dev_bme280_deinit(dev_bme280_t *bme280) {
     return;
   }
 
-  if (dev_bme280_valid(bme280)) {
+  if (_dev_bme280_ready(bme280)) {
     (void)_dev_bme280_write_register(bme280, BME280_REG_CTRL_MEAS, 0x00u);
   }
 
@@ -414,29 +432,8 @@ void dev_bme280_deinit(dev_bme280_t *bme280) {
   sys_free(bme280);
 }
 
-///////////////////////////////////////////////////////////////////////////////
-// PROPERTIES
-
-bool dev_bme280_valid(const dev_bme280_t *bme280) {
-  if (bme280 == NULL || !bme280->init) {
-    return false;
-  }
-
-  if (bme280->bus == DEV_BME280_BUS_I2C) {
-    return hw_i2c_valid(bme280->i2c) &&
-           (bme280->i2c_addr == BME280_I2C_ADDR_PRIMARY ||
-            bme280->i2c_addr == BME280_I2C_ADDR_SECONDARY);
-  }
-
-  if (bme280->bus == DEV_BME280_BUS_SPI) {
-    return hw_spi_valid(bme280->spi);
-  }
-
-  return false;
-}
-
 uint8_t dev_bme280_chip_id(const dev_bme280_t *bme280) {
-  if (!dev_bme280_valid(bme280)) {
+  if (!_dev_bme280_ready(bme280)) {
     return 0u;
   }
 
@@ -447,7 +444,7 @@ uint8_t dev_bme280_chip_id(const dev_bme280_t *bme280) {
 // METHODS
 
 bool dev_bme280_read_data(dev_bme280_t *bme280, dev_bme280_data_t *data) {
-  if (!dev_bme280_valid(bme280) || data == NULL) {
+  if (!_dev_bme280_ready(bme280) || data == NULL) {
     return false;
   }
 
