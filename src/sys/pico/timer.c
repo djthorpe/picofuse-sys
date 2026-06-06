@@ -1,5 +1,6 @@
 #include "private.h"
 #include <pico/critical_section.h>
+#include <pico/stdlib.h>
 #include <pico/time.h>
 #include <picofuse/sys.h>
 #include <stddef.h>
@@ -14,6 +15,7 @@ struct sys_timer_t {
   repeating_timer_t repeating_timer;
   bool init;
   bool running;
+  bool callback_active;
 };
 
 static critical_section_t _sys_timer_pool_lock;
@@ -25,9 +27,26 @@ static size_t _sys_timer_pool_index = 0;
 
 static bool _sys_timer_callback(repeating_timer_t *rt) {
   sys_timer_t *timer = (sys_timer_t *)rt->user_data;
-  if (timer->running && timer->callback != NULL) {
-    timer->callback(timer);
+  if (timer == NULL) {
+    return false;
   }
+
+  void (*callback)(sys_timer_t *) = NULL;
+  critical_section_enter_blocking(&_sys_timer_pool_lock);
+  if (timer->running && timer->callback != NULL && !timer->callback_active) {
+    timer->callback_active = true;
+    callback = timer->callback;
+  }
+  critical_section_exit(&_sys_timer_pool_lock);
+
+  if (callback != NULL) {
+    callback(timer);
+
+    critical_section_enter_blocking(&_sys_timer_pool_lock);
+    timer->callback_active = false;
+    critical_section_exit(&_sys_timer_pool_lock);
+  }
+
   return timer->running;
 }
 
@@ -63,6 +82,7 @@ sys_timer_t *sys_timer_init(uint32_t interval_ms, void *userdata,
     timer->interval_ms = interval_ms;
     timer->userdata = userdata;
     timer->running = false;
+    timer->callback_active = false;
     timer->init = true;
 
     _sys_timer_pool_index = (index + 1) % SYS_TIMER_CAPACITY;
@@ -79,13 +99,30 @@ void sys_timer_deinit(sys_timer_t *timer) {
     return;
   }
 
+  bool in_callback = __get_current_exception() != 0;
+
   if (timer->running) {
     timer->running = false;
     cancel_repeating_timer(&timer->repeating_timer);
   }
 
+  if (!in_callback) {
+    while (true) {
+      critical_section_enter_blocking(&_sys_timer_pool_lock);
+      bool active = timer->callback_active;
+      critical_section_exit(&_sys_timer_pool_lock);
+
+      if (!active) {
+        break;
+      }
+
+      sleep_ms(1u);
+    }
+  }
+
   critical_section_enter_blocking(&_sys_timer_pool_lock);
   timer->init = false;
+  timer->callback_active = false;
   critical_section_exit(&_sys_timer_pool_lock);
 }
 

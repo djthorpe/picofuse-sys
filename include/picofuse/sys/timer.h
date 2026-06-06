@@ -69,9 +69,10 @@ sys_timer_t *sys_timer_init(uint32_t interval_ms, void *userdata,
  * @ingroup SystemTimer
  * @param timer Timer to release.
  *
- * Stops the timer if it is running and returns its pool slot. The pointer
- * becomes invalid after this call. Safe to call from within the timer
- * callback to implement one-shot behaviour.
+ * Stops the timer if it is running and returns its pool slot. If a callback is
+ * currently executing on another thread or core, this call waits for it to
+ * finish before returning. The pointer becomes invalid after this call. Safe
+ * to call from within the timer callback to implement one-shot behaviour.
  */
 void sys_timer_deinit(sys_timer_t *timer);
 
