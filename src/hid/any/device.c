@@ -209,12 +209,13 @@ bool hid_poll(hid_t *instance) {
       continue;
     }
 
-    if (device->last_event_ms != 0u && device->last_event_ms >= poll_time_ms) {
+    if (device->polling_interval_ms != 0u && device->last_event_ms != 0u &&
+        (poll_time_ms - device->last_event_ms) < device->polling_interval_ms) {
       continue;
     }
 
-    if (device->callbacks.read(device->userdata)) {
-      device->last_event_ms = poll_time_ms;
+    device->last_event_ms = poll_time_ms;
+    if (device->callbacks.read(device, device->userdata)) {
       processed = true;
     }
   }

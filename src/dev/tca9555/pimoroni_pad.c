@@ -48,7 +48,7 @@ static const dev_pimoroni_pad_keymap_t _dev_pimoroni_pad_keymap[] = {
 };
 
 static bool _dev_pimoroni_pad_hid_init(void *userdata);
-static bool _dev_pimoroni_pad_hid_read(void *userdata);
+static bool _dev_pimoroni_pad_hid_read(hid_device_t *device, void *userdata);
 static bool _dev_pimoroni_pad_hid_deinit(void *userdata);
 static bool _dev_pimoroni_pad_hid_event(dev_pimoroni_pad_hid_ctx_t *ctx,
                                         uint16_t value, bool value_valid);
@@ -78,9 +78,10 @@ static bool _dev_pimoroni_pad_hid_init(void *userdata) {
 /**
  * @brief Read current Pimoroni pad input state during HID polling.
  */
-static bool _dev_pimoroni_pad_hid_read(void *userdata) {
+static bool _dev_pimoroni_pad_hid_read(hid_device_t *device, void *userdata) {
   dev_pimoroni_pad_hid_ctx_t *ctx = (dev_pimoroni_pad_hid_ctx_t *)userdata;
   uint16_t value = 0u;
+  (void)device;
 
   if (ctx == NULL || ctx->device == NULL) {
     return false;

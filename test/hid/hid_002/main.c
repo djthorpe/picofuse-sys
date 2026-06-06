@@ -20,8 +20,9 @@ static bool fake_init(void *userdata) {
   return true;
 }
 
-static bool fake_read(void *userdata) {
+static bool fake_read(hid_device_t *device, void *userdata) {
   fake_device_ctx_t *ctx = (fake_device_ctx_t *)userdata;
+  (void)device;
   if (ctx == NULL) {
     return false;
   }

@@ -50,11 +50,42 @@ bool hid_event_queue_keycode(hid_device_t *device, hid_state_t state,
   device->state = next_state;
 
   event->device = device;
-  event->state = next_state;
-  event->keycode = keycode;
-  event->point.x = 0;
-  event->point.y = 0;
-  event->slot = 0u;
+  event->type = hid_event_type_keycode;
+  event->data.keycode.state = next_state;
+  event->data.keycode.keycode = keycode;
+
+  if (!sys_event_queue_try_push(instance->queue, (sys_event_t)event)) {
+    hid_event_free(event);
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * @brief Queue a float metric HID event on a HID instance queue.
+ */
+bool hid_event_queue_metric_float(hid_device_t *device, const char *name,
+                                  const char *unit, float value) {
+  hid_t *instance;
+  hid_event_t *event = (hid_event_t *)sys_calloc(1u, sizeof(hid_event_t));
+
+  if (device == NULL || name == NULL || unit == NULL || event == NULL) {
+    hid_event_free(event);
+    return false;
+  }
+
+  instance = _hid_device_instance(device);
+  if (instance == NULL || !sys_event_queue_valid(instance->queue)) {
+    hid_event_free(event);
+    return false;
+  }
+
+  event->device = device;
+  event->type = hid_event_type_metric;
+  event->data.metric.name = name;
+  event->data.metric.unit = unit;
+  event->data.metric.value = value;
 
   if (!sys_event_queue_try_push(instance->queue, (sys_event_t)event)) {
     hid_event_free(event);

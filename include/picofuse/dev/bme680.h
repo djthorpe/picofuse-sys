@@ -6,6 +6,7 @@
  */
 #pragma once
 
+#include <picofuse/hid.h>
 #include <picofuse/hw.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -174,5 +175,57 @@ uint8_t dev_bme680_chip_id(const dev_bme680_t *bme680);
  * @retval false Read failed.
  */
 bool dev_bme680_read_data(dev_bme680_t *bme680, dev_bme680_data_t *data);
+
+/**
+ * @brief Register a BME680 over I2C as a polling HID metric source.
+ * @ingroup BME680
+ * @param hid HID instance that owns the registration.
+ * @param i2c I2C interface used to initialize the BME680.
+ * @param config Optional configuration. Pass NULL for defaults.
+ * @return Registered HID device descriptor, or NULL on failure.
+ */
+hid_device_t *dev_bme680_hid_register_i2c(hid_t *hid, hw_i2c_t *i2c,
+                                          const dev_bme680_config_t *config);
+
+/**
+ * @brief Register a BME680 over I2C as a polling HID metric source.
+ * @ingroup BME680
+ * @param hid HID instance that owns the registration.
+ * @param i2c I2C interface used to initialize the BME680.
+ * @param config Optional configuration. Pass NULL for defaults.
+ * @param polling_interval_ms Polling interval in milliseconds.
+ * @return Registered HID device descriptor, or NULL on failure.
+ */
+hid_device_t *
+dev_bme680_hid_register_i2c_with_interval(hid_t *hid, hw_i2c_t *i2c,
+                                          const dev_bme680_config_t *config,
+                                          uint32_t polling_interval_ms);
+
+/**
+ * @brief Register a BME680 over SPI as a polling HID metric source.
+ * @ingroup BME680
+ * @param hid HID instance that owns the registration.
+ * @param spi SPI interface used to initialize the BME680.
+ * @param cs_pin Optional chip-select GPIO handle.
+ * @param config Optional configuration. Pass NULL for defaults.
+ * @return Registered HID device descriptor, or NULL on failure.
+ */
+hid_device_t *dev_bme680_hid_register_spi(hid_t *hid, hw_spi_t *spi,
+                                          hw_gpio_t *cs_pin,
+                                          const dev_bme680_config_t *config);
+
+/**
+ * @brief Register a BME680 over SPI as a polling HID metric source.
+ * @ingroup BME680
+ * @param hid HID instance that owns the registration.
+ * @param spi SPI interface used to initialize the BME680.
+ * @param cs_pin Optional chip-select GPIO handle.
+ * @param config Optional configuration. Pass NULL for defaults.
+ * @param polling_interval_ms Polling interval in milliseconds.
+ * @return Registered HID device descriptor, or NULL on failure.
+ */
+hid_device_t *dev_bme680_hid_register_spi_with_interval(
+    hid_t *hid, hw_spi_t *spi, hw_gpio_t *cs_pin,
+    const dev_bme680_config_t *config, uint32_t polling_interval_ms);
 
 /** @} */

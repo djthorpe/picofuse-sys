@@ -10,6 +10,7 @@
 
 #define I2C_BAUD_RATE 100000u
 #define POLL_INTERVAL_MS 20u
+#define BME680_POLL_INTERVAL_MS 30000u
 #define EXIT_KEYCODE KEYCODE_ESC
 
 static sys_event_queue_t *_hid_queue = NULL;
@@ -17,6 +18,7 @@ static hid_t *_hid = NULL;
 static hid_device_t *_user_button = NULL;
 static hw_i2c_t *_i2c = NULL;
 static hid_device_t *_tca9555_hid = NULL;
+static hid_device_t *_bme680_hid = NULL;
 static sys_timer_t *_poll_timer = NULL;
 static sys_atomic_t _event_count;
 
@@ -79,8 +81,20 @@ static void on_init(uint8_t worker_index) {
                  (unsigned int)id);
     } else {
       sys_printf("no tca9555 detected on default i2c bus\n");
-      hw_i2c_deinit(_i2c);
-      _i2c = NULL;
+    }
+
+    _bme680_hid = dev_bme680_hid_register_i2c_with_interval(
+        _hid, _i2c, NULL, BME680_POLL_INTERVAL_MS);
+    if (_bme680_hid != NULL) {
+      const char *name = NULL;
+      uint32_t id = 0u;
+      hid_type_t type = hid_type_none;
+      (void)hid_device_info(_bme680_hid, &name, &id, &type);
+      sys_printf(
+          "bme680 detected on default i2c bus (chip=0x%02X, poll=%u ms)\n",
+          (unsigned int)id, (unsigned int)BME680_POLL_INTERVAL_MS);
+    } else {
+      sys_printf("no bme680 detected on default i2c bus\n");
     }
   } else {
     _i2c = NULL;
@@ -101,6 +115,8 @@ static void on_event(sys_event_t event) {
 
   while (true) {
     hid_event_t *hid_event = (hid_event_t *)sys_event_queue_try_pop(_hid_queue);
+    const hid_keycode_t *key_event;
+    const hid_metric_t *metric_event;
     const char *device_name = "unknown";
     uint32_t device_id = 0u;
     hid_type_t device_type = hid_type_none;
@@ -109,24 +125,42 @@ static void on_event(sys_event_t event) {
       break;
     }
 
-    if (hid_event->device != NULL) {
-      (void)hid_device_info(hid_event->device, &device_name, &device_id,
-                            &device_type);
-    }
-
     uint32_t count = sys_atomic_inc(&_event_count);
-    sys_printf(
-        "hid event %u: src=%s id=0x%08X type=%u state=0x%08X keycode=%s\n",
-        (unsigned int)count, device_name, (unsigned int)device_id,
-        (unsigned int)device_type, (unsigned int)hid_event->state,
-        hid_keycode_to_string(hid_event->keycode));
+    if (hid_event->type == hid_event_type_keycode) {
+      key_event = &hid_event->data.keycode;
 
-    if (hid_event->keycode == EXIT_KEYCODE) {
-      sys_printf("exit key pressed (%s), shutting down runloop\n",
-                 hid_keycode_to_string(EXIT_KEYCODE));
-      hid_event_free(hid_event);
-      sys_runloop_shutdown(0u);
-      break;
+      if (hid_event->device != NULL) {
+        (void)hid_device_info(hid_event->device, &device_name, &device_id,
+                              &device_type);
+      }
+
+      sys_printf("hid event %u: core=%u src=%s id=0x%08X type=%u state=0x%08X "
+                 "keycode=%s\n",
+                 (unsigned int)count, (unsigned int)sys_thread_core(),
+                 device_name, (unsigned int)device_id,
+                 (unsigned int)device_type, (unsigned int)key_event->state,
+                 hid_keycode_to_string(key_event->keycode));
+
+      if (key_event->keycode == EXIT_KEYCODE) {
+        sys_printf("exit key pressed (%s), shutting down runloop\n",
+                   hid_keycode_to_string(EXIT_KEYCODE));
+        hid_event_free(hid_event);
+        sys_runloop_shutdown(0u);
+        break;
+      }
+    } else if (hid_event->type == hid_event_type_metric) {
+      metric_event = &hid_event->data.metric;
+      if (hid_event->device != NULL) {
+        (void)hid_device_info(hid_event->device, &device_name, &device_id,
+                              &device_type);
+      }
+
+      sys_printf("hid metric %u: core=%u src=%s id=0x%08X %s=%f %s\n",
+                 (unsigned int)count, (unsigned int)sys_thread_core(),
+                 device_name, (unsigned int)device_id,
+                 (metric_event->name != NULL) ? metric_event->name : "unknown",
+                 (double)metric_event->value,
+                 (metric_event->unit != NULL) ? metric_event->unit : "");
     }
 
     hid_event_free(hid_event);
@@ -154,6 +188,11 @@ static void on_exit(uint8_t worker_index) {
   if (_hid != NULL && _tca9555_hid != NULL) {
     (void)hid_deregister(_hid, _tca9555_hid);
     _tca9555_hid = NULL;
+  }
+
+  if (_hid != NULL && _bme680_hid != NULL) {
+    (void)hid_deregister(_hid, _bme680_hid);
+    _bme680_hid = NULL;
   }
 
   if (_i2c != NULL) {

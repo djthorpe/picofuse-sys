@@ -62,7 +62,7 @@ typedef enum {
  */
 typedef struct {
   bool (*init)(void *userdata);
-  bool (*read)(void *userdata);
+  bool (*read)(hid_device_t *device, void *userdata);
   bool (*deinit)(void *userdata);
 } hid_device_callbacks_t;
 
