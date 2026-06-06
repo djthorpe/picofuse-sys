@@ -6,13 +6,22 @@
 
 static sys_mutex_t *_sys_debugf_mutex = NULL;
 
-void _sys_debugf_impl(const char *format, ...) {
-  if (format == NULL) {
+void _sys_debugf_module_init(void) {
+  _sys_debugf_mutex = sys_mutex_init();
+  sys_assert(_sys_debugf_mutex != NULL);
+}
+
+void _sys_debugf_module_exit(void) {
+  if (_sys_debugf_mutex == NULL) {
     return;
   }
-  if (_sys_debugf_mutex == NULL) {
-    _sys_debugf_mutex = sys_mutex_init();
-  }
+  sys_mutex_deinit(_sys_debugf_mutex);
+  _sys_debugf_mutex = NULL;
+}
+
+void _sys_debugf_impl(const char *format, ...) {
+  sys_assert(format != NULL);
+  sys_assert(_sys_debugf_mutex != NULL);
   if (sys_mutex_lock(_sys_debugf_mutex)) {
     va_list args;
     va_start(args, format);

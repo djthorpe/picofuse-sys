@@ -12,7 +12,7 @@
  * @brief Debug-only formatted logging helper.
  * @ingroup SystemDebug
  *
- * Emits logs only when DEBUG is defined at compile time.
+ * Emits logs only when NDEBUG is not defined at compile time.
  */
 #ifndef NDEBUG
 void _sys_debugf_impl(const char *format, ...);
