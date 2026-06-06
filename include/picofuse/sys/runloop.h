@@ -118,6 +118,30 @@ uint32_t sys_runloop_run(uint8_t num_workers, sys_runloop_init_func_t init,
                          sys_runloop_exit_func_t exit);
 
 /**
+ * @brief Start the run loop using a caller-provided event queue.
+ * @ingroup SystemEventRunloop
+ * @param num_workers Total number of workers, including the calling thread.
+ *                    Pass 0 to use all available cores. Values greater than
+ *                    available cores are clamped.
+ * @param queue Event queue to use for runloop dispatch. Must be valid.
+ * @param init Called once per worker before it starts. May be `NULL`.
+ * @param callback Handler invoked on a worker for each event dequeued.
+ * @param poll_fn Optional periodic poll callback invoked by worker 0.
+ * @param exit Called once per worker after the queue is drained. May be
+ *             `NULL`.
+ * @return Exit value passed to sys_runloop_shutdown().
+ *
+ * Unlike sys_runloop_run(), this function does not allocate or deinitialize
+ * the queue. Ownership remains with the caller.
+ */
+uint32_t sys_runloop_run_with_queue(uint8_t num_workers,
+                                    sys_event_queue_t *queue,
+                                    sys_runloop_init_func_t init,
+                                    sys_runloop_func_t callback,
+                                    sys_runloop_poll_t poll_fn,
+                                    sys_runloop_exit_func_t exit);
+
+/**
  * @brief Signal the run loop to stop accepting events and exit when drained.
  * @ingroup SystemEventRunloop
  * @param exit_value Value returned by sys_runloop_run() once all workers
@@ -142,6 +166,13 @@ void sys_runloop_shutdown(uint32_t exit_value);
  * Events are processed in the order posted.
  */
 bool sys_runloop_post(sys_event_t event);
+
+/**
+ * @brief Get the active runloop event queue.
+ * @ingroup SystemEventRunloop
+ * @return Active queue pointer while runloop is running, else `NULL`.
+ */
+sys_event_queue_t *sys_runloop_queue(void);
 
 /**
  * @brief Check whether the run loop is currently running.

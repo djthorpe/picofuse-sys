@@ -17,6 +17,7 @@ static sys_atomic_t _running = {
 static sys_atomic_t _active = {
     0}; // sys_runloop_run is executing (cleared on return)
 static sys_waitgroup_t *_wg = NULL;
+static bool _owns_queue = false;
 
 ///////////////////////////////////////////////////////////////////////////////
 // WORKER (index >= 1)
@@ -49,11 +50,16 @@ static void _worker(void *arg) {
 ///////////////////////////////////////////////////////////////////////////////
 // PUBLIC
 
-uint32_t sys_runloop_run(uint8_t num_workers, sys_runloop_init_func_t init,
-                         sys_runloop_func_t callback,
-                         sys_runloop_poll_t poll_fn,
-                         sys_runloop_exit_func_t exit_fn) {
+uint32_t sys_runloop_run_with_queue(uint8_t num_workers,
+                                    sys_event_queue_t *queue,
+                                    sys_runloop_init_func_t init,
+                                    sys_runloop_func_t callback,
+                                    sys_runloop_poll_t poll_fn,
+                                    sys_runloop_exit_func_t exit_fn) {
   if (callback == NULL || sys_atomic_get(&_active)) {
+    return 0;
+  }
+  if (queue != NULL && !sys_event_queue_valid(queue)) {
     return 0;
   }
   sys_atomic_set(&_active, 1);
@@ -69,10 +75,16 @@ uint32_t sys_runloop_run(uint8_t num_workers, sys_runloop_init_func_t init,
   _exit = exit_fn;
   sys_atomic_set(&_exit_value, 0);
 
-  _queue = sys_event_queue_init(SYS_RUNLOOP_QUEUE_CAPACITY);
-  if (_queue == NULL) {
-    sys_atomic_set(&_active, 0);
-    return 0;
+  if (queue != NULL) {
+    _queue = queue;
+    _owns_queue = false;
+  } else {
+    _queue = sys_event_queue_init(SYS_RUNLOOP_QUEUE_CAPACITY);
+    _owns_queue = true;
+    if (_queue == NULL) {
+      sys_atomic_set(&_active, 0);
+      return 0;
+    }
   }
 
   sys_atomic_set(&_running, 1);
@@ -134,12 +146,23 @@ uint32_t sys_runloop_run(uint8_t num_workers, sys_runloop_init_func_t init,
   }
 
   uint32_t result = sys_atomic_get(&_exit_value);
-  sys_event_queue_deinit(_queue);
+  if (_owns_queue) {
+    sys_event_queue_deinit(_queue);
+  }
   _queue = NULL;
+  _owns_queue = false;
   _poll = NULL;
   sys_atomic_set(&_active, 0);
 
   return result;
+}
+
+uint32_t sys_runloop_run(uint8_t num_workers, sys_runloop_init_func_t init,
+                         sys_runloop_func_t callback,
+                         sys_runloop_poll_t poll_fn,
+                         sys_runloop_exit_func_t exit_fn) {
+  return sys_runloop_run_with_queue(num_workers, NULL, init, callback, poll_fn,
+                                    exit_fn);
 }
 
 void sys_runloop_shutdown(uint32_t exit_value) {
@@ -159,5 +182,7 @@ bool sys_runloop_post(sys_event_t event) {
   }
   return sys_event_queue_try_push(_queue, event);
 }
+
+sys_event_queue_t *sys_runloop_queue(void) { return _queue; }
 
 bool sys_runloop_valid(void) { return sys_atomic_get(&_active) != 0; }

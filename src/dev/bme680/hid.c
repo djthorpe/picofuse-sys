@@ -10,6 +10,7 @@ static const char *_dev_bme680_metric_temperature = "temperature";
 static const char *_dev_bme680_metric_pressure = "pressure";
 static const char *_dev_bme680_metric_humidity = "humidity";
 static const char *_dev_bme680_metric_gas_resistance = "gas_resistance";
+static const uint32_t _dev_bme680_default_poll_interval_ms = 30000u;
 static const char *_dev_bme680_unit_celsius = "C";
 static const char *_dev_bme680_unit_pascal = "Pa";
 static const char *_dev_bme680_unit_percent = "%";
@@ -118,14 +119,19 @@ static hid_device_t *
 _dev_bme680_hid_register_device(hid_t *hid, dev_bme680_t *device,
                                 uint32_t polling_interval_ms) {
   hid_device_t *hid_device;
+  uint32_t effective_polling_interval_ms;
 
   if (hid == NULL || device == NULL) {
     return NULL;
   }
 
+  effective_polling_interval_ms = (polling_interval_ms == 0u)
+                                      ? _dev_bme680_default_poll_interval_ms
+                                      : polling_interval_ms;
+
   hid_device = hid_register(hid, "bme680", (uint32_t)dev_bme680_chip_id(device),
-                            hid_type_other, polling_interval_ms, device,
-                            _dev_bme680_hid_callbacks);
+                            hid_type_other, effective_polling_interval_ms,
+                            device, _dev_bme680_hid_callbacks);
   if (hid_device == NULL) {
     dev_bme680_deinit(device);
     return NULL;
@@ -135,12 +141,6 @@ _dev_bme680_hid_register_device(hid_t *hid, dev_bme680_t *device,
 }
 
 hid_device_t *dev_bme680_hid_register_i2c(hid_t *hid, hw_i2c_t *i2c,
-                                          const dev_bme680_config_t *config) {
-  return dev_bme680_hid_register_i2c_with_interval(hid, i2c, config, 0u);
-}
-
-hid_device_t *
-dev_bme680_hid_register_i2c_with_interval(hid_t *hid, hw_i2c_t *i2c,
                                           const dev_bme680_config_t *config,
                                           uint32_t polling_interval_ms) {
   dev_bme680_t *device;
@@ -159,14 +159,8 @@ dev_bme680_hid_register_i2c_with_interval(hid_t *hid, hw_i2c_t *i2c,
 
 hid_device_t *dev_bme680_hid_register_spi(hid_t *hid, hw_spi_t *spi,
                                           hw_gpio_t *cs_pin,
-                                          const dev_bme680_config_t *config) {
-  return dev_bme680_hid_register_spi_with_interval(hid, spi, cs_pin, config,
-                                                   0u);
-}
-
-hid_device_t *dev_bme680_hid_register_spi_with_interval(
-    hid_t *hid, hw_spi_t *spi, hw_gpio_t *cs_pin,
-    const dev_bme680_config_t *config, uint32_t polling_interval_ms) {
+                                          const dev_bme680_config_t *config,
+                                          uint32_t polling_interval_ms) {
   dev_bme680_t *device;
 
   if (hid == NULL || spi == NULL) {
