@@ -10,3 +10,8 @@ extern void _sys_mem_module_exit(void);
 extern sys_mem_arena_t *_sys_mem_arena_prev(sys_mem_arena_t *arena,
                                             sys_mem_arena_stats_t *stats);
 extern size_t _sys_mem_arena_alloc_size(sys_mem_arena_t *arena, void *ptr);
+
+#ifndef NDEBUG
+extern void _sys_debugf_module_init(void);
+extern void _sys_debugf_module_exit(void);
+#endif
