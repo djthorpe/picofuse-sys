@@ -93,7 +93,6 @@ static void _hid_gpio_callback(uint8_t bank, uint8_t pin, hw_gpio_event_t event,
   uint32_t id = ((uint32_t)bank << 16) | (uint32_t)pin;
   hid_t *instance = NULL;
   hid_device_t *device = NULL;
-  hid_state_t translated_state = hid_state_none;
 
   (void)userdata;
 
@@ -106,41 +105,15 @@ static void _hid_gpio_callback(uint8_t bank, uint8_t pin, hw_gpio_event_t event,
     return;
   }
 
-  translated_state = hid_keycode_to_state(device->keycode);
-
   if ((event & HW_GPIO_RISING) != 0) {
-    if (translated_state != hid_state_none) {
-      device->state |= translated_state;
-      device->state |= hid_state_on;
-      device->state &= ~hid_state_off;
-    }
-
-    hid_event_t *hid_event =
-        hid_event_alloc(device, device->state, device->keycode);
-    if (hid_event != NULL) {
-      if (!sys_event_queue_try_push(instance->queue, (sys_event_t)hid_event)) {
-        hid_event_free(hid_event);
-      } else {
-        device->last_event_ms = sys_timestamp_ms();
-      }
+    if (hid_event_queue_keycode(device, hid_state_on, device->keycode)) {
+      device->last_event_ms = sys_timestamp_ms();
     }
   }
 
   if ((event & HW_GPIO_FALLING) != 0) {
-    if (translated_state != hid_state_none) {
-      device->state &= ~translated_state;
-      device->state |= hid_state_off;
-      device->state &= ~hid_state_on;
-    }
-
-    hid_event_t *hid_event =
-        hid_event_alloc(device, device->state, device->keycode);
-    if (hid_event != NULL) {
-      if (!sys_event_queue_try_push(instance->queue, (sys_event_t)hid_event)) {
-        hid_event_free(hid_event);
-      } else {
-        device->last_event_ms = sys_timestamp_ms();
-      }
+    if (hid_event_queue_keycode(device, hid_state_off, device->keycode)) {
+      device->last_event_ms = sys_timestamp_ms();
     }
   }
 }

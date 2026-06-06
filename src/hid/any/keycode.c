@@ -1,6 +1,6 @@
 #include <picofuse/hid/keycode.h>
 
-#include <stdio.h>
+#include <stddef.h>
 
 #define HID_KEYCODE_STRING_BUFFER_SIZE 7u
 
@@ -248,7 +248,13 @@ const char *hid_keycode_to_string(uint16_t keycode) {
   }
 #endif
 
-  (void)snprintf(_hid_keycode_buffer, HID_KEYCODE_STRING_BUFFER_SIZE, "0x%04X",
-                 (unsigned int)keycode);
+  static const char _hex[] = "0123456789ABCDEF";
+  _hid_keycode_buffer[0] = '0';
+  _hid_keycode_buffer[1] = 'x';
+  _hid_keycode_buffer[2] = _hex[(keycode >> 12) & 0x0Fu];
+  _hid_keycode_buffer[3] = _hex[(keycode >> 8) & 0x0Fu];
+  _hid_keycode_buffer[4] = _hex[(keycode >> 4) & 0x0Fu];
+  _hid_keycode_buffer[5] = _hex[keycode & 0x0Fu];
+  _hid_keycode_buffer[6] = '\0';
   return _hid_keycode_buffer;
 }

@@ -94,7 +94,7 @@ int main(void) {
   sys_init();
   sys_atomic_init(&_event_count, 0);
 
-  sys_runloop_run(0, on_init, on_event, on_exit);
+  sys_runloop_run(0, on_init, on_event, NULL, on_exit);
 
   sys_printf("runloop exited after %u ticks\n", sys_atomic_get(&_event_count));
 

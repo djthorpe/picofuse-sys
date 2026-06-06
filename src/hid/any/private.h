@@ -27,6 +27,7 @@ struct hid_t {
 void _hid_gpio_callback_init(void);
 void _hid_gpio_callback_deinit(void);
 bool _hid_has_valid_instances(void);
+hid_t *_hid_device_instance(const hid_device_t *device);
 bool _hid_find_device_by_id(uint32_t id, hid_t **out_instance,
                             hid_device_t **out_device);
 hid_device_t *_hid_device_retain(hid_t *instance, const char *name,

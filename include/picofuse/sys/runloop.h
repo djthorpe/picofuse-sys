@@ -1,6 +1,7 @@
 /**
  * @file sys/runloop.h
- * @brief Single process-wide run loop for dispatching events across cores or threads.
+ * @brief Single process-wide run loop for dispatching events across cores or
+ * threads.
  * @defgroup SystemEventRunloop Run Loop
  * @ingroup SystemEvents
  *
@@ -18,7 +19,7 @@
  *   }
  *
  *   sys_runloop_post((sys_event_t)(uintptr_t)MY_EVENT);
- *   sys_runloop_run(2, NULL, on_event, NULL); // blocks; uses 2 workers
+ *   sys_runloop_run(2, NULL, on_event, NULL, NULL); // blocks; uses 2 workers
  * @endcode
  *
  * On Pico the calling thread counts as one worker; additional workers are
@@ -67,6 +68,16 @@ typedef void (*sys_runloop_init_func_t)(uint8_t worker_index);
 typedef void (*sys_runloop_func_t)(sys_event_t event);
 
 /**
+ * @brief Optional periodic poll callback invoked by worker 0.
+ * @ingroup SystemEventRunloop
+ *
+ * This callback is executed once per timed runloop wait iteration before
+ * dispatched events are handled. Pass `NULL` when no periodic polling is
+ * required.
+ */
+typedef void (*sys_runloop_poll_t)(void);
+
+/**
  * @brief Per-worker exit callback.
  * @ingroup SystemEventRunloop
  * @param worker_index Zero-based index of the worker.
@@ -91,7 +102,10 @@ typedef void (*sys_runloop_exit_func_t)(uint8_t worker_index);
  *                    the number of available cores are clamped to that limit.
  * @param init  Called once per worker before it starts. May be `NULL`.
  * @param callback Handler invoked on a worker for each event dequeued.
- * @param exit  Called once per worker after the queue is drained. May be `NULL`.
+ * @param poll_fn Optional periodic poll callback invoked by worker 0.
+ *                May be `NULL`.
+ * @param exit  Called once per worker after the queue is drained. May be
+ * `NULL`.
  *
  * The calling thread becomes worker 0. If @p num_workers is greater than 1,
  * additional workers (1, 2, …) are started on other cores or threads, each
@@ -100,6 +114,7 @@ typedef void (*sys_runloop_exit_func_t)(uint8_t worker_index);
  */
 uint32_t sys_runloop_run(uint8_t num_workers, sys_runloop_init_func_t init,
                          sys_runloop_func_t callback,
+                         sys_runloop_poll_t poll_fn,
                          sys_runloop_exit_func_t exit);
 
 /**

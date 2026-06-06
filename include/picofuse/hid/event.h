@@ -21,17 +21,22 @@ typedef struct {
 } hid_event_t;
 
 /**
- * @brief Allocate a HID event for GPIO-derived input.
+ * @brief Queue a keycode-based HID event to the owning HID instance queue.
  * @param device HID device associated with the event.
- * @param state HID state for the event snapshot.
+ * @param state Input transition flags to apply (for example
+ * hid_state_on/hid_state_off).
  * @param keycode HID keycode associated with the event.
- * @return Newly allocated HID event, or NULL on allocation failure.
+ * @retval true Event queued successfully.
+ * @retval false Queueing failed.
+ *
+ * The helper applies @p state to the device-local HID state, then queues an
+ * event containing the resulting state snapshot.
  */
-hid_event_t *hid_event_alloc(hid_device_t *device, hid_state_t state,
+bool hid_event_queue_keycode(hid_device_t *device, hid_state_t state,
                              uint16_t keycode);
 
 /**
- * @brief Free a HID event allocated by @ref hid_event_alloc.
+ * @brief Free a HID event allocated internally by HID queue helpers.
  * @param event Event pointer to release.
  */
 void hid_event_free(hid_event_t *event);

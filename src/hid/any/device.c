@@ -39,6 +39,26 @@ bool _hid_has_valid_instances(void) {
   return false;
 }
 
+hid_t *_hid_device_instance(const hid_device_t *device) {
+  size_t i;
+
+  if (device == NULL) {
+    return NULL;
+  }
+
+  for (i = 0u; i < HID_CAPACITY; ++i) {
+    if (!_hid_valid(&_hid[i])) {
+      continue;
+    }
+
+    if (_hid_device_belongs_to_instance(&_hid[i], device)) {
+      return &_hid[i];
+    }
+  }
+
+  return NULL;
+}
+
 bool _hid_find_device_by_id(uint32_t id, hid_t **out_instance,
                             hid_device_t **out_device) {
   size_t i;
@@ -365,4 +385,30 @@ bool hid_device_info(const hid_device_t *device, const char **out_name,
   }
 
   return false;
+}
+
+/**
+ * @brief Read userdata from a HID device descriptor.
+ */
+void *hid_device_userdata(const hid_device_t *device) {
+  size_t i;
+
+  if (device == NULL) {
+    return NULL;
+  }
+
+  for (i = 0u; i < HID_CAPACITY; ++i) {
+    if (!_hid_valid(&_hid[i]) ||
+        !_hid_device_belongs_to_instance(&_hid[i], device)) {
+      continue;
+    }
+
+    if (device->type == hid_type_none) {
+      return NULL;
+    }
+
+    return device->userdata;
+  }
+
+  return NULL;
 }

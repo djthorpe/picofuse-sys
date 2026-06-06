@@ -205,4 +205,12 @@ hid_device_t *hid_device_next(hid_device_t *device);
 bool hid_device_info(const hid_device_t *device, const char **out_name,
                      uint32_t *out_id, hid_type_t *out_type);
 
+/**
+ * @brief Get the userdata pointer associated with a registered HID device.
+ * @ingroup HID
+ * @param device HID device handle.
+ * @return Device userdata pointer, or NULL when the handle is invalid.
+ */
+void *hid_device_userdata(const hid_device_t *device);
+
 /** @} */

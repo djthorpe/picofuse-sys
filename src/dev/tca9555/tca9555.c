@@ -1,6 +1,8 @@
 #include <picofuse/dev.h>
 #include <picofuse/sys.h>
 
+#include "private.h"
+
 #include <stdint.h>
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -140,8 +142,6 @@ dev_tca9555_t *dev_tca9555_init_i2c(hw_i2c_t *i2c,
   tca9555->i2c = i2c;
   tca9555->output_mask = output_mask;
   tca9555->input_mask = (uint16_t)~output_mask;
-  tca9555->callback = callback;
-  tca9555->callback_userdata = callback_userdata;
   tca9555->init = true;
 
   if (!_dev_tca9555_probe_and_set_addr(tca9555, i2c_addr)) {
@@ -168,21 +168,9 @@ dev_tca9555_t *dev_tca9555_init_i2c(hw_i2c_t *i2c,
     return NULL;
   }
 
-  if (tca9555->callback != NULL) {
-    uint16_t value = 0u;
-    if (!_dev_tca9555_read_u16(tca9555, TCA9555_REG_INPUT0, &value)) {
-      dev_tca9555_deinit(tca9555);
-      return NULL;
-    }
-    tca9555->last_input = (uint16_t)(value & tca9555->input_mask);
-    tca9555->has_last_input = true;
-
-    tca9555->timer = sys_timer_init(TCA9555_POLL_INTERVAL_MS, tca9555,
-                                    _dev_tca9555_timer_callback);
-    if (tca9555->timer == NULL || !sys_timer_start(tca9555->timer)) {
-      dev_tca9555_deinit(tca9555);
-      return NULL;
-    }
+  if (!_dev_tca9555_set_callback(tca9555, callback, callback_userdata)) {
+    dev_tca9555_deinit(tca9555);
+    return NULL;
   }
 
   return tca9555;
@@ -233,4 +221,54 @@ bool dev_tca9555_write(dev_tca9555_t *tca9555, uint16_t value) {
   uint16_t merged = (uint16_t)((current & (uint16_t)~tca9555->output_mask) |
                                (value & tca9555->output_mask));
   return _dev_tca9555_write_u16(tca9555, TCA9555_REG_OUTPUT0, merged);
+}
+
+bool _dev_tca9555_set_callback(dev_tca9555_t *tca9555,
+                               dev_tca9555_callback_t callback,
+                               void *callback_userdata) {
+  if (!_dev_tca9555_ready(tca9555)) {
+    return false;
+  }
+
+  if (tca9555->timer != NULL) {
+    sys_timer_deinit(tca9555->timer);
+    tca9555->timer = NULL;
+  }
+
+  tca9555->callback = callback;
+  tca9555->callback_userdata = callback_userdata;
+  tca9555->has_last_input = false;
+
+  if (callback == NULL) {
+    return true;
+  }
+
+  uint16_t value = 0u;
+  if (!_dev_tca9555_read_u16(tca9555, TCA9555_REG_INPUT0, &value)) {
+    tca9555->callback = NULL;
+    tca9555->callback_userdata = NULL;
+    return false;
+  }
+
+  tca9555->last_input = (uint16_t)(value & tca9555->input_mask);
+  tca9555->has_last_input = true;
+
+  tca9555->timer = sys_timer_init(TCA9555_POLL_INTERVAL_MS, tca9555,
+                                  _dev_tca9555_timer_callback);
+  if (tca9555->timer == NULL || !sys_timer_start(tca9555->timer)) {
+    if (tca9555->timer != NULL) {
+      sys_timer_deinit(tca9555->timer);
+      tca9555->timer = NULL;
+    }
+    tca9555->callback = NULL;
+    tca9555->callback_userdata = NULL;
+    tca9555->has_last_input = false;
+    return false;
+  }
+
+  return true;
+}
+
+bool _dev_tca9555_has_callback(const dev_tca9555_t *tca9555) {
+  return _dev_tca9555_ready(tca9555) && tca9555->callback != NULL;
 }
