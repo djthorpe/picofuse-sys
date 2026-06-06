@@ -115,13 +115,13 @@ static void _hid_gpio_callback(uint8_t bank, uint8_t pin, hw_gpio_event_t event,
       device->state &= ~hid_state_off;
     }
 
-    hid_event_t *hid_event = hid_alloc_gpio_event();
+    hid_event_t *hid_event =
+        hid_event_alloc(device, device->state, device->keycode);
     if (hid_event != NULL) {
-      hid_event->state = device->state;
-      hid_event->device = device;
-      hid_event->keycode = device->keycode;
       if (!sys_event_queue_try_push(instance->queue, (sys_event_t)hid_event)) {
         hid_event_free(hid_event);
+      } else {
+        device->last_event_ms = sys_timestamp_ms();
       }
     }
   }
@@ -133,13 +133,13 @@ static void _hid_gpio_callback(uint8_t bank, uint8_t pin, hw_gpio_event_t event,
       device->state &= ~hid_state_on;
     }
 
-    hid_event_t *hid_event = hid_alloc_gpio_event();
+    hid_event_t *hid_event =
+        hid_event_alloc(device, device->state, device->keycode);
     if (hid_event != NULL) {
-      hid_event->state = device->state;
-      hid_event->device = device;
-      hid_event->keycode = device->keycode;
       if (!sys_event_queue_try_push(instance->queue, (sys_event_t)hid_event)) {
         hid_event_free(hid_event);
+      } else {
+        device->last_event_ms = sys_timestamp_ms();
       }
     }
   }

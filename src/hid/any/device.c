@@ -1,5 +1,6 @@
 #include "private.h"
 
+#include <picofuse/sys.h>
 #include <picofuse/sys/debugf.h>
 
 #include <string.h>
@@ -56,7 +57,7 @@ bool _hid_find_device_by_id(uint32_t id, hid_t **out_instance,
     }
 
     for (j = 0u; j < HID_DEVICE_CAPACITY; ++j) {
-      if (_hid[i].devices[j].type == hid_type_unknown) {
+      if (_hid[i].devices[j].type == hid_type_none) {
         continue;
       }
       if (_hid[i].devices[j].id != id) {
@@ -84,7 +85,7 @@ hid_device_t *_hid_device_retain(hid_t *instance, const char *name,
   }
 
   for (i = 0u; i < HID_DEVICE_CAPACITY; ++i) {
-    if (instance->devices[i].type == hid_type_unknown) {
+    if (instance->devices[i].type == hid_type_none) {
       memset(&instance->devices[i], 0, sizeof(instance->devices[i]));
       instance->devices[i].name = name;
       instance->devices[i].type = type;
@@ -156,7 +157,7 @@ void hid_deinit(hid_t *instance) {
   // Deregister all devices registered to this instance.
   size_t i;
   for (i = 0u; i < HID_DEVICE_CAPACITY; ++i) {
-    if (instance->devices[i].type != hid_type_unknown) {
+    if (instance->devices[i].type != hid_type_none) {
       (void)hid_deregister(instance, &instance->devices[i]);
     }
   }
@@ -172,8 +173,33 @@ void hid_deinit(hid_t *instance) {
  * @brief Poll a HID instance for pending input.
  */
 bool hid_poll(hid_t *instance) {
-  (void)instance;
-  return false;
+  bool processed = false;
+  uint64_t poll_time_ms;
+  size_t i;
+
+  if (!_hid_valid(instance)) {
+    return false;
+  }
+
+  poll_time_ms = sys_timestamp_ms();
+  for (i = 0u; i < HID_DEVICE_CAPACITY; ++i) {
+    hid_device_t *device = &instance->devices[i];
+
+    if (device->type == hid_type_none || device->callbacks.read == NULL) {
+      continue;
+    }
+
+    if (device->last_event_ms != 0u && device->last_event_ms >= poll_time_ms) {
+      continue;
+    }
+
+    if (device->callbacks.read(device->userdata)) {
+      device->last_event_ms = poll_time_ms;
+      processed = true;
+    }
+  }
+
+  return processed;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -239,7 +265,58 @@ bool hid_deregister(hid_t *instance, hid_device_t *device) {
 // PROPERTIES
 
 hid_device_t *hid_device_next(hid_device_t *device) {
-  (void)device;
+  size_t i;
+  size_t j;
+
+  if (device == NULL) {
+    for (i = 0u; i < HID_CAPACITY; ++i) {
+      if (!_hid_valid(&_hid[i])) {
+        continue;
+      }
+      for (j = 0u; j < HID_DEVICE_CAPACITY; ++j) {
+        if (_hid[i].devices[j].type != hid_type_none) {
+          return &_hid[i].devices[j];
+        }
+      }
+    }
+    return NULL;
+  }
+
+  for (i = 0u; i < HID_CAPACITY; ++i) {
+    ptrdiff_t slot;
+
+    if (!_hid_valid(&_hid[i])) {
+      continue;
+    }
+
+    slot = device - _hid[i].devices;
+    if (slot < 0 || (size_t)slot >= HID_DEVICE_CAPACITY) {
+      continue;
+    }
+
+    for (j = (size_t)slot + 1u; j < HID_DEVICE_CAPACITY; ++j) {
+      if (_hid[i].devices[j].type != hid_type_none) {
+        return &_hid[i].devices[j];
+      }
+    }
+
+    for (j = i + 1u; j < HID_CAPACITY; ++j) {
+      size_t k;
+
+      if (!_hid_valid(&_hid[j])) {
+        continue;
+      }
+
+      for (k = 0u; k < HID_DEVICE_CAPACITY; ++k) {
+        if (_hid[j].devices[k].type != hid_type_none) {
+          return &_hid[j].devices[k];
+        }
+      }
+    }
+
+    return NULL;
+  }
+
   return NULL;
 }
 
@@ -248,7 +325,7 @@ hid_device_t *hid_device_next(hid_device_t *device) {
  */
 bool hid_device_info(const hid_device_t *device, const char **out_name,
                      uint32_t *out_id, hid_type_t *out_type) {
-  (void)device;
+  size_t i;
 
   if (out_name != NULL) {
     *out_name = NULL;
@@ -257,7 +334,34 @@ bool hid_device_info(const hid_device_t *device, const char **out_name,
     *out_id = 0u;
   }
   if (out_type != NULL) {
-    *out_type = hid_type_unknown;
+    *out_type = hid_type_none;
+  }
+
+  if (device == NULL) {
+    return false;
+  }
+
+  for (i = 0u; i < HID_CAPACITY; ++i) {
+    if (!_hid_valid(&_hid[i]) ||
+        !_hid_device_belongs_to_instance(&_hid[i], device)) {
+      continue;
+    }
+
+    if (device->type == hid_type_none) {
+      return false;
+    }
+
+    if (out_name != NULL) {
+      *out_name = device->name;
+    }
+    if (out_id != NULL) {
+      *out_id = device->id;
+    }
+    if (out_type != NULL) {
+      *out_type = device->type;
+    }
+
+    return true;
   }
 
   return false;

@@ -22,12 +22,16 @@ typedef struct {
 
 /**
  * @brief Allocate a HID event for GPIO-derived input.
+ * @param device HID device associated with the event.
+ * @param state HID state for the event snapshot.
+ * @param keycode HID keycode associated with the event.
  * @return Newly allocated HID event, or NULL on allocation failure.
  */
-hid_event_t *hid_alloc_gpio_event(void);
+hid_event_t *hid_event_alloc(hid_device_t *device, hid_state_t state,
+                             uint16_t keycode);
 
 /**
- * @brief Free a HID event allocated by @ref hid_alloc_gpio_event.
+ * @brief Free a HID event allocated by @ref hid_event_alloc.
  * @param event Event pointer to release.
  */
 void hid_event_free(hid_event_t *event);

@@ -175,3 +175,8 @@ picofuse_add_hw_test(hw_006
 picofuse_add_hid_test(hid_001
 	main.c
 )
+
+# Check HID fake-device callbacks, polling, and enumeration/info behavior.
+picofuse_add_hid_test(hid_002
+	main.c
+)

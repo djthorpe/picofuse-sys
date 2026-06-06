@@ -49,8 +49,9 @@ typedef struct hid_device_t hid_device_t;
  * @ingroup HID
  */
 typedef enum {
-  hid_type_unknown = 0,
+  hid_type_none = 0,
   hid_type_gpio = 1,
+  hid_type_other = 2,
 } hid_type_t;
 
 /**
