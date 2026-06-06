@@ -11,6 +11,9 @@ extern void _sys_timer_module_exit(void);
 void sys_init(void) {
   sys_assert(_sys_mem_init(SYS_MEM_CAPACITY, malloc, free));
   _sys_printf_module_init();
+#ifndef NDEBUG
+  _sys_debugf_module_init();
+#endif
   sys_timestamp_ms();
 }
 
@@ -20,5 +23,8 @@ void sys_init(void) {
 void sys_exit(void) {
   _sys_timer_module_exit();
   _sys_mem_module_exit();
+#ifndef NDEBUG
+  _sys_debugf_module_exit();
+#endif
   _sys_printf_module_exit();
 }

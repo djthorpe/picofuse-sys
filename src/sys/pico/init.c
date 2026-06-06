@@ -22,6 +22,9 @@ void sys_init(void) {
   _sys_waitgroup_module_init();
   _sys_timer_module_init();
   _sys_printf_module_init();
+#ifndef NDEBUG
+  _sys_debugf_module_init();
+#endif
   stdio_init_all();
   sys_sleep_ms(1000);
   sys_timestamp_ms();
@@ -37,6 +40,9 @@ void sys_exit(void) {
   _sys_date_module_exit();
   _sys_mem_module_exit();
   sys_debugf("[sys] exit");
+#ifndef NDEBUG
+  _sys_debugf_module_exit();
+#endif
   _sys_printf_module_exit();
   sys_halt();
 }

@@ -715,7 +715,7 @@ dev_bme680_t *dev_bme680_init_spi(hw_spi_t *spi, hw_gpio_t *cs_pin,
 }
 
 void dev_bme680_deinit(dev_bme680_t *bme680) {
-  if (!dev_bme680_valid(bme680)) {
+  if (!_dev_bme680_bus_ready(bme680) || bme680->chip_id != BME680_CHIP_ID) {
     return;
   }
 
@@ -723,29 +723,8 @@ void dev_bme680_deinit(dev_bme680_t *bme680) {
   sys_free(bme680);
 }
 
-///////////////////////////////////////////////////////////////////////////////
-// PROPERTIES
-
-bool dev_bme680_valid(const dev_bme680_t *bme680) {
-  if (bme680 == NULL || !bme680->init || bme680->chip_id != BME680_CHIP_ID) {
-    return false;
-  }
-
-  if (bme680->bus == DEV_BME680_BUS_I2C) {
-    return hw_i2c_valid(bme680->i2c) &&
-           (bme680->i2c_addr == BME680_I2C_ADDR_PRIMARY ||
-            bme680->i2c_addr == BME680_I2C_ADDR_SECONDARY);
-  }
-
-  if (bme680->bus == DEV_BME680_BUS_SPI) {
-    return hw_spi_valid(bme680->spi);
-  }
-
-  return false;
-}
-
 uint8_t dev_bme680_chip_id(const dev_bme680_t *bme680) {
-  if (!dev_bme680_valid(bme680)) {
+  if (!_dev_bme680_bus_ready(bme680) || bme680->chip_id != BME680_CHIP_ID) {
     return 0u;
   }
 
@@ -756,7 +735,8 @@ uint8_t dev_bme680_chip_id(const dev_bme680_t *bme680) {
 // METHODS
 
 bool dev_bme680_read_data(dev_bme680_t *bme680, dev_bme680_data_t *data) {
-  if (!dev_bme680_valid(bme680) || data == NULL) {
+  if (!_dev_bme680_bus_ready(bme680) || bme680->chip_id != BME680_CHIP_ID ||
+      data == NULL) {
     return false;
   }
 

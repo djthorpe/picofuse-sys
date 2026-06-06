@@ -13,4 +13,5 @@
 #include "dev/bme680.h"
 #include "dev/ft6236.h"
 #include "dev/st7701.h"
+#include "dev/tca9555.h"
 #include "dev/uc8151.h"

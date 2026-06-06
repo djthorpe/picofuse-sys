@@ -2,6 +2,7 @@
 #include <picofuse/sys.h>
 #include <pthread.h>
 #include <stddef.h>
+#include <unistd.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 // TYPES
@@ -11,6 +12,8 @@ struct sys_timer_t {
   uint32_t interval_ms;
   void *userdata;
   dispatch_source_t source;
+  pthread_t callback_thread;
+  bool callback_active;
   bool init;
 };
 
@@ -32,8 +35,56 @@ void _sys_timer_module_exit(void) {
 
 static void _sys_timer_callback(void *context) {
   sys_timer_t *timer = (sys_timer_t *)context;
-  if (timer->callback != NULL) {
-    timer->callback(timer);
+  if (timer == NULL) {
+    return;
+  }
+
+  pthread_mutex_lock(&_sys_timer_pool_lock);
+  if (timer->init && timer->source != NULL && !timer->callback_active) {
+    timer->callback_active = true;
+    timer->callback_thread = pthread_self();
+  }
+  void (*callback)(sys_timer_t *) =
+      timer->callback_active ? timer->callback : NULL;
+  pthread_mutex_unlock(&_sys_timer_pool_lock);
+
+  if (callback != NULL) {
+    callback(timer);
+
+    pthread_mutex_lock(&_sys_timer_pool_lock);
+    timer->callback_active = false;
+    pthread_mutex_unlock(&_sys_timer_pool_lock);
+  }
+}
+
+static bool
+_sys_timer_callback_in_progress_for_current_thread(sys_timer_t *timer) {
+  if (timer == NULL) {
+    return false;
+  }
+
+  pthread_mutex_lock(&_sys_timer_pool_lock);
+  bool in_progress = timer->callback_active &&
+                     pthread_equal(pthread_self(), timer->callback_thread);
+  pthread_mutex_unlock(&_sys_timer_pool_lock);
+  return in_progress;
+}
+
+static void _sys_timer_wait_for_callback(sys_timer_t *timer) {
+  if (timer == NULL) {
+    return;
+  }
+
+  while (true) {
+    pthread_mutex_lock(&_sys_timer_pool_lock);
+    bool active = timer->callback_active;
+    pthread_mutex_unlock(&_sys_timer_pool_lock);
+
+    if (!active) {
+      return;
+    }
+
+    usleep(1000);
   }
 }
 
@@ -51,7 +102,7 @@ sys_timer_t *sys_timer_init(uint32_t interval_ms, void *userdata,
   for (size_t offset = 0; offset < SYS_TIMER_CAPACITY; offset++) {
     size_t index = (_sys_timer_pool_index + offset) % SYS_TIMER_CAPACITY;
     sys_timer_t *timer = &_sys_timer_pool[index];
-    if (timer->init) {
+    if (timer->init || timer->callback_active) {
       continue;
     }
 
@@ -59,6 +110,7 @@ sys_timer_t *sys_timer_init(uint32_t interval_ms, void *userdata,
     timer->interval_ms = interval_ms;
     timer->userdata = userdata;
     timer->source = NULL;
+    timer->callback_active = false;
     timer->init = true;
 
     _sys_timer_pool_index = (index + 1) % SYS_TIMER_CAPACITY;
@@ -75,14 +127,23 @@ void sys_timer_deinit(sys_timer_t *timer) {
     return;
   }
 
+  bool in_callback = _sys_timer_callback_in_progress_for_current_thread(timer);
+
   if (timer->source != NULL) {
     dispatch_source_cancel(timer->source);
     dispatch_release(timer->source);
     timer->source = NULL;
   }
 
+  if (!in_callback) {
+    _sys_timer_wait_for_callback(timer);
+  }
+
   pthread_mutex_lock(&_sys_timer_pool_lock);
   timer->init = false;
+  if (!in_callback) {
+    timer->callback_active = false;
+  }
   pthread_mutex_unlock(&_sys_timer_pool_lock);
 }
 

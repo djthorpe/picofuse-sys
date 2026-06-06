@@ -121,6 +121,11 @@ picofuse_add_sys_test(sys_024
 	main.c
 )
 
+# Check timer deinit waits for an in-flight callback to complete.
+picofuse_add_sys_test(sys_027
+	main.c
+)
+
 # Check single-worker run loop: lifecycle, events, exit value, reuse.
 picofuse_add_sys_test(sys_025
 	main.c
