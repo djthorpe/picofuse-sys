@@ -100,7 +100,9 @@ add_subdirectory(examples/hw/usb-scan)
 add_subdirectory(examples/hw/wifi-scan)
 add_subdirectory(examples/hw/wifi-join)
 add_subdirectory(examples/dev/bme680)
+add_subdirectory(examples/dev/presto-touch)
 add_subdirectory(examples/dev/picoinky)
+add_subdirectory(examples/dev/presto-display)
 add_subdirectory(examples/dev/tca9555)
 
 # Tests

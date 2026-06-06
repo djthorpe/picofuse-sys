@@ -13,6 +13,7 @@ struct hw_spi_t {
   hw_gpio_t *cs;
   bool cs_active_low;
   bool owns_pins;
+  uint8_t bits_per_word;
   uint32_t baud_rate;
   bool init;
 };
@@ -174,6 +175,7 @@ hw_spi_t *hw_spi_init(uint8_t index, hw_gpio_t *sck_pin, hw_gpio_t *tx_pin,
   spi->rx = rx_pin;
   spi->cs = configured_cs;
   spi->cs_active_low = settings.cs_active_low;
+  spi->bits_per_word = settings.bits_per_word;
   spi->baud_rate = baud_rate;
   spi->owns_pins = false;
   spi->init = true;
@@ -221,6 +223,31 @@ uint8_t hw_spi_count(void) { return NUM_SPIS; }
 
 bool hw_spi_valid(const hw_spi_t *spi) {
   return spi != NULL && spi->instance != NULL && spi->baud_rate > 0;
+}
+
+uint8_t hw_spi_get_bits_per_word(const hw_spi_t *spi) {
+  if (!hw_spi_valid(spi)) {
+    return 0u;
+  }
+
+  return spi->bits_per_word;
+}
+
+bool hw_spi_set_format(hw_spi_t *spi, hw_spi_mode_t mode,
+                       uint8_t bits_per_word) {
+  if (!hw_spi_valid(spi) || bits_per_word == 0u) {
+    return false;
+  }
+
+  spi_cpol_t cpol = SPI_CPOL_0;
+  spi_cpha_t cpha = SPI_CPHA_0;
+  if (!_hw_spi_map_mode(mode, &cpol, &cpha)) {
+    return false;
+  }
+
+  spi_set_format(spi->instance, bits_per_word, cpol, cpha, SPI_MSB_FIRST);
+  spi->bits_per_word = bits_per_word;
+  return true;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -313,4 +340,23 @@ size_t hw_spi_write(hw_spi_t *spi, uint8_t reg, const void *data, size_t len,
 
   _hw_spi_set_cs(spi, false);
   return bytes_transferred;
+}
+
+size_t hw_spi_write_words(hw_spi_t *spi, const uint16_t *words, size_t len,
+                          uint32_t timeout_ms) {
+  (void)timeout_ms;
+
+  if (!hw_spi_valid(spi) || words == NULL || len == 0) {
+    return 0;
+  }
+
+  _hw_spi_set_cs(spi, true);
+  int ret = spi_write16_blocking(spi->instance, words, len);
+  _hw_spi_set_cs(spi, false);
+
+  if (ret != (int)len) {
+    return 0;
+  }
+
+  return len;
 }
