@@ -3,6 +3,29 @@
  * @brief Defines thread creation, core query, and sleep primitives.
  * @defgroup SystemThread Thread and Sleep Operations
  * @ingroup System
+ * @details
+ * The SystemThread module provides lightweight cross-platform helpers for
+ * creating fire-and-forget worker threads and querying CPU core information.
+ *
+ * Thread creation APIs (`sys_thread_create`, `sys_thread_create_on_core`)
+ * execute a user callback with a single opaque argument and return immediately
+ * after the worker is scheduled. Workers terminate when the callback returns.
+ *
+ * Core-query APIs (`sys_thread_numcores`, `sys_thread_core`) support adaptive
+ * scheduling decisions and diagnostics for multicore execution.
+ *
+ * Typical flow:
+ * 1. Query available cores with `sys_thread_numcores()`.
+ * 2. Spawn one or more workers with `sys_thread_create*()`.
+ * 3. Coordinate shared state with SystemSync primitives (mutex/cond/waitgroup
+ *    or atomics).
+ * 4. Optionally inspect worker placement with `sys_thread_core()`.
+ *
+ * Notes:
+ * - These APIs are non-joinable by design; completion coordination should be
+ *   handled externally (for example using wait groups).
+ * - Static-pool backends may cap concurrent active threads via
+ *   `SYS_THREAD_CAPACITY`.
  */
 
 #pragma once

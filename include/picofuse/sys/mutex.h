@@ -3,6 +3,28 @@
  * @brief Defines mutex primitives for thread-safe mutual exclusion.
  * @defgroup SystemSync Synchronization Primitives
  * @ingroup System
+ * @details
+ * The SystemSync module groups thread-coordination primitives used to protect
+ * shared state and orchestrate concurrent work across threads/cores.
+ *
+ * It is organized into focused subgroups:
+ * - `SystemSyncMutex` for mutual exclusion.
+ * - `SystemSyncCond` for condition-variable signaling and waiting.
+ * - `SystemSyncWaitgroup` for task completion coordination.
+ * - `SystemAtomic` for lock-free 32-bit shared counters/flags.
+ *
+ * Typical synchronization patterns:
+ * 1. Guard shared mutable state with a mutex.
+ * 2. Wait for state transitions using a condition variable and looped checks.
+ * 3. Track worker completion with a wait group.
+ * 4. Use atomics for lightweight flags/counters where full mutex protection
+ *    is unnecessary.
+ *
+ * General guidance:
+ * - Keep critical sections short.
+ * - Pair every successful lock with unlock.
+ * - Prefer clear ownership of who signals/broadcasts and who waits.
+ * - Avoid blocking calls while holding locks unless explicitly required.
  */
 
 /**
