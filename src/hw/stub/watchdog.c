@@ -1,6 +1,8 @@
 #include <picofuse/hw.h>
 
-struct hw_watchdog_t {};
+struct hw_watchdog_t {
+  uint8_t placeholder;
+};
 
 void _hw_watchdog_module_init(void) {}
 

@@ -311,7 +311,7 @@ size_t _sys_printf_putu(struct sys_printf_state *state, va_list *va) {
   } else if (state->flags & SYS_PRINTF_FLAG_LONG) {
     return _sys_printf_putuv64(state, va_arg(*va, uint64_t));
   } else {
-    num = (unsigned long)va_arg(*va, uint32_t);
+    num = (unsigned long)va_arg(*va, unsigned int);
   }
 
   return _sys_printf_putuv(state, num);

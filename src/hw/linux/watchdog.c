@@ -23,6 +23,7 @@
 struct hw_watchdog_t {
   char device[64];
   uint32_t timeout_ms;
+  uint32_t reset_timeout_ms;
   int fd;
   bool init;
   bool disable;
@@ -85,20 +86,26 @@ static bool _hw_watchdog_open(hw_watchdog_t *watchdog) {
   }
 
   watchdog->fd = open(watchdog->device, O_WRONLY | O_CLOEXEC);
-  if (watchdog->fd < 0) {
+  return watchdog->fd >= 0;
+}
+
+static bool _hw_watchdog_set_timeout(hw_watchdog_t *watchdog,
+                                     uint32_t timeout_ms) {
+  if (!_hw_watchdog_is_valid(watchdog) || timeout_ms == 0u) {
     return false;
   }
 
-  int timeout_s = (int)((watchdog->timeout_ms + 999u) / 1000u);
+  if (!_hw_watchdog_open(watchdog)) {
+    return false;
+  }
+
+  int timeout_s = (int)((timeout_ms + 999u) / 1000u);
   if (timeout_s <= 0) {
     timeout_s = 1;
   }
 
-  if (ioctl(watchdog->fd, WDIOC_SETTIMEOUT, &timeout_s) == 0 && timeout_s > 0) {
-    watchdog->timeout_ms = (uint32_t)timeout_s * 1000u;
-  }
-
-  return true;
+  return ioctl(watchdog->fd, WDIOC_SETTIMEOUT, &timeout_s) == 0 &&
+         timeout_s > 0;
 }
 
 static bool _hw_watchdog_read_bootstatus(const char *device) {
@@ -185,6 +192,7 @@ hw_watchdog_t *hw_watchdog_init_device(const char *device) {
   if (_hw_watchdog.timeout_ms == 0u) {
     _hw_watchdog.timeout_ms = HW_WATCHDOG_FALLBACK_TIMEOUT_MS;
   }
+  _hw_watchdog.reset_timeout_ms = 0u;
 
   _hw_watchdog.did_reset = _hw_watchdog_read_bootstatus(path);
   _hw_watchdog.disable = true;
@@ -231,14 +239,16 @@ void hw_watchdog_enable(hw_watchdog_t *watchdog, bool enable) {
 
   if (enable) {
     watchdog->reset_armed = false;
+    watchdog->reset_timeout_ms = 0u;
     watchdog->disable = false;
-    if (_hw_watchdog_open(watchdog)) {
+    if (_hw_watchdog_set_timeout(watchdog, watchdog->timeout_ms)) {
       int keepalive = 0;
       (void)ioctl(watchdog->fd, WDIOC_KEEPALIVE, &keepalive);
     }
   } else {
     watchdog->disable = true;
     watchdog->reset_armed = false;
+    watchdog->reset_timeout_ms = 0u;
     _hw_watchdog_close_fd(&watchdog->fd);
   }
 }
@@ -257,18 +267,9 @@ void hw_watchdog_reset(hw_watchdog_t *watchdog, uint32_t delay_ms) {
     delay_ms = max_timeout_ms;
   }
 
-  watchdog->timeout_ms = delay_ms;
-  if (!_hw_watchdog_open(watchdog)) {
+  watchdog->reset_timeout_ms = delay_ms;
+  if (!_hw_watchdog_set_timeout(watchdog, watchdog->reset_timeout_ms)) {
     return;
-  }
-
-  int timeout_s = (int)((delay_ms + 999u) / 1000u);
-  if (timeout_s <= 0) {
-    timeout_s = 1;
-  }
-
-  if (ioctl(watchdog->fd, WDIOC_SETTIMEOUT, &timeout_s) == 0 && timeout_s > 0) {
-    watchdog->timeout_ms = (uint32_t)timeout_s * 1000u;
   }
 
   int keepalive = 0;
