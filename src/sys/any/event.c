@@ -220,6 +220,14 @@ size_t sys_event_queue_size(sys_event_queue_t *queue) {
   return size;
 }
 
+size_t sys_event_queue_capacity(sys_event_queue_t *queue) {
+  if (!_sys_event_queue_valid_unlocked(queue)) {
+    return 0;
+  }
+
+  return queue->capacity;
+}
+
 bool sys_event_queue_empty(sys_event_queue_t *queue) {
   if (!_sys_event_queue_valid_unlocked(queue) ||
       !sys_mutex_lock(queue->mutex)) {

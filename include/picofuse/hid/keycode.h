@@ -293,9 +293,21 @@ typedef enum {
 // FUNCTION DECLARATIONS
 
 /**
+ * @brief Convert a keycode to a display string.
+ *
+ * In debug builds this returns a symbolic name such as "KEYCODE_ENTER" when
+ * known; otherwise it returns a hexadecimal fallback formatted as "0x%04X".
+ * In non-debug builds this always returns the hexadecimal fallback.
+ *
+ * @param keycode HID keycode value.
+ * @return Pointer to an internal string buffer.
+ */
+const char *hid_keycode_to_string(uint16_t keycode);
+
+/**
  * Convert a keycode to modifier/input state flags.
  */
-static inline hid_state_t keycode_to_state(uint16_t keycode) {
+static inline hid_state_t hid_keycode_to_state(uint16_t keycode) {
   switch (keycode) {
   case KEYCODE_LEFTCTRL:
     return hid_state_left_control;
@@ -327,7 +339,7 @@ static inline hid_state_t keycode_to_state(uint16_t keycode) {
 /**
  * Convert a keycode to its one-byte character representation.
  */
-static inline char keycode_to_char(uint16_t keycode) {
+static inline char hid_keycode_to_char(uint16_t keycode) {
   switch (keycode) {
   case KEYCODE_1:
     return '1';

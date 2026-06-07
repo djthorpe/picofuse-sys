@@ -41,7 +41,7 @@ sys_cond_t *sys_cond_init(void) {
       continue;
     }
 
-    sem_init(&cond->sem, 0, (int16_t)SYS_COND_CAPACITY);
+    sem_init(&cond->sem, 0, INT16_MAX);
     mutex_init(&cond->waiters_lock);
     cond->waiters_count = 0;
     cond->pending_signals = 0;

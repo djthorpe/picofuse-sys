@@ -125,4 +125,17 @@ bool dev_ft6236_poll(dev_ft6236_t *ft6236,
                      hid_event_t events[DEV_FT6236_MAX_POINTS],
                      uint8_t *out_touch_count);
 
+/**
+ * @brief Register the Presto on-board FT6236 touch controller as a HID source.
+ * @ingroup FT6236
+ * @param hid HID instance that owns the registration.
+ * @param i2c_baud_rate I2C baud rate in Hz. Pass `0` to use 100kHz.
+ * @return Registered HID device descriptor, or `NULL` on failure.
+ *
+ * This helper initializes and owns the Presto touch I2C bus and GPIO pins.
+ * Resources are released automatically when the returned HID device is
+ * deregistered.
+ */
+hid_device_t *dev_presto_touch_register(hid_t *hid, uint32_t i2c_baud_rate);
+
 /** @} */

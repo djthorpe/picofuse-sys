@@ -87,10 +87,18 @@ endif()
 # Add source code 
 add_subdirectory(src)
 
-# Add examples
+# Add sys examples
 add_subdirectory(examples/sys/multicore)
 add_subdirectory(examples/sys/queue)
 add_subdirectory(examples/sys/runloop)
+
+# Add Pico SDK-only repro examples
+add_subdirectory(examples/picosdk)
+
+# Add hid examples
+add_subdirectory(examples/hid/runloop)
+
+# Add hw examples
 add_subdirectory(examples/hw/gpio)
 add_subdirectory(examples/hw/uart)
 add_subdirectory(examples/hw/i2c-scan)
@@ -99,11 +107,16 @@ add_subdirectory(examples/hw/led-blink)
 add_subdirectory(examples/hw/usb-scan)
 add_subdirectory(examples/hw/wifi-scan)
 add_subdirectory(examples/hw/wifi-join)
+
+# Add dev examples
 add_subdirectory(examples/dev/bme680)
-add_subdirectory(examples/dev/presto-touch)
 add_subdirectory(examples/dev/picoinky)
-add_subdirectory(examples/dev/presto-display)
 add_subdirectory(examples/dev/tca9555)
+
+if(DEFINED PICO_BOARD AND PICO_BOARD STREQUAL "presto")
+    add_subdirectory(examples/dev/presto-touch)
+    add_subdirectory(examples/dev/presto-display)
+endif()
 
 # Tests
 include(CTest)

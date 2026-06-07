@@ -51,6 +51,11 @@
 #define PICO_DEFAULT_WS2812_NUM_PIXELS 7
 #endif
 
+// --- BOOTSEL ---
+#ifndef PICO_USER_SW_PIN
+#define PICO_USER_SW_PIN 46
+#endif
+
 // --- I2C ---
 #ifndef PICO_DEFAULT_I2C
 #define PICO_DEFAULT_I2C 0

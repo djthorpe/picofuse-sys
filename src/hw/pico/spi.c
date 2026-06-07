@@ -1,4 +1,5 @@
 #include <hardware/spi.h>
+#include <pico/mutex.h>
 #include <picofuse/hw.h>
 #include <picofuse/sys.h>
 
@@ -11,6 +12,7 @@ struct hw_spi_t {
   hw_gpio_t *tx;
   hw_gpio_t *rx;
   hw_gpio_t *cs;
+  mutex_t lock;
   bool cs_active_low;
   bool owns_pins;
   uint8_t bits_per_word;
@@ -174,6 +176,7 @@ hw_spi_t *hw_spi_init(uint8_t index, hw_gpio_t *sck_pin, hw_gpio_t *tx_pin,
   spi->tx = tx_pin;
   spi->rx = rx_pin;
   spi->cs = configured_cs;
+  mutex_init(&spi->lock);
   spi->cs_active_low = settings.cs_active_low;
   spi->bits_per_word = settings.bits_per_word;
   spi->baud_rate = baud_rate;
@@ -245,8 +248,10 @@ bool hw_spi_set_format(hw_spi_t *spi, hw_spi_mode_t mode,
     return false;
   }
 
+  mutex_enter_blocking(&spi->lock);
   spi_set_format(spi->instance, bits_per_word, cpol, cpha, SPI_MSB_FIRST);
   spi->bits_per_word = bits_per_word;
+  mutex_exit(&spi->lock);
   return true;
 }
 
@@ -265,6 +270,7 @@ size_t hw_spi_xfr(hw_spi_t *spi, void *data, size_t tx, size_t rx,
     return 0;
   }
 
+  mutex_enter_blocking(&spi->lock);
   _hw_spi_set_cs(spi, true);
 
   size_t bytes_transferred = 0;
@@ -291,6 +297,7 @@ size_t hw_spi_xfr(hw_spi_t *spi, void *data, size_t tx, size_t rx,
   }
 
   _hw_spi_set_cs(spi, false);
+  mutex_exit(&spi->lock);
   return bytes_transferred;
 }
 
@@ -302,6 +309,7 @@ size_t hw_spi_read(hw_spi_t *spi, uint8_t reg, void *data, size_t len,
     return 0;
   }
 
+  mutex_enter_blocking(&spi->lock);
   _hw_spi_set_cs(spi, true);
 
   size_t bytes_transferred = 0;
@@ -314,6 +322,7 @@ size_t hw_spi_read(hw_spi_t *spi, uint8_t reg, void *data, size_t len,
   }
 
   _hw_spi_set_cs(spi, false);
+  mutex_exit(&spi->lock);
   return bytes_transferred;
 }
 
@@ -325,6 +334,7 @@ size_t hw_spi_write(hw_spi_t *spi, uint8_t reg, const void *data, size_t len,
     return 0;
   }
 
+  mutex_enter_blocking(&spi->lock);
   _hw_spi_set_cs(spi, true);
 
   size_t bytes_transferred = 0;
@@ -339,6 +349,7 @@ size_t hw_spi_write(hw_spi_t *spi, uint8_t reg, const void *data, size_t len,
   }
 
   _hw_spi_set_cs(spi, false);
+  mutex_exit(&spi->lock);
   return bytes_transferred;
 }
 
@@ -350,9 +361,11 @@ size_t hw_spi_write_words(hw_spi_t *spi, const uint16_t *words, size_t len,
     return 0;
   }
 
+  mutex_enter_blocking(&spi->lock);
   _hw_spi_set_cs(spi, true);
   int ret = spi_write16_blocking(spi->instance, words, len);
   _hw_spi_set_cs(spi, false);
+  mutex_exit(&spi->lock);
 
   if (ret != (int)len) {
     return 0;

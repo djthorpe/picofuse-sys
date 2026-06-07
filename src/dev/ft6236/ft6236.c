@@ -44,8 +44,12 @@ static void _dev_ft6236_clear_events(hid_event_t events[DEV_FT6236_MAX_POINTS],
 
   sys_memset(events, 0, sizeof(hid_event_t) * DEV_FT6236_MAX_POINTS);
   for (size_t i = 0; i < DEV_FT6236_MAX_POINTS; i++) {
-    events[i].state = hid_state_none;
-    events[i].slot = (uint8_t)i;
+    events[i].device = NULL;
+    events[i].type = hid_event_type_touch;
+    events[i].data.touch.state = hid_state_none;
+    events[i].data.touch.point.x = 0;
+    events[i].data.touch.point.y = 0;
+    events[i].data.touch.slot = (uint8_t)i;
   }
 
   if (out_touch_count != NULL) {
@@ -104,15 +108,16 @@ static void _dev_ft6236_parse_frame(const uint8_t *buffer,
     hid_state_t state = _dev_ft6236_event_to_state(
         (point[0] >> FT6236_TOUCH_EVENT_SHIFT) & FT6236_TOUCH_EVENT_MASK);
 
-    events[slot].point.x =
+    events[slot].type = hid_event_type_touch;
+    events[slot].device = NULL;
+    events[slot].data.touch.point.x =
         (int16_t)(((uint16_t)(point[0] & FT6236_TOUCH_POS_MASK) << 8) |
                   point[1]);
-    events[slot].point.y =
+    events[slot].data.touch.point.y =
         (int16_t)(((uint16_t)(point[2] & FT6236_TOUCH_POS_MASK) << 8) |
                   point[3]);
-    events[slot].state = state;
-    events[slot].slot = slot;
-    events[slot].keycode = KEYCODE_BTNTOUCH;
+    events[slot].data.touch.state = state;
+    events[slot].data.touch.slot = slot;
     if (_dev_ft6236_state_active(state) && out_touch_count != NULL) {
       (*out_touch_count)++;
     }
@@ -175,6 +180,10 @@ void dev_ft6236_deinit(dev_ft6236_t *ft6236) {
     return;
   }
 
+  if (hw_gpio_valid(ft6236->int_pin)) {
+    hw_gpio_deinit(ft6236->int_pin);
+  }
+
   sys_memset(ft6236, 0, sizeof(*ft6236));
   sys_free(ft6236);
 }
@@ -218,9 +227,10 @@ bool dev_ft6236_poll(dev_ft6236_t *ft6236,
   }
 
   _dev_ft6236_parse_frame(frame, events, out_touch_count);
-  ft6236->had_touch = (out_touch_count != NULL)
-                          ? (*out_touch_count > 0u)
-                          : _dev_ft6236_state_active(events[0].state) ||
-                                _dev_ft6236_state_active(events[1].state);
+  ft6236->had_touch =
+      (out_touch_count != NULL)
+          ? (*out_touch_count > 0u)
+          : _dev_ft6236_state_active(events[0].data.touch.state) ||
+                _dev_ft6236_state_active(events[1].data.touch.state);
   return true;
 }

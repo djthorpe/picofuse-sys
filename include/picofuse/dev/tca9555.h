@@ -8,6 +8,7 @@
  */
 #pragma once
 
+#include <picofuse/hid.h>
 #include <picofuse/hw.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -134,5 +135,23 @@ bool dev_tca9555_read(dev_tca9555_t *tca9555, uint16_t *value);
  * @retval false Write failed.
  */
 bool dev_tca9555_write(dev_tca9555_t *tca9555, uint16_t value);
+
+/**
+ * @brief Register a Pimoroni pad HID device.
+ * @ingroup TCA9555
+ * @param hid HID instance that owns the registration.
+ * @param i2c I2C interface used to initialize the TCA9555.
+ * @param i2c_addr 7-bit TCA9555 I2C address, or
+ * @ref DEV_TCA9555_I2C_ADDR_ANY to auto-detect.
+ * @param output_mask Pin mask for output-capable pins.
+ *
+ * This helper initializes and registers a TCA9555 as a HID device of
+ * type @ref hid_type_other. On HID deregistration, the TCA9555 device is
+ * deinitialized automatically. The I2C handle remains caller-owned.
+ * @return Registered HID device descriptor, or NULL on failure.
+ */
+hid_device_t *dev_pimoroni_pad_register(hid_t *hid, hw_i2c_t *i2c,
+                                        dev_tca9555_i2c_addr_t i2c_addr,
+                                        uint16_t output_mask);
 
 /** @} */

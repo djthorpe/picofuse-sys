@@ -45,9 +45,10 @@ static bool touch_events_equal(const hid_event_t lhs[DEV_FT6236_MAX_POINTS],
     const hid_event_t *lp = &lhs[index];
     const hid_event_t *rp = &rhs[index];
 
-    if (lp->keycode != rp->keycode || lp->state != rp->state ||
-        lp->slot != rp->slot || lp->point.x != rp->point.x ||
-        lp->point.y != rp->point.y) {
+    if (lp->type != rp->type || lp->data.touch.state != rp->data.touch.state ||
+        lp->data.touch.slot != rp->data.touch.slot ||
+        lp->data.touch.point.x != rp->data.touch.point.x ||
+        lp->data.touch.point.y != rp->data.touch.point.y) {
       return false;
     }
   }
@@ -79,18 +80,19 @@ static void print_touch_data(const hid_event_t current[DEV_FT6236_MAX_POINTS],
 
   for (size_t index = 0u; index < DEV_FT6236_MAX_POINTS; index++) {
     const hid_event_t *event = &current[index];
-    if (event->keycode == KEYCODE_NONE) {
+    if (event->type != hid_event_type_touch ||
+        event->data.touch.state == hid_state_none) {
       continue;
     }
 
-    bool active = (event->state & hid_state_on) != 0u;
-    const char *state_name = touch_state_name(event->state);
+    bool active = (event->data.touch.state & hid_state_on) != 0u;
+    const char *state_name = touch_state_name(event->data.touch.state);
 
-    sys_printf("  keycode=0x%04X state=%s point=%d,%d slot=%u active=%u "
-               "raw=0x%04X\n",
-               (unsigned int)event->keycode, state_name, (int)event->point.x,
-               (int)event->point.y, (unsigned int)event->slot,
-               (unsigned int)(active ? 1u : 0u), (unsigned int)event->state);
+    sys_printf(
+        "  state=%s point=%d,%d slot=%u active=%u raw=0x%04X\n", state_name,
+        (int)event->data.touch.point.x, (int)event->data.touch.point.y,
+        (unsigned int)event->data.touch.slot, (unsigned int)(active ? 1u : 0u),
+        (unsigned int)event->data.touch.state);
   }
 }
 

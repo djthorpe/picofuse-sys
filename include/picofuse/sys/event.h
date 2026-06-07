@@ -3,11 +3,43 @@
  * @brief Defines opaque event queues for producer/consumer coordination.
  * @defgroup SystemEvents Events
  * @ingroup System
+ * @details
+ * The Events module provides the core event transport abstraction used by
+ * runloops and other producer/consumer workflows. Events are represented as
+ * opaque pointers (`sys_event_t`) so callers can transport arbitrary payload
+ * types without imposing a specific object model.
+ *
+ * Event ownership and payload lifetime are defined by the producer/consumer
+ * contract in each subsystem. The queue itself only stores and forwards
+ * pointers.
+ *
+ * `NULL` is reserved as a sentinel return value for empty/timeout/shutdown
+ * conditions, so valid posted events must always be non-NULL.
  */
 
 /**
  * @defgroup SystemEventQueue Queue
  * @ingroup SystemEvents
+ * @details
+ * Event queues provide thread-safe FIFO coordination between producers and
+ * consumers.
+ *
+ * Queue behavior summary:
+ * - `sys_event_queue_push()` guarantees insertion and may overwrite the oldest
+ *   item when full.
+ * - `sys_event_queue_try_push()` never overwrites and fails when full.
+ * - `sys_event_queue_pop()` blocks until an event is available or shutdown is
+ *   observed.
+ * - `sys_event_queue_timed_pop()` supports bounded waiting.
+ * - `sys_event_queue_shutdown()` prevents future pushes and wakes blocked
+ *   consumers.
+ *
+ * Typical flow:
+ * 1. Allocate with `sys_event_queue_init(capacity)`.
+ * 2. Push events from producer threads/interrupt-safe contexts as supported.
+ * 3. Pop events in one or more consumer workers.
+ * 4. Call `sys_event_queue_shutdown()` to stop intake and unblock waiters.
+ * 5. Deinitialize with `sys_event_queue_deinit()`.
  */
 
 #pragma once
@@ -131,6 +163,14 @@ sys_event_t sys_event_queue_timed_pop(sys_event_queue_t *queue,
  * @return Snapshot of the current number of queued events.
  */
 size_t sys_event_queue_size(sys_event_queue_t *queue);
+
+/**
+ * @brief Return the configured maximum queue capacity.
+ * @ingroup SystemEventQueue
+ * @param queue Queue to inspect.
+ * @return Maximum event capacity, or `0` when queue is invalid.
+ */
+size_t sys_event_queue_capacity(sys_event_queue_t *queue);
 
 /**
  * @brief Report whether a queue is empty.

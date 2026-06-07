@@ -6,7 +6,7 @@ static sys_atomic_t _event_count;
 static sys_atomic_t _exit_count;
 
 static uint8_t _shutdown_sentinel;
-#define SHUTDOWN_EVENT ((sys_event_t)&_shutdown_sentinel)
+#define SHUTDOWN_EVENT ((sys_event_t) & _shutdown_sentinel)
 
 static bool wait_for_flag(const sys_atomic_t *flag, uint32_t timeout_ms) {
   uint64_t deadline = sys_timestamp_ms() + timeout_ms;
@@ -58,7 +58,8 @@ bool test_main(void) {
   sys_atomic_init(&_event_count, 0);
   sys_atomic_init(&_exit_count, 0);
 
-  uint32_t result = sys_runloop_run(num_workers, on_init, on_event, on_exit);
+  uint32_t result =
+      sys_runloop_run(num_workers, on_init, on_event, NULL, on_exit);
 
   TestAssert(result == 7, "run should return the shutdown exit value");
   TestAssert(!sys_runloop_valid(), "run loop should not be valid after run");

@@ -1,13 +1,29 @@
 /**
  * @file sys/runloop.h
- * @brief Single process-wide run loop for dispatching events across cores or threads.
+ * @brief Single process-wide run loop for dispatching events across cores or
+ * threads.
  * @defgroup SystemEventRunloop Run Loop
  * @ingroup SystemEvents
+ * @details
+ * The run loop is a process-wide singleton that drains an event queue across
+ * one or more workers.
  *
- * The run loop is a process-wide singleton that drives an event queue across
- * one or more workers. Call sys_runloop_run() from the main thread with an
- * event handler; it blocks until sys_runloop_shutdown() is called. Post
- * events from any thread with sys_runloop_post() once the loop is running.
+ * Usage model:
+ * - Start with `sys_runloop_run()` (or `sys_runloop_run_with_queue()`).
+ * - Post events from producer contexts using `sys_runloop_post()`.
+ * - Handle events in the callback supplied to `sys_runloop_run*()`.
+ * - Request shutdown with `sys_runloop_shutdown(exit_value)`.
+ *
+ * Execution semantics:
+ * - The calling thread always acts as worker 0.
+ * - Additional workers are created when `num_workers > 1`.
+ * - Worker init/exit hooks allow per-worker setup/teardown.
+ * - Shutdown stops new intake, drains queued work, and returns the supplied
+ *   exit value once workers exit.
+ *
+ * Call `sys_runloop_run()` from the main thread with an event handler; it
+ * blocks until `sys_runloop_shutdown()` is called. Post events from any thread
+ * with `sys_runloop_post()` once the loop is running.
  *
  * @code
  *   static void on_event(sys_event_t event) {
@@ -18,12 +34,12 @@
  *   }
  *
  *   sys_runloop_post((sys_event_t)(uintptr_t)MY_EVENT);
- *   sys_runloop_run(2, NULL, on_event, NULL); // blocks; uses 2 workers
+ *   sys_runloop_run(2, NULL, on_event, NULL, NULL); // blocks; uses 2 workers
  * @endcode
  *
  * On Pico the calling thread counts as one worker; additional workers are
- * pinned to subsequent cores. On other platforms each additional worker is
- * a new thread.
+ * pinned to subsequent cores. On other platforms each additional worker is a
+ * new thread.
  */
 #pragma once
 
@@ -67,6 +83,16 @@ typedef void (*sys_runloop_init_func_t)(uint8_t worker_index);
 typedef void (*sys_runloop_func_t)(sys_event_t event);
 
 /**
+ * @brief Optional periodic poll callback invoked by worker 0.
+ * @ingroup SystemEventRunloop
+ *
+ * This callback is executed once per timed runloop wait iteration before
+ * dispatched events are handled. Pass `NULL` when no periodic polling is
+ * required.
+ */
+typedef void (*sys_runloop_poll_t)(void);
+
+/**
  * @brief Per-worker exit callback.
  * @ingroup SystemEventRunloop
  * @param worker_index Zero-based index of the worker.
@@ -91,7 +117,10 @@ typedef void (*sys_runloop_exit_func_t)(uint8_t worker_index);
  *                    the number of available cores are clamped to that limit.
  * @param init  Called once per worker before it starts. May be `NULL`.
  * @param callback Handler invoked on a worker for each event dequeued.
- * @param exit  Called once per worker after the queue is drained. May be `NULL`.
+ * @param poll_fn Optional periodic poll callback invoked by worker 0.
+ *                May be `NULL`.
+ * @param exit  Called once per worker after the queue is drained. May be
+ * `NULL`.
  *
  * The calling thread becomes worker 0. If @p num_workers is greater than 1,
  * additional workers (1, 2, …) are started on other cores or threads, each
@@ -100,7 +129,32 @@ typedef void (*sys_runloop_exit_func_t)(uint8_t worker_index);
  */
 uint32_t sys_runloop_run(uint8_t num_workers, sys_runloop_init_func_t init,
                          sys_runloop_func_t callback,
+                         sys_runloop_poll_t poll_fn,
                          sys_runloop_exit_func_t exit);
+
+/**
+ * @brief Start the run loop using a caller-provided event queue.
+ * @ingroup SystemEventRunloop
+ * @param num_workers Total number of workers, including the calling thread.
+ *                    Pass 0 to use all available cores. Values greater than
+ *                    available cores are clamped.
+ * @param queue Event queue to use for runloop dispatch. Must be valid.
+ * @param init Called once per worker before it starts. May be `NULL`.
+ * @param callback Handler invoked on a worker for each event dequeued.
+ * @param poll_fn Optional periodic poll callback invoked by worker 0.
+ * @param exit Called once per worker after the queue is drained. May be
+ *             `NULL`.
+ * @return Exit value passed to sys_runloop_shutdown().
+ *
+ * Unlike sys_runloop_run(), this function does not allocate or deinitialize
+ * the queue. Ownership remains with the caller.
+ */
+uint32_t sys_runloop_run_with_queue(uint8_t num_workers,
+                                    sys_event_queue_t *queue,
+                                    sys_runloop_init_func_t init,
+                                    sys_runloop_func_t callback,
+                                    sys_runloop_poll_t poll_fn,
+                                    sys_runloop_exit_func_t exit);
 
 /**
  * @brief Signal the run loop to stop accepting events and exit when drained.
@@ -127,6 +181,13 @@ void sys_runloop_shutdown(uint32_t exit_value);
  * Events are processed in the order posted.
  */
 bool sys_runloop_post(sys_event_t event);
+
+/**
+ * @brief Get the active runloop event queue.
+ * @ingroup SystemEventRunloop
+ * @return Active queue pointer while runloop is running, else `NULL`.
+ */
+sys_event_queue_t *sys_runloop_queue(void);
 
 /**
  * @brief Check whether the run loop is currently running.
