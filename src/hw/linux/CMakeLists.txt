@@ -50,7 +50,6 @@ endif()
 
 add_library(${NAME} OBJECT
     ../any/block.c
-    watchdog.c
     ../stub/init.c
     ../stub/adc.c
     ../stub/flash.c
@@ -61,6 +60,7 @@ add_library(${NAME} OBJECT
     spi.c
     ${USB_SOURCE}
     ../stub/uart.c
+    watchdog.c
     ${WIFI_SOURCE}
 )
 target_include_directories(${NAME} PUBLIC

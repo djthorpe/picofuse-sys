@@ -249,6 +249,10 @@ static size_t _sys_printf_putuv64(struct sys_printf_state *state,
   if ((state->flags & SYS_PRINTF_FLAG_PAD) &&
       state->width > (digits_written + prefix_len)) {
     size_t zero_pad_count = state->width - digits_written - prefix_len;
+    size_t available = (size_t)(ptr - buffer);
+    if (zero_pad_count > available) {
+      zero_pad_count = available;
+    }
     for (size_t i = 0; i < zero_pad_count; i++) {
       *--ptr = '0';
     }
