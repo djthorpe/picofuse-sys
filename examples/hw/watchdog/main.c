@@ -9,15 +9,10 @@
 #define FEED_INTERVAL_MS 100u
 #define FEED_WINDOW_MS 30000u
 
-static void reset_timer_callback(sys_timer_t *timer) {
-  hw_watchdog_t *watchdog = (hw_watchdog_t *)sys_timer_get_userdata(timer);
-  if (watchdog == NULL) {
-    return;
-  }
+static volatile bool reset_requested;
 
-  sys_printf("Watchdog reset timer fired; forcing reset now\n");
-  sys_printf("Calling hw_watchdog_reset()\n");
-  hw_watchdog_reset(watchdog, 1u);
+static void reset_timer_callback(sys_timer_t *timer) {
+  reset_requested = true;
   sys_timer_deinit(timer);
 }
 
@@ -47,19 +42,15 @@ int main(void) {
     sys_printf("Previous boot was not watchdog-reset\n");
   }
 
-  uint32_t feed_timeout_ms = max_timeout_ms / 2u;
-  if (feed_timeout_ms == 0u) {
-    feed_timeout_ms = max_timeout_ms;
-  }
-
-  sys_printf(
-      "Watchdog armed with %u ms timeout; feeding for 30s before reset\n",
-      (unsigned int)feed_timeout_ms);
+  sys_printf("Watchdog armed with backend timeout %u ms; feeding for 30s "
+             "before reset\n",
+             (unsigned int)max_timeout_ms);
 
   hw_watchdog_enable(watchdog, true);
 
+  reset_requested = false;
   sys_timer_t *reset_timer =
-      sys_timer_init(FEED_WINDOW_MS, watchdog, reset_timer_callback);
+      sys_timer_init(FEED_WINDOW_MS, NULL, reset_timer_callback);
   if (reset_timer == NULL || !sys_timer_start(reset_timer)) {
     sys_printf("Failed to start watchdog reset timer\n");
     hw_exit();
@@ -67,11 +58,14 @@ int main(void) {
     return 1;
   }
 
-  uint64_t start_ms = sys_timestamp_ms();
-  while ((sys_timestamp_ms() - start_ms) < FEED_WINDOW_MS) {
+  while (!reset_requested) {
     hw_poll();
     sys_sleep_ms(FEED_INTERVAL_MS);
   }
+
+  sys_printf("Watchdog reset timer fired; forcing reset now\n");
+  sys_printf("Calling hw_watchdog_reset()\n");
+  hw_watchdog_reset(watchdog, 1u);
 
   for (;;) {
     sys_sleep_ms(1000u);

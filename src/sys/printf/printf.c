@@ -209,8 +209,10 @@ size_t _sys_printf_putuv(struct sys_printf_state *state, unsigned long num) {
 
 static size_t _sys_printf_putuv64(struct sys_printf_state *state,
                                   uint64_t num) {
-  char buffer[64];
-  char *ptr = &buffer[63];
+  // Worst case is 64 binary digits + 2-char prefix (0b) + optional sign/space
+  // plus null terminator.
+  char buffer[68];
+  char *ptr = &buffer[67];
   *ptr = '\0';
 
   int base = 10;
@@ -328,13 +330,15 @@ size_t _sys_printf_putd(struct sys_printf_state *state, va_list *va) {
     }
   } else if (state->flags & SYS_PRINTF_FLAG_LONG) {
     int64_t num = va_arg(*va, int64_t);
+    uint64_t abs_num64;
     if (num < 0) {
       state->flags |= SYS_PRINTF_FLAG_NEG; // Set negative flag
       // Safe negation to avoid overflow with INT64_MIN
-      abs_num = (unsigned long)(-(num + 1)) + 1;
+      abs_num64 = (uint64_t)(-(num + 1)) + UINT64_C(1);
     } else {
-      abs_num = (unsigned long)num;
+      abs_num64 = (uint64_t)num;
     }
+    return _sys_printf_putuv64(state, abs_num64);
   } else {
     int32_t num = va_arg(*va, int32_t);
     if (num < 0) {

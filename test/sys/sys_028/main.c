@@ -45,6 +45,10 @@ bool test_main(void) {
   // %ld/%lu are implemented as 64-bit paths in this formatter.
   ASSERT_SPRINTF("int64 via %ld", "-9223372036854775807", "%ld", s64);
   ASSERT_SPRINTF("uint64 via %lu", "18446744073709551615", "%lu", u64);
+  ASSERT_SPRINTF(
+      "uint64 via %#lb",
+      "0b1111111111111111111111111111111111111111111111111111111111111111",
+      "%#lb", u64);
 
   return true;
 }
