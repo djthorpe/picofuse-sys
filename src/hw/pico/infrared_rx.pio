@@ -1,0 +1,47 @@
+;
+; IR Receiver PIO Program
+; Requires something like a TSOP38238 to be connected to
+; the GPIO pin configured for input.
+; https://www.vishay.com/docs/82491/tsop382.pdf
+;
+
+.program infrared_rx
+
+start:
+    wait 0 pin 0        ; Wait for start of MARK (signal goes low)
+    
+measure_mark:
+    mov x, ~null        ; Load timer with max value
+
+mark_loop:
+    jmp pin end_mark    ; If pin goes high, MARK ended
+    jmp x-- mark_loop   ; Continue counting while pin is low
+    
+end_mark:
+    mov isr, x          ; Move remaining count to ISR
+    set y, 0            ; Set marker for MARK (0)
+    mov x, isr          ; Save count
+    mov isr, y          ; Load marker into ISR
+    in x, 31            ; Shift in 31 bits of count, keeping marker in MSB position
+    push                ; Push MARK duration to FIFO (MSB = 0)
+    
+measure_space:
+    mov x, ~null        ; Reset timer for SPACE measurement  
+    
+space_loop:
+    jmp pin space_continue ; If pin is high, continue measuring space
+    jmp end_space       ; If pin goes low, space ended (next mark)
+    
+space_continue:
+    jmp x-- space_loop  ; Decrement main counter and continue
+    ; If we get here, x overflowed - very long space, treat as timeout
+    jmp start           ; Skip this space and wait for next mark
+    
+end_space:
+    mov isr, x          ; Move remaining count to ISR  
+    set y, 1            ; Set marker for SPACE (1)
+    mov x, isr          ; Save count
+    mov isr, y          ; Load marker into ISR
+    in x, 31            ; Shift in 31 bits of count, keeping marker in MSB position
+    push                ; Push SPACE duration to FIFO (MSB = 1)
+    jmp start           ; Wait for next MARK

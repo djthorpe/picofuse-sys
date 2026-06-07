@@ -7,6 +7,7 @@ endif()
 
 add_library(${NAME} OBJECT
     ../any/block.c
+    infrared_rx.c
     adc.c
     lock.c
     flash.c
@@ -21,11 +22,13 @@ add_library(${NAME} OBJECT
     watchdog.c
     wifi.c
 )
+
 target_include_directories(${NAME} PUBLIC
     ${PROJECT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_BINARY_DIR}
     ${CMAKE_CURRENT_LIST_DIR}
 )
+
 target_link_libraries(${NAME} PUBLIC
     pico_stdlib
     pico_flash
@@ -42,6 +45,10 @@ target_link_libraries(${NAME} PUBLIC
 
 pico_generate_pio_header(${NAME}
     ${CMAKE_CURRENT_LIST_DIR}/led_neopixel.pio
+)
+
+pico_generate_pio_header(${NAME}
+    ${CMAKE_CURRENT_LIST_DIR}/infrared_rx.pio
 )
 
 if(PICOFUSE_USB)
