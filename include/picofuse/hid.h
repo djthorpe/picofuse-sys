@@ -27,8 +27,16 @@
  *    `hid_event_free()`.
  * 5. On shutdown, `hid_deinit()` will clean up devices and resources.
  *
- * This header aggregates HID public APIs from device lifecycle/registration,
- * event types/queue helpers, and keycode definitions.
+ * @par Examples
+ * @example examples/hid/runloop/main.c
+ * HID registration, polling, and event dispatch in a runloop.
+ * @example examples/dev/tca9555/main.c
+ * Device backend emitting HID key events.
+ * @example examples/dev/bme680/main.c
+ * Device backend emitting HID metric events.
+ *
+ * Include `picofuse/hid.h` to access HID lifecycle/registration APIs,
+ * event interfaces, and keycode definitions from a single entry point.
  */
 #pragma once
 #include "hid/device.h"

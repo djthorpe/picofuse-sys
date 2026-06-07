@@ -26,8 +26,18 @@
  * 3. Periodically call `hw_poll()` in the main loop or runloop callback.
  * 4. Deinitialize explicit handles, then call `hw_exit()` on shutdown.
  *
- * This header is a convenience aggregator for all public hardware interfaces
- * plus the platform lifecycle entry points.
+ * @par Examples
+ * @example examples/hw/gpio/main.c
+ * Basic GPIO initialization and pin operations.
+ * @example examples/hw/i2c-scan/main.c
+ * I2C bus setup and peripheral discovery.
+ * @example examples/hw/led-blink/main.c
+ * Board LED lifecycle and periodic toggling.
+ * @example examples/picosdk/stdout-flood/main.c
+ * Pico SDK board/runtime integration behavior.
+ *
+ * Include `picofuse/hw.h` to access hardware lifecycle APIs (`hw_init`,
+ * `hw_poll`, `hw_exit`) and hardware abstractions from a single entry point.
  */
 #pragma once
 #include "hw/adc.h"

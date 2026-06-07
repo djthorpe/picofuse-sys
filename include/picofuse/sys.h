@@ -23,8 +23,18 @@
  * 3. Drive application logic using queues and/or `sys_runloop_*` helpers.
  * 4. Shut down gracefully and call `sys_exit()` before process termination.
  *
- * This header is a convenience aggregator for all public system abstraction
- * headers plus global lifecycle entry points.
+ * @par Examples
+ * @example examples/sys/runloop/main.c
+ * System runloop integration and event dispatch.
+ * @example examples/sys/queue/main.c
+ * Queue-based producer/consumer flow.
+ * @example examples/sys/multicore/main.c
+ * Multi-core coordination and synchronization.
+ * @example examples/picosdk/stdout-flood/main.c
+ * Pico SDK startup/output behavior.
+ *
+ * Include `picofuse/sys.h` to access system lifecycle APIs (`sys_init`,
+ * `sys_exit`) and the core system abstractions from a single entry point.
  */
 #pragma once
 #include "sys/arena.h"

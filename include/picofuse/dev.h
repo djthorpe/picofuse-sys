@@ -24,7 +24,18 @@
  * 3. Poll or run event loop logic so devices can produce data/events.
  * 4. Deinitialize device handles and shared buses during shutdown.
  *
- * This header is a convenience aggregator for public device interfaces.
+ * @par Examples
+ * @example examples/dev/bme680/main.c
+ * Sensor initialization and periodic metric capture.
+ * @example examples/dev/tca9555/main.c
+ * I/O expander setup and key input integration.
+ * @example examples/dev/picoinky/main.c
+ * Display-oriented device bring-up flow.
+ * @example examples/hid/runloop/main.c
+ * Device adapters integrated into a HID event loop.
+ *
+ * Include `picofuse/dev.h` to access public device integration interfaces
+ * from a single entry point.
  */
 #pragma once
 #include "dev/bme280.h"
