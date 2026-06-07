@@ -214,6 +214,15 @@ static void on_event(sys_event_t event) {
                (unsigned int)sys_thread_core(), device_name,
                (unsigned int)device_id,
                (unsigned int)hid_event->data.signal.signal);
+
+    if (hid_event->data.signal.signal == SYS_ENV_SIGNAL_TERM ||
+        hid_event->data.signal.signal == SYS_ENV_SIGNAL_INT ||
+        hid_event->data.signal.signal == SYS_ENV_SIGNAL_QUIT) {
+      sys_printf("shutdown signal received, stopping runloop\n");
+      hid_event_free(hid_event);
+      sys_runloop_shutdown(0u);
+      return;
+    }
     break;
 
   case hid_event_type_none:

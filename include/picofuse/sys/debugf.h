@@ -1,8 +1,7 @@
 /**
  * @file sys/debugf.h
  * @brief Debug logging helpers for system output.
- * @defgroup SystemDebug Debug Output
- * @ingroup System
+ * @ingroup SystemFormat
  */
 #pragma once
 
@@ -10,12 +9,14 @@
 
 /**
  * @brief Debug-only formatted logging helper.
- * @ingroup SystemDebug
+ * @ingroup SystemFormat
  *
  * Emits logs only when NDEBUG is not defined at compile time.
  */
 #ifndef NDEBUG
+/** @cond INTERNAL */
 void _sys_debugf_impl(const char *format, ...);
+/** @endcond */
 #define sys_debugf(...) _sys_debugf_impl(__VA_ARGS__)
 #else
 #define sys_debugf(...) ((void)0)

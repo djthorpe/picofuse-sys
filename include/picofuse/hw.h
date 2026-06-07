@@ -22,7 +22,7 @@
  *
  * Typical flow:
  * 1. Call `sys_init()` and then `hw_init()` during startup.
- * 2. Acquire/configure peripheral handles through the specific `hw/*` APIs.
+ * 2. Acquire/configure peripheral handles through the specific `hw/` headers.
  * 3. Periodically call `hw_poll()` in the main loop or runloop callback.
  * 4. Deinitialize explicit handles, then call `hw_exit()` on shutdown.
  *
