@@ -133,6 +133,14 @@ sys_event_t sys_event_queue_timed_pop(sys_event_queue_t *queue,
 size_t sys_event_queue_size(sys_event_queue_t *queue);
 
 /**
+ * @brief Return the configured maximum queue capacity.
+ * @ingroup SystemEventQueue
+ * @param queue Queue to inspect.
+ * @return Maximum event capacity, or `0` when queue is invalid.
+ */
+size_t sys_event_queue_capacity(sys_event_queue_t *queue);
+
+/**
  * @brief Report whether a queue is empty.
  * @ingroup SystemEventQueue
  * @param queue Queue to inspect.

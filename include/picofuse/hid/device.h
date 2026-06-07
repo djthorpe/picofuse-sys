@@ -32,7 +32,7 @@
 // TYPES
 
 /**
- * @brief Opaque HID device handle.
+ * @brief Opaque HID instance handle.
  * @ingroup HID
  */
 typedef struct hid_t hid_t;

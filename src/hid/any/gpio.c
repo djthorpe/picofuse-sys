@@ -165,7 +165,6 @@ static hid_device_t *_hid_register_gpio_mode(hid_t *instance, uint8_t bank,
     return NULL;
   }
 
-  device->gpio = gpio;
   device->keycode = keycode;
   return device;
 }

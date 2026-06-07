@@ -13,6 +13,7 @@
  * @brief HID event payload selector.
  */
 typedef enum {
+  hid_event_type_none = 0,
   hid_event_type_keycode = 1,
   hid_event_type_touch = 2,
   hid_event_type_metric = 3,

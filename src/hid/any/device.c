@@ -1,9 +1,5 @@
 #include "private.h"
-
 #include <picofuse/sys.h>
-#include <picofuse/sys/debugf.h>
-
-#include <string.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 // TYPES
@@ -13,6 +9,9 @@ static hid_t _hid[HID_CAPACITY] = {0};
 ///////////////////////////////////////////////////////////////////////////////
 // FORWARD DECLARATIONS
 
+/**
+ * @brief Report whether a HID instance slot is initialized.
+ */
 static inline bool _hid_valid(hid_t *instance) {
   return instance != NULL && instance->queue != NULL;
 }
@@ -29,6 +28,9 @@ static inline bool _hid_device_belongs_to_instance(const hid_t *instance,
   return slot >= 0 && (size_t)slot < HID_DEVICE_CAPACITY;
 }
 
+/**
+ * @brief Report whether any HID instance is currently active.
+ */
 bool _hid_has_valid_instances(void) {
   size_t i;
   for (i = 0u; i < HID_CAPACITY; ++i) {
@@ -39,26 +41,9 @@ bool _hid_has_valid_instances(void) {
   return false;
 }
 
-hid_t *_hid_device_instance(const hid_device_t *device) {
-  size_t i;
-
-  if (device == NULL) {
-    return NULL;
-  }
-
-  for (i = 0u; i < HID_CAPACITY; ++i) {
-    if (!_hid_valid(&_hid[i])) {
-      continue;
-    }
-
-    if (_hid_device_belongs_to_instance(&_hid[i], device)) {
-      return &_hid[i];
-    }
-  }
-
-  return NULL;
-}
-
+/**
+ * @brief Find a registered HID device by device id.
+ */
 bool _hid_find_device_by_id(uint32_t id, hid_t **out_instance,
                             hid_device_t **out_device) {
   size_t i;
@@ -93,6 +78,9 @@ bool _hid_find_device_by_id(uint32_t id, hid_t **out_instance,
   return false;
 }
 
+/**
+ * @brief Find a registered HID timer device by backing sys_timer handle.
+ */
 bool _hid_find_device_by_timer(sys_timer_t *timer, hid_t **out_instance,
                                hid_device_t **out_device) {
   size_t i;
@@ -143,7 +131,8 @@ hid_device_t *_hid_device_retain(hid_t *instance, const char *name,
 
   for (i = 0u; i < HID_DEVICE_CAPACITY; ++i) {
     if (instance->devices[i].type == hid_type_none) {
-      memset(&instance->devices[i], 0, sizeof(instance->devices[i]));
+      sys_memset(&instance->devices[i], 0, sizeof(instance->devices[i]));
+      instance->devices[i].instance = instance;
       instance->devices[i].name = name;
       instance->devices[i].type = type;
       return &instance->devices[i];
@@ -168,12 +157,15 @@ void _hid_device_release(hid_t *instance, hid_device_t *device) {
     return;
   }
 
-  memset(&instance->devices[(size_t)slot], 0, sizeof(hid_device_t));
+  sys_memset(&instance->devices[(size_t)slot], 0, sizeof(hid_device_t));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 // LIFECYCLE
 
+/**
+ * @brief Initialize a HID instance using the provided event queue.
+ */
 hid_t *hid_init(sys_event_queue_t *queue) {
   if (queue == NULL || sys_event_queue_valid(queue) == false) {
     return NULL;
@@ -185,13 +177,18 @@ hid_t *hid_init(sys_event_queue_t *queue) {
   hid_t *instance = NULL;
   for (i = 0u; i < HID_CAPACITY; ++i) {
     if (_hid[i].queue == NULL) {
-      memset(&_hid[i], 0, sizeof(_hid[i]));
+      sys_memset(&_hid[i], 0, sizeof(_hid[i]));
       _hid[i].queue = queue;
       instance = &_hid[i];
       break;
     }
   }
   if (instance == NULL) {
+    return NULL;
+  }
+
+  if (!_hid_event_pool_init(instance)) {
+    sys_memset(instance, 0, sizeof(hid_t));
     return NULL;
   }
 
@@ -219,8 +216,10 @@ void hid_deinit(hid_t *instance) {
     }
   }
 
+  _hid_event_pool_deinit(instance);
+
   // Clear the instance data and return it to the pool.
-  memset(instance, 0, sizeof(hid_t));
+  sys_memset(instance, 0, sizeof(hid_t));
 
   // Remove the global GPIO callback if this was the last valid instance.
   _hid_gpio_callback_deinit();
@@ -263,6 +262,9 @@ bool hid_poll(hid_t *instance) {
 ///////////////////////////////////////////////////////////////////////////////
 // METHODS
 
+/**
+ * @brief Register a new HID device and run optional backend init.
+ */
 hid_device_t *hid_register(hid_t *instance, const char *name, uint32_t id,
                            hid_type_t type, uint32_t polling_interval_ms,
                            void *userdata, hid_device_callbacks_t callbacks) {
@@ -307,9 +309,10 @@ bool hid_deregister(hid_t *instance, hid_device_t *device) {
     (void)device->callbacks.deinit(device->userdata);
   }
 
-  if (!deinit_called && device->gpio != NULL) {
-    hw_gpio_deinit(device->gpio);
-    device->gpio = NULL;
+  if (!deinit_called && device->type == hid_type_gpio &&
+      device->userdata != NULL) {
+    hw_gpio_deinit((hw_gpio_t *)device->userdata);
+    device->userdata = NULL;
   }
 
   sys_debugf("[hid] device de-registered: name=%s id=%08X type=%u",
@@ -322,6 +325,9 @@ bool hid_deregister(hid_t *instance, hid_device_t *device) {
 ///////////////////////////////////////////////////////////////////////////////
 // PROPERTIES
 
+/**
+ * @brief Enumerate registered HID devices across all active instances.
+ */
 hid_device_t *hid_device_next(hid_device_t *device) {
   size_t i;
   size_t j;

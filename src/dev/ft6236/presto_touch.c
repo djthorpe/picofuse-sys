@@ -2,6 +2,12 @@
 #include <picofuse/hid.h>
 #include <picofuse/sys.h>
 
+#if defined(__has_include)
+#if __has_include(<boards/presto.h>)
+#include <boards/presto.h>
+#endif
+#endif
+
 #if defined(PIMORONI_PRESTO_TOUCH_I2C) &&                                      \
     defined(PIMORONI_PRESTO_TOUCH_SDA_PIN) &&                                  \
     defined(PIMORONI_PRESTO_TOUCH_SCL_PIN) &&                                  \
@@ -247,6 +253,7 @@ hid_device_t *dev_presto_touch_register(hid_t *hid, uint32_t i2c_baud_rate) {
 hid_device_t *dev_presto_touch_register(hid_t *hid, uint32_t i2c_baud_rate) {
   (void)hid;
   (void)i2c_baud_rate;
+  sys_debugf("presto touch register unavailable: board touch macros undefined");
   return NULL;
 }
 

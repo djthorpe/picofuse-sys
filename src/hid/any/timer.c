@@ -60,14 +60,14 @@ static void _hid_timer_callback(sys_timer_t *timer) {
     return;
   }
 
-  hid_event_t *event = (hid_event_t *)sys_calloc(1u, sizeof(hid_event_t));
+  hid_event_t *event = _hid_event_pool_retain(instance);
   if (event == NULL) {
     return;
+  } else {
+    event->device = device;
+    event->type = hid_event_type_timer;
+    event->data.timer.userdata = sys_timer_get_userdata(timer);
   }
-
-  event->device = device;
-  event->type = hid_event_type_timer;
-  event->data.timer.userdata = sys_timer_get_userdata(timer);
 
   if (!sys_event_queue_try_push(instance->queue, (sys_event_t)event)) {
     hid_event_free(event);
@@ -88,6 +88,10 @@ hid_device_t *hid_register_timer(hid_t *instance, uint32_t id,
                                  uint32_t interval_ms, bool repeating,
                                  void *userdata) {
   if (instance == NULL || interval_ms == 0u) {
+    return NULL;
+  }
+
+  if (!_hid_event_pool_init(instance)) {
     return NULL;
   }
 
