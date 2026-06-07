@@ -107,10 +107,10 @@ hid_device_t *hid_register_timer(hid_t *instance, uint32_t id,
   if (device == NULL) {
     sys_timer_deinit(timer);
     return NULL;
+  } else {
+    device->timer_repeating = repeating;
+    device->timer_remove_after_event = false;
   }
-
-  device->timer_repeating = repeating;
-  device->timer_remove_after_event = false;
 
   return device;
 }
