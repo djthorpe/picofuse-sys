@@ -50,6 +50,7 @@ endif()
 
 add_library(${NAME} OBJECT
     ../any/block.c
+    ../stub/watchdog.c
     ../stub/init.c
     ../stub/adc.c
     ../stub/flash.c

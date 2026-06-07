@@ -1,6 +1,7 @@
 #include "private.h"
 #include <picofuse/sys.h>
 #include <stdarg.h>
+#include <stdint.h>
 #include <stdio.h>
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -206,15 +207,109 @@ size_t _sys_printf_putuv(struct sys_printf_state *state, unsigned long num) {
   return total_chars;
 }
 
+static size_t _sys_printf_putuv64(struct sys_printf_state *state,
+                                  uint64_t num) {
+  char buffer[64];
+  char *ptr = &buffer[63];
+  *ptr = '\0';
+
+  int base = 10;
+  if (state->flags & SYS_PRINTF_FLAG_HEX) {
+    base = 16;
+  } else if (state->flags & SYS_PRINTF_FLAG_BIN) {
+    base = 2;
+  } else if (state->flags & SYS_PRINTF_FLAG_OCT) {
+    base = 8;
+  }
+
+  size_t digits_written = 0;
+  do {
+    *--ptr = _sys_printf_putuv_digit((unsigned long)(num % (uint64_t)base),
+                                     state->flags);
+    num /= (uint64_t)base;
+    digits_written++;
+  } while (num > 0u);
+
+  size_t prefix_len = 0;
+  if (state->flags & SYS_PRINTF_FLAG_NEG ||
+      state->flags & SYS_PRINTF_FLAG_SIGN ||
+      state->flags & SYS_PRINTF_FLAG_SPACE) {
+    prefix_len++;
+  }
+  if (state->flags & SYS_PRINTF_FLAG_PREFIX) {
+    if (base == 16 || base == 2) {
+      prefix_len += 2;
+    } else if (base == 8) {
+      prefix_len += 1;
+    }
+  }
+
+  if ((state->flags & SYS_PRINTF_FLAG_PAD) &&
+      state->width > (digits_written + prefix_len)) {
+    size_t zero_pad_count = state->width - digits_written - prefix_len;
+    for (size_t i = 0; i < zero_pad_count; i++) {
+      *--ptr = '0';
+    }
+  }
+
+  if (state->flags & SYS_PRINTF_FLAG_PREFIX) {
+    if (base == 16) {
+      *--ptr = (state->flags & SYS_PRINTF_FLAG_UPPER) ? 'X' : 'x';
+      *--ptr = '0';
+    } else if (base == 2) {
+      *--ptr = 'b';
+      *--ptr = '0';
+    } else if (base == 8) {
+      *--ptr = '0';
+    }
+  }
+
+  if (state->flags & SYS_PRINTF_FLAG_NEG) {
+    *--ptr = '-';
+  } else if (state->flags & SYS_PRINTF_FLAG_SIGN) {
+    *--ptr = '+';
+  } else if (state->flags & SYS_PRINTF_FLAG_SPACE) {
+    *--ptr = ' ';
+  }
+
+  size_t str_len = 0;
+  char *temp_ptr = ptr;
+  while (*temp_ptr) {
+    str_len++;
+    temp_ptr++;
+  }
+
+  size_t total_chars = 0;
+  size_t padding = (state->width > str_len) ? state->width - str_len : 0;
+
+  if (!(state->flags & SYS_PRINTF_FLAG_LEFT) && padding > 0) {
+    for (size_t i = 0; i < padding; i++) {
+      total_chars += state->putch(state, ' ');
+    }
+  }
+
+  while (*ptr) {
+    total_chars += state->putch(state, *ptr++);
+  }
+
+  if ((state->flags & SYS_PRINTF_FLAG_LEFT) && padding > 0) {
+    for (size_t i = 0; i < padding; i++) {
+      total_chars += state->putch(state, ' ');
+    }
+  }
+
+  return total_chars;
+}
+
 size_t _sys_printf_putu(struct sys_printf_state *state, va_list *va) {
   unsigned long num;
 
   if (state->flags & SYS_PRINTF_FLAG_SIZET) {
     num = (unsigned long)va_arg(*va, size_t);
   } else if (state->flags & SYS_PRINTF_FLAG_LONG) {
-    num = va_arg(*va, unsigned long);
+    return _sys_printf_putuv64(state, va_arg(*va, uint64_t));
   } else {
-    num = (unsigned long)va_arg(*va, unsigned int);
+    num = (unsigned long)va_arg(*va, uint32_t);
   }
 
   return _sys_printf_putuv(state, num);
@@ -232,16 +327,16 @@ size_t _sys_printf_putd(struct sys_printf_state *state, va_list *va) {
       abs_num = (unsigned long)num;
     }
   } else if (state->flags & SYS_PRINTF_FLAG_LONG) {
-    long num = va_arg(*va, long);
+    int64_t num = va_arg(*va, int64_t);
     if (num < 0) {
       state->flags |= SYS_PRINTF_FLAG_NEG; // Set negative flag
-      // Safe negation to avoid overflow with LONG_MIN
+      // Safe negation to avoid overflow with INT64_MIN
       abs_num = (unsigned long)(-(num + 1)) + 1;
     } else {
       abs_num = (unsigned long)num;
     }
   } else {
-    int num = va_arg(*va, int);
+    int32_t num = va_arg(*va, int32_t);
     if (num < 0) {
       state->flags |= SYS_PRINTF_FLAG_NEG; // Set negative flag
       // Safe negation to avoid overflow with INT_MIN
@@ -342,8 +437,8 @@ size_t _sys_vprintf(struct sys_printf_state *state, const char *format,
     }
 
     // Parse format specifier with flags
-    state->flags = 0; // Reset flags for each format specifier
-    state->width = 0; // Reset width for each format specifier
+    state->flags = 0;     // Reset flags for each format specifier
+    state->width = 0;     // Reset width for each format specifier
     state->precision = 0; // Reset precision for each format specifier
 
     // Parse flags

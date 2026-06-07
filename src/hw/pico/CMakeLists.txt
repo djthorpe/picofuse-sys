@@ -8,6 +8,7 @@ endif()
 add_library(${NAME} OBJECT
     ../any/block.c
     adc.c
+    lock.c
     flash.c
     gpio.c
     init.c
@@ -17,6 +18,7 @@ add_library(${NAME} OBJECT
     spi.c
     ${PICOFUSE_PICO_USB_SOURCE}
     uart.c
+    watchdog.c
     wifi.c
 )
 target_include_directories(${NAME} PUBLIC
@@ -35,6 +37,7 @@ target_link_libraries(${NAME} PUBLIC
     hardware_spi
     hardware_adc
     hardware_pwm
+    hardware_watchdog
 )
 
 pico_generate_pio_header(${NAME}
