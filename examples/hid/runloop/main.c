@@ -34,7 +34,7 @@ static void poll_callback(void) {
 /**
  * @brief Initialize HID and timers on worker 0.
  */
-static void on_init(uint8_t worker_index) {
+static void on_init(uint8_t worker) {
   hid_device_t *user_button;
   hid_device_t *timer_hid;
   hid_device_t *timer_oneshot_hid;
@@ -43,7 +43,7 @@ static void on_init(uint8_t worker_index) {
   hid_device_t *bme680_hid;
 
   // We only do init on the main thread
-  if (worker_index != 0u) {
+  if (worker != 0u) {
     return;
   }
 
@@ -235,8 +235,8 @@ static void on_event(sys_event_t event) {
 /**
  * @brief Clean up timers, HID registrations, and queue resources.
  */
-static void on_exit(uint8_t worker_index) {
-  if (worker_index != 0u) {
+static void on_exit(uint8_t worker) {
+  if (worker != 0u) {
     return;
   }
 

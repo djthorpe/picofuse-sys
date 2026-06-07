@@ -4,11 +4,26 @@
  * threads.
  * @defgroup SystemEventRunloop Run Loop
  * @ingroup SystemEvents
+ * @details
+ * The run loop is a process-wide singleton that drains an event queue across
+ * one or more workers.
  *
- * The run loop is a process-wide singleton that drives an event queue across
- * one or more workers. Call sys_runloop_run() from the main thread with an
- * event handler; it blocks until sys_runloop_shutdown() is called. Post
- * events from any thread with sys_runloop_post() once the loop is running.
+ * Usage model:
+ * - Start with `sys_runloop_run()` (or `sys_runloop_run_with_queue()`).
+ * - Post events from producer contexts using `sys_runloop_post()`.
+ * - Handle events in the callback supplied to `sys_runloop_run*()`.
+ * - Request shutdown with `sys_runloop_shutdown(exit_value)`.
+ *
+ * Execution semantics:
+ * - The calling thread always acts as worker 0.
+ * - Additional workers are created when `num_workers > 1`.
+ * - Worker init/exit hooks allow per-worker setup/teardown.
+ * - Shutdown stops new intake, drains queued work, and returns the supplied
+ *   exit value once workers exit.
+ *
+ * Call `sys_runloop_run()` from the main thread with an event handler; it
+ * blocks until `sys_runloop_shutdown()` is called. Post events from any thread
+ * with `sys_runloop_post()` once the loop is running.
  *
  * @code
  *   static void on_event(sys_event_t event) {
@@ -23,8 +38,8 @@
  * @endcode
  *
  * On Pico the calling thread counts as one worker; additional workers are
- * pinned to subsequent cores. On other platforms each additional worker is
- * a new thread.
+ * pinned to subsequent cores. On other platforms each additional worker is a
+ * new thread.
  */
 #pragma once
 
