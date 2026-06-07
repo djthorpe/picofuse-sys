@@ -136,6 +136,11 @@ picofuse_add_sys_test(sys_026
 	main.c
 )
 
+# Check sys_sprintf formatting for fixed-width integer types.
+picofuse_add_sys_test(sys_028
+	main.c
+)
+
 # Check GPIO API behavior on supported and stub backends.
 picofuse_add_hw_test(hw_000
 	main.c
@@ -168,6 +173,11 @@ picofuse_add_hw_test(hw_005
 
 # Check block storage API behavior: capacity, init, erase/read/write, and deinit.
 picofuse_add_hw_test(hw_006
+	main.c
+)
+
+# Check watchdog API behavior: init, enable/reset flows, and stub fallback.
+picofuse_add_hw_test(hw_007
 	main.c
 )
 

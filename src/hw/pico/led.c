@@ -1,7 +1,6 @@
 #include <hardware/clocks.h>
 #include <hardware/pio.h>
 #include <pico.h>
-#include <pico/critical_section.h>
 #include <pico/time.h>
 #include <picofuse/hw.h>
 #include <picofuse/pix.h>
@@ -41,26 +40,28 @@ struct hw_led_t {
 // GLOBALS
 
 static struct hw_led_t _hw_led_pool[HW_LED_POOL_CAPACITY] = {0};
-static critical_section_t _hw_led_lock;
+
+void _hw_lock_enter(void);
+void _hw_lock_exit(void);
 
 ///////////////////////////////////////////////////////////////////////////////
 // HELPER FUNCTIONS
 
-void _hw_led_module_init(void) { critical_section_init(&_hw_led_lock); }
+void _hw_led_module_init(void) {}
 
 void _hw_led_module_exit(void) {}
 
 static hw_led_t *_hw_led_alloc(void) {
-  critical_section_enter_blocking(&_hw_led_lock);
+  _hw_lock_enter();
   for (uint8_t i = 0; i < HW_LED_POOL_CAPACITY; i++) {
     if (!_hw_led_pool[i].initialized) {
       // Reserve this slot so concurrent allocators cannot return it.
       _hw_led_pool[i].initialized = true;
-      critical_section_exit(&_hw_led_lock);
+      _hw_lock_exit();
       return &_hw_led_pool[i];
     }
   }
-  critical_section_exit(&_hw_led_lock);
+  _hw_lock_exit();
   return NULL;
 }
 
@@ -195,14 +196,14 @@ static bool _hw_led_apply_state(hw_led_t *led, uint8_t index, bool enabled) {
 static void _hw_led_blink_stop(hw_led_t *led) {
   sys_timer_t *timer = NULL;
 
-  critical_section_enter_blocking(&_hw_led_lock);
+  _hw_lock_enter();
   if (led != NULL && led->blink_timer != NULL) {
     timer = led->blink_timer;
     led->blink_timer = NULL;
     led->blink_repeating = false;
     led->blink_phase_on = false;
   }
-  critical_section_exit(&_hw_led_lock);
+  _hw_lock_exit();
 
   if (timer != NULL) {
     sys_timer_deinit(timer);
@@ -218,7 +219,7 @@ static void _hw_led_blink_timer_cb(sys_timer_t *timer) {
 
   bool should_deinit = false;
 
-  critical_section_enter_blocking(&_hw_led_lock);
+  _hw_lock_enter();
   if (!led->initialized || led->blink_timer != timer) {
     should_deinit = true;
   } else if (!led->blink_repeating) {
@@ -230,7 +231,7 @@ static void _hw_led_blink_timer_cb(sys_timer_t *timer) {
     led->blink_phase_on = !led->blink_phase_on;
     (void)_hw_led_apply_state(led, led->blink_index, led->blink_phase_on);
   }
-  critical_section_exit(&_hw_led_lock);
+  _hw_lock_exit();
 
   if (should_deinit) {
     sys_timer_deinit(timer);
@@ -298,9 +299,9 @@ hw_led_t *hw_led_init_neopixel(hw_gpio_t *gpio, uint8_t led_count) {
   led->neopixel_offset = 0u;
   led->neopixel_sm = -1;
 
-  critical_section_enter_blocking(&_hw_led_lock);
+  _hw_lock_enter();
   if (!_hw_led_neopixel_pio_init(led)) {
-    critical_section_exit(&_hw_led_lock);
+    _hw_lock_exit();
     led->initialized = false;
     return NULL;
   }
@@ -310,11 +311,11 @@ hw_led_t *hw_led_init_neopixel(hw_gpio_t *gpio, uint8_t led_count) {
   }
 
   if (!_hw_led_neopixel_flush(led)) {
-    critical_section_exit(&_hw_led_lock);
+    _hw_lock_exit();
     led->initialized = false;
     return NULL;
   }
-  critical_section_exit(&_hw_led_lock);
+  _hw_lock_exit();
 
   return led;
 }
@@ -465,7 +466,7 @@ void hw_led_deinit(hw_led_t *led) {
 
   _hw_led_blink_stop(led);
 
-  critical_section_enter_blocking(&_hw_led_lock);
+  _hw_lock_enter();
 
   if (led->pwm != NULL) {
     hw_pwm_deinit(led->pwm);
@@ -503,7 +504,7 @@ void hw_led_deinit(hw_led_t *led) {
   led->neopixel_pio = NULL;
   led->neopixel_offset = 0u;
   led->neopixel_sm = -1;
-  critical_section_exit(&_hw_led_lock);
+  _hw_lock_exit();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -511,9 +512,9 @@ void hw_led_deinit(hw_led_t *led) {
 
 bool hw_led_set(hw_led_t *led, uint8_t index, bool enabled) {
   _hw_led_blink_stop(led);
-  critical_section_enter_blocking(&_hw_led_lock);
+  _hw_lock_enter();
   bool ok = _hw_led_apply_state(led, index, enabled);
-  critical_section_exit(&_hw_led_lock);
+  _hw_lock_exit();
   return ok;
 }
 
@@ -523,24 +524,24 @@ bool hw_led_blink(hw_led_t *led, uint8_t index, uint32_t period_ms,
     return false;
   }
 
-  critical_section_enter_blocking(&_hw_led_lock);
+  _hw_lock_enter();
   if (led == NULL || !led->initialized) {
-    critical_section_exit(&_hw_led_lock);
+    _hw_lock_exit();
     return false;
   }
 
   // Only one active blink operation is supported per LED handle.
   if (led->blink_timer != NULL) {
-    critical_section_exit(&_hw_led_lock);
+    _hw_lock_exit();
     return false;
   }
 
   if (led->type == HW_LED_TYPE_NEOPIXEL &&
       !_hw_led_neopixel_index_valid(led, index)) {
-    critical_section_exit(&_hw_led_lock);
+    _hw_lock_exit();
     return false;
   }
-  critical_section_exit(&_hw_led_lock);
+  _hw_lock_exit();
 
   // Allocate a timer
   sys_timer_t *timer = sys_timer_init(period_ms, led, _hw_led_blink_timer_cb);
@@ -550,15 +551,15 @@ bool hw_led_blink(hw_led_t *led, uint8_t index, uint32_t period_ms,
 
   // Switch on the LED immediately and start blinking. If starting the timer
   // fails, revert.
-  critical_section_enter_blocking(&_hw_led_lock);
+  _hw_lock_enter();
   if (led == NULL || !led->initialized || led->blink_timer != NULL) {
-    critical_section_exit(&_hw_led_lock);
+    _hw_lock_exit();
     sys_timer_deinit(timer);
     return false;
   }
 
   if (!_hw_led_apply_state(led, index, true)) {
-    critical_section_exit(&_hw_led_lock);
+    _hw_lock_exit();
     sys_timer_deinit(timer);
     return false;
   }
@@ -568,11 +569,11 @@ bool hw_led_blink(hw_led_t *led, uint8_t index, uint32_t period_ms,
   led->blink_repeating = repeating;
   led->blink_phase_on = true;
   led->blink_index = index;
-  critical_section_exit(&_hw_led_lock);
+  _hw_lock_exit();
 
   // Start the timer and revert state if it fails
   if (!sys_timer_start(timer)) {
-    critical_section_enter_blocking(&_hw_led_lock);
+    _hw_lock_enter();
     bool own_timer = (led != NULL && led->blink_timer == timer);
     if (own_timer) {
       led->blink_timer = NULL;
@@ -580,7 +581,7 @@ bool hw_led_blink(hw_led_t *led, uint8_t index, uint32_t period_ms,
       led->blink_phase_on = false;
       (void)_hw_led_apply_state(led, index, false);
     }
-    critical_section_exit(&_hw_led_lock);
+    _hw_lock_exit();
 
     sys_timer_deinit(timer);
     return false;

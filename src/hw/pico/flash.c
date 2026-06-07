@@ -1,7 +1,6 @@
 #include <hardware/flash.h>
 #include <hardware/platform_defs.h>
 #include <hardware/sync.h>
-#include <pico/critical_section.h>
 #include <pico/multicore.h>
 #include <picofuse/hw.h>
 #include <stddef.h>
@@ -40,7 +39,9 @@ static void _hw_flash_block_deinit_cb(hw_block_t *block, void *userdata);
 // GLOBALS
 
 static hw_flash_block_state_t _hw_flash_state = {0};
-static critical_section_t _hw_flash_lock;
+
+void _hw_lock_enter(void);
+void _hw_lock_exit(void);
 
 static const hw_block_callbacks_t _hw_flash_block_callbacks = {
     .valid = _hw_flash_block_valid_cb,
@@ -118,30 +119,30 @@ static bool _hw_block_flash_get_capacity_region(uintptr_t *out_offset_bytes,
 ///////////////////////////////////////////////////////////////////////////////
 // LIFECYCLE
 
-void _hw_flash_module_init(void) { critical_section_init(&_hw_flash_lock); }
+void _hw_flash_module_init(void) {}
 
 void _hw_flash_module_exit(void) {}
 
 hw_block_t *hw_block_flash_init(size_t size_bytes) {
-  critical_section_enter_blocking(&_hw_flash_lock);
+  _hw_lock_enter();
 
   if (_hw_block_flash_allocated_unlocked(&_hw_flash_state) ||
       size_bytes == 0u) {
-    critical_section_exit(&_hw_flash_lock);
+    _hw_lock_exit();
     return NULL;
   }
 
   uintptr_t free_offset = 0u;
   size_t free_size = 0u;
   if (!_hw_block_flash_get_capacity_region(&free_offset, &free_size)) {
-    critical_section_exit(&_hw_flash_lock);
+    _hw_lock_exit();
     return NULL;
   }
 
   size_t aligned_size = size_bytes - (size_bytes % FLASH_SECTOR_SIZE);
   size_t aligned_free = free_size - (free_size % FLASH_SECTOR_SIZE);
   if (aligned_size == 0u || aligned_size > aligned_free) {
-    critical_section_exit(&_hw_flash_lock);
+    _hw_lock_exit();
     return NULL;
   }
 
@@ -152,7 +153,7 @@ hw_block_t *hw_block_flash_init(size_t size_bytes) {
   _hw_flash_state.write_size_bytes = FLASH_PAGE_SIZE;
   _hw_flash_state.erase_size_bytes = FLASH_SECTOR_SIZE;
 
-  critical_section_exit(&_hw_flash_lock);
+  _hw_lock_exit();
   return &_hw_flash_block;
 }
 
@@ -160,28 +161,28 @@ hw_block_t *hw_block_flash_init(size_t size_bytes) {
 // PUBLIC METHODS
 
 size_t hw_block_flash_get_capacity(void) {
-  critical_section_enter_blocking(&_hw_flash_lock);
+  _hw_lock_enter();
 
   uintptr_t offset = 0u;
   size_t free_size = 0u;
   if (!_hw_block_flash_get_capacity_region(&offset, &free_size)) {
-    critical_section_exit(&_hw_flash_lock);
+    _hw_lock_exit();
     return 0u;
   }
 
   size_t aligned_free = free_size - (free_size % FLASH_SECTOR_SIZE);
   if (!_hw_block_flash_allocated_unlocked(&_hw_flash_state)) {
-    critical_section_exit(&_hw_flash_lock);
+    _hw_lock_exit();
     return aligned_free;
   }
 
   if (aligned_free <= _hw_flash_state.size_bytes) {
-    critical_section_exit(&_hw_flash_lock);
+    _hw_lock_exit();
     return 0u;
   }
 
   size_t remaining = aligned_free - _hw_flash_state.size_bytes;
-  critical_section_exit(&_hw_flash_lock);
+  _hw_lock_exit();
   return remaining;
 }
 
@@ -189,41 +190,41 @@ size_t hw_block_flash_get_capacity(void) {
 // CALLBACKS
 
 static bool _hw_flash_block_valid_cb(const hw_block_t *block, void *userdata) {
-  critical_section_enter_blocking(&_hw_flash_lock);
+  _hw_lock_enter();
   bool valid = _hw_block_flash_valid_unlocked(
       block, (const hw_flash_block_state_t *)userdata);
-  critical_section_exit(&_hw_flash_lock);
+  _hw_lock_exit();
   return valid;
 }
 
 static size_t _hw_flash_block_count_cb(const hw_block_t *block,
                                        void *userdata) {
-  critical_section_enter_blocking(&_hw_flash_lock);
+  _hw_lock_enter();
 
   const hw_flash_block_state_t *state =
       (const hw_flash_block_state_t *)userdata;
   if (!_hw_block_flash_valid_unlocked(block, state)) {
-    critical_section_exit(&_hw_flash_lock);
+    _hw_lock_exit();
     return 0u;
   }
 
   size_t count = state->size_bytes / state->erase_size_bytes;
-  critical_section_exit(&_hw_flash_lock);
+  _hw_lock_exit();
   return count;
 }
 
 static size_t _hw_flash_block_size_cb(const hw_block_t *block, void *userdata) {
-  critical_section_enter_blocking(&_hw_flash_lock);
+  _hw_lock_enter();
 
   const hw_flash_block_state_t *state =
       (const hw_flash_block_state_t *)userdata;
   if (!_hw_block_flash_valid_unlocked(block, state)) {
-    critical_section_exit(&_hw_flash_lock);
+    _hw_lock_exit();
     return 0u;
   }
 
   size_t size = state->erase_size_bytes;
-  critical_section_exit(&_hw_flash_lock);
+  _hw_lock_exit();
   return size;
 }
 
@@ -233,12 +234,12 @@ static bool _hw_flash_block_read_cb(const hw_block_t *block, void *userdata,
     return false;
   }
 
-  critical_section_enter_blocking(&_hw_flash_lock);
+  _hw_lock_enter();
 
   const hw_flash_block_state_t *state =
       (const hw_flash_block_state_t *)userdata;
   if (!_hw_block_flash_index_valid_unlocked(block, state, index)) {
-    critical_section_exit(&_hw_flash_lock);
+    _hw_lock_exit();
     return false;
   }
 
@@ -247,17 +248,17 @@ static bool _hw_flash_block_read_cb(const hw_block_t *block, void *userdata,
   const uint8_t *flash_src = (const uint8_t *)(XIP_BASE + byte_offset);
   memcpy(dst, flash_src, block_size);
 
-  critical_section_exit(&_hw_flash_lock);
+  _hw_lock_exit();
   return true;
 }
 
 static bool _hw_flash_block_erase_cb(hw_block_t *block, void *userdata,
                                      size_t index) {
-  critical_section_enter_blocking(&_hw_flash_lock);
+  _hw_lock_enter();
 
   hw_flash_block_state_t *state = (hw_flash_block_state_t *)userdata;
   if (!_hw_block_flash_index_valid_unlocked(block, state, index)) {
-    critical_section_exit(&_hw_flash_lock);
+    _hw_lock_exit();
     return false;
   }
 
@@ -270,7 +271,7 @@ static bool _hw_flash_block_erase_cb(hw_block_t *block, void *userdata,
   flash_range_erase((uint32_t)byte_offset, block_size);
   restore_interrupts(irq_state);
   multicore_lockout_end_blocking();
-  critical_section_exit(&_hw_flash_lock);
+  _hw_lock_exit();
 
   return true;
 }
@@ -281,17 +282,17 @@ static bool _hw_flash_block_write_cb(hw_block_t *block, void *userdata,
     return false;
   }
 
-  critical_section_enter_blocking(&_hw_flash_lock);
+  _hw_lock_enter();
 
   hw_flash_block_state_t *state = (hw_flash_block_state_t *)userdata;
   if (!_hw_block_flash_index_valid_unlocked(block, state, index)) {
-    critical_section_exit(&_hw_flash_lock);
+    _hw_lock_exit();
     return false;
   }
 
   size_t block_size = state->erase_size_bytes;
   if ((block_size % FLASH_PAGE_SIZE) != 0u) {
-    critical_section_exit(&_hw_flash_lock);
+    _hw_lock_exit();
     return false;
   }
 
@@ -303,20 +304,20 @@ static bool _hw_flash_block_write_cb(hw_block_t *block, void *userdata,
   flash_range_program((uint32_t)byte_offset, (const uint8_t *)src, block_size);
   restore_interrupts(irq_state);
   multicore_lockout_end_blocking();
-  critical_section_exit(&_hw_flash_lock);
+  _hw_lock_exit();
 
   return true;
 }
 
 static void _hw_flash_block_deinit_cb(hw_block_t *block, void *userdata) {
-  critical_section_enter_blocking(&_hw_flash_lock);
+  _hw_lock_enter();
 
   hw_flash_block_state_t *state = (hw_flash_block_state_t *)userdata;
   if (!_hw_block_flash_valid_unlocked(block, state)) {
-    critical_section_exit(&_hw_flash_lock);
+    _hw_lock_exit();
     return;
   }
 
   memset(state, 0, sizeof(*state));
-  critical_section_exit(&_hw_flash_lock);
+  _hw_lock_exit();
 }
