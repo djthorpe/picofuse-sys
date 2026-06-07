@@ -18,6 +18,7 @@ typedef enum {
   hid_event_type_touch = 2,
   hid_event_type_metric = 3,
   hid_event_type_timer = 4,
+  hid_event_type_signal = 5,
 } hid_event_type_t;
 
 /**
@@ -54,6 +55,13 @@ typedef struct {
 } hid_timer_t;
 
 /**
+ * @brief Signal-oriented HID event payload.
+ */
+typedef struct {
+  sys_env_signal_t signal; ///< Environment signal captured by HID source.
+} hid_signal_t;
+
+/**
  * @brief Represents a single HID input event.
  */
 typedef struct {
@@ -64,6 +72,7 @@ typedef struct {
     hid_touch_t touch;
     hid_metric_t metric;
     hid_timer_t timer;
+    hid_signal_t signal;
   } data;
 } hid_event_t;
 
@@ -105,6 +114,15 @@ bool hid_event_queue_metric_float(hid_device_t *device, const char *name,
  */
 bool hid_event_queue_touch(hid_device_t *device, hid_state_t state,
                            pix_point_t point, uint8_t slot);
+
+/**
+ * @brief Queue a signal HID event to the owning HID instance queue.
+ * @param device HID device associated with the event.
+ * @param signal Environment signal value to publish.
+ * @retval true Event queued successfully.
+ * @retval false Queueing failed.
+ */
+bool hid_event_queue_signal(hid_device_t *device, sys_env_signal_t signal);
 
 /**
  * @brief Free a HID event allocated internally by HID queue helpers.

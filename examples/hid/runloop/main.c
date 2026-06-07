@@ -38,6 +38,7 @@ static void on_init(uint8_t worker_index) {
   hid_device_t *user_button;
   hid_device_t *timer_hid;
   hid_device_t *timer_oneshot_hid;
+  hid_device_t *signal_hid;
   hid_device_t *tca9555_hid;
   hid_device_t *bme680_hid;
 
@@ -81,6 +82,17 @@ static void on_init(uint8_t worker_index) {
                (unsigned int)HID_TIMER_ONESHOT_INTERVAL_MS);
   } else {
     sys_printf("hid one-shot timer registration failed\n");
+  }
+
+  // Register environment signals (TERM, INT, QUIT) as HID events.
+  signal_hid = hid_register_signal(_hid);
+  if (signal_hid != NULL) {
+    sys_printf("hid signal registered (TERM=0x%08X INT=0x%08X QUIT=0x%08X)\n",
+               (unsigned int)SYS_ENV_SIGNAL_TERM,
+               (unsigned int)SYS_ENV_SIGNAL_INT,
+               (unsigned int)SYS_ENV_SIGNAL_QUIT);
+  } else {
+    sys_printf("hid signal registration failed\n");
   }
 
   // Register the I2C devices after timers to demonstrate producing events
@@ -196,6 +208,16 @@ static void on_event(sys_event_t event) {
                (timer_payload != NULL) ? timer_payload : "none");
     break;
   }
+
+  case hid_event_type_signal:
+    sys_printf("hid signal: core=%u src=%s id=0x%08X signal=0x%08X\n",
+               (unsigned int)sys_thread_core(), device_name,
+               (unsigned int)device_id,
+               (unsigned int)hid_event->data.signal.signal);
+    break;
+
+  case hid_event_type_none:
+    break;
   }
 
   hid_event_free(hid_event);

@@ -236,6 +236,43 @@ bool hid_event_queue_touch(hid_device_t *device, hid_state_t state,
 }
 
 /**
+ * @brief Queue a signal HID event on the owning instance queue.
+ */
+bool hid_event_queue_signal(hid_device_t *device, sys_env_signal_t signal) {
+  hid_t *instance;
+  hid_event_t *event;
+
+  if (device == NULL || signal == SYS_ENV_SIGNAL_NONE) {
+    return false;
+  }
+
+  instance = device->instance;
+  if (instance == NULL || !sys_event_queue_valid(instance->queue)) {
+    return false;
+  }
+
+  if (!_hid_event_pool_init(instance)) {
+    return false;
+  }
+
+  event = _hid_event_pool_retain(instance);
+  if (event == NULL) {
+    return false;
+  }
+
+  event->device = device;
+  event->type = hid_event_type_signal;
+  event->data.signal.signal = signal;
+
+  if (!sys_event_queue_try_push(instance->queue, (sys_event_t)event)) {
+    hid_event_free(event);
+    return false;
+  }
+
+  return true;
+}
+
+/**
  * @brief Free a HID event object allocated by event queue helpers.
  */
 void hid_event_free(hid_event_t *event) {

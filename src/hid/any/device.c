@@ -307,6 +307,7 @@ bool hid_deregister(hid_t *instance, hid_device_t *device) {
   if (device->callbacks.deinit != NULL) {
     deinit_called = true;
     (void)device->callbacks.deinit(device->userdata);
+    device->userdata = NULL;
   }
 
   if (!deinit_called && device->type == hid_type_gpio &&

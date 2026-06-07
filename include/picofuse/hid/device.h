@@ -52,6 +52,7 @@ typedef enum {
   hid_type_gpio = 1,
   hid_type_other = 2,
   hid_type_timer = 3,
+  hid_type_signal = 4,
 } hid_type_t;
 
 /**
@@ -175,12 +176,21 @@ hid_device_t *hid_register_user_button(hid_t *instance, uint16_t keycode);
  * @param repeating True for periodic timers, false for one-shot timers.
  * @param userdata Opaque user data stored with the timer.
  * @return Registered HID device descriptor, or NULL on failure.
- *
- * This API is currently a stub and returns NULL.
  */
 hid_device_t *hid_register_timer(hid_t *instance, uint32_t id,
                                  uint32_t interval_ms, bool repeating,
                                  void *userdata);
+
+/**
+ * @brief Register an environment-signal HID source.
+ * @ingroup HID
+ * @param instance HID instance that owns the signal registration.
+ * @return Registered HID device descriptor, or NULL on failure.
+ *
+ * The signal source captures environment signals and emits
+ * `hid_event_type_signal` events when those signals are observed.
+ */
+hid_device_t *hid_register_signal(hid_t *instance);
 
 /**
  * @brief Deregister and remove a HID device.
