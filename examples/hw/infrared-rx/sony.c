@@ -30,17 +30,14 @@ static inline void sony_rx_reset(sony_rx_t *rx) {
 static inline void sony_fill_frame(const sony_rx_t *rx, sony_frame_t *frame) {
   frame->variant = rx->variant;
   frame->raw = rx->value;
+  frame->command = (uint8_t)(rx->value & UINT32_C(0x7F));
 
-  // Match legacy codec mapping used in existing remote databases.
   if (rx->variant == SONY_VARIANT_12) {
-    frame->command = (uint8_t)((rx->value & UINT32_C(0x0FE0)) >> 5);
-    frame->device = (uint16_t)(rx->value & UINT32_C(0x001F));
+    frame->device = (uint16_t)((rx->value >> 7) & UINT32_C(0x1F));
   } else if (rx->variant == SONY_VARIANT_15) {
-    frame->command = (uint8_t)((rx->value & UINT32_C(0x7F00)) >> 8);
-    frame->device = (uint16_t)(rx->value & UINT32_C(0x00FF));
+    frame->device = (uint16_t)((rx->value >> 7) & UINT32_C(0xFF));
   } else {
-    frame->command = (uint8_t)((rx->value & UINT32_C(0xFE000)) >> 13);
-    frame->device = (uint16_t)(rx->value & UINT32_C(0x1FFF));
+    frame->device = (uint16_t)((rx->value >> 7) & UINT32_C(0x1FFF));
   }
 }
 
@@ -134,9 +131,8 @@ sony_rx_status_t sony_rx_decode(sony_rx_t *rx, hw_infrared_event_t event,
       return SONY_RX_STATUS_ERROR;
     }
 
-    rx->value <<= 1;
     if (rx->pending_bit != 0u) {
-      rx->value |= UINT32_C(1);
+      rx->value |= (UINT32_C(1) << rx->bits);
     }
 
     rx->bits++;
