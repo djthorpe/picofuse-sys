@@ -4,6 +4,7 @@ add_library(${NAME} OBJECT
     bme680/bme680.c
     bme680/hid.c
     bme280/bme280.c
+    framebuffer/framebuffer.c
     ft6236/ft6236.c
     ft6236/presto_touch.c
     st7701/st7701.c
