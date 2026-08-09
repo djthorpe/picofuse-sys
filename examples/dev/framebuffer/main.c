@@ -9,6 +9,13 @@
 
 const char *device = "/dev/fb0";
 
+static void show_color(dev_framebuffer_t *fb, pix_color_t color) {
+  dev_framebuffer_lock(fb);
+  dev_framebuffer_clear(fb, color);
+  dev_framebuffer_unlock(fb);
+  sys_sleep_ms(1000u);
+}
+
 int main(int argc, char **argv) {
   sys_init();
   hw_init();
@@ -21,20 +28,11 @@ int main(int argc, char **argv) {
     sys_debugf("[framebuffer] %s %ux%u", device, (unsigned int)size.w,
                (unsigned int)size.h);
 
-    dev_framebuffer_clear(fb, 0xFF0000FFu); // Red
-    sys_sleep_ms(1000u);
-
-    dev_framebuffer_clear(fb, 0x00FF00FFu); // Green
-    sys_sleep_ms(1000u);
-
-    dev_framebuffer_clear(fb, 0x0000FFFFu); // Blue
-    sys_sleep_ms(1000u);
-
-    dev_framebuffer_clear(fb, 0xFFFFFFFFu); // White
-    sys_sleep_ms(1000u);
-
-    dev_framebuffer_clear(fb, 0x000000FFu); // Black
-    sys_sleep_ms(1000u);
+    show_color(fb, 0xFF0000FFu); // Red
+    show_color(fb, 0x00FF00FFu); // Green
+    show_color(fb, 0x0000FFFFu); // Blue
+    show_color(fb, 0xFFFFFFFFu); // White
+    show_color(fb, 0x000000FFu); // Black
 
     dev_framebuffer_deinit(fb);
   }
