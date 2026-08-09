@@ -369,7 +369,7 @@ int main(void) {
 
     _presto_fill_framebuffer_rgb565(color565);
 
-    pix_frame_t frame = {
+    pix_bitmap_t bitmap = {
         .data = &color,
         .size = {1u, 1u},
         .stride = sizeof(color),
@@ -379,7 +379,7 @@ int main(void) {
     sys_printf("[presto-display] painting %s for %u ms\n", color_names[idx],
                (unsigned int)PRESTO_DISPLAY_STEP_MS);
 
-    if (!dev_st7701_paint(display, &frame)) {
+    if (!dev_st7701_paint(display, &bitmap)) {
       sys_printf("[presto-display] paint failed (%s)\n", color_names[idx]);
     }
 

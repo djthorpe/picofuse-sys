@@ -66,13 +66,13 @@ static bool _picoinky_paint_box(dev_uc8151_t *display, uint16_t x, uint16_t y,
   if (black) {
     sys_memset(buf, 0xFF, (size_t)w * stride);
   }
-  pix_frame_t frame = {
+  pix_bitmap_t bitmap = {
       .data = buf,
       .size = {.w = w, .h = h},
       .stride = stride,
       .fmt = PIX_FMT_MONO,
   };
-  bool ok = dev_uc8151_paint_rect(display, &frame, (pix_point_t){x, y},
+  bool ok = dev_uc8151_paint_rect(display, &bitmap, (pix_point_t){x, y},
                                   (pix_size_t){w, h});
   sys_free(buf);
   return ok;
@@ -181,14 +181,14 @@ int main(void) {
     void *fb = sys_malloc(data_size);
     if (fb != NULL) {
       sys_memset(fb, 0xFF, data_size);
-      pix_frame_t frame = {
+      pix_bitmap_t bitmap = {
           .data = fb,
           .size = {.w = INKY_WIDTH, .h = INKY_HEIGHT},
           .stride = stride,
           .fmt = PIX_FMT_MONO,
       };
       sys_debugf("[picoinky] painting black");
-      bool ok = dev_uc8151_paint(display, &frame);
+      bool ok = dev_uc8151_paint(display, &bitmap);
       sys_debugf("[picoinky] paint %s", ok ? "ok" : "failed");
 
       // Partial draws on top of the black background.
@@ -200,7 +200,7 @@ int main(void) {
       size_t p1_stride = p1h / 8u;
       void *p1 = sys_calloc((size_t)p1w * p1_stride, 1u);
       if (p1 != NULL) {
-        pix_frame_t pf1 = {
+        pix_bitmap_t pf1 = {
             .data = p1,
             .size = {.w = p1w, .h = p1h},
             .stride = p1_stride,
@@ -217,7 +217,7 @@ int main(void) {
       size_t p2_stride = p2h / 8u;
       void *p2 = sys_calloc((size_t)p2w * p2_stride, 1u);
       if (p2 != NULL) {
-        pix_frame_t pf2 = {
+        pix_bitmap_t pf2 = {
             .data = p2,
             .size = {.w = p2w, .h = p2h},
             .stride = p2_stride,
@@ -234,7 +234,7 @@ int main(void) {
       size_t p3_stride = p3h / 8u;
       void *p3 = sys_calloc((size_t)p3w * p3_stride, 1u);
       if (p3 != NULL) {
-        pix_frame_t pf3 = {
+        pix_bitmap_t pf3 = {
             .data = p3,
             .size = {.w = p3w, .h = p3h},
             .stride = p3_stride,
