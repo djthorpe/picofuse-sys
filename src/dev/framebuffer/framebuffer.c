@@ -28,6 +28,8 @@ struct dev_framebuffer_t {
   uint32_t g_length;
   uint32_t b_offset;
   uint32_t b_length;
+  bool locked;
+  bool vsync_warned;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -214,12 +216,58 @@ pix_size_t dev_framebuffer_info(const dev_framebuffer_t *fb,
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+// LOCKING
+
+pix_frame_t dev_framebuffer_lock(dev_framebuffer_t *fb) {
+  if (!_dev_framebuffer_ready(fb)) {
+    pix_frame_t empty = {0};
+    return empty;
+  }
+
+  if (fb->locked) {
+    sys_debugf("[framebuffer] lock called while already locked");
+  }
+
+  uint32_t crtc = 0u;
+  if (ioctl(fb->fd, FBIO_WAITFORVSYNC, &crtc) != 0 && !fb->vsync_warned) {
+    sys_debugf("[framebuffer] vsync wait unsupported, writes may tear");
+    fb->vsync_warned = true;
+  }
+
+  fb->locked = true;
+
+  pix_frame_t frame = {
+      .data = fb->data,
+      .size = fb->size_px,
+      .stride = fb->stride,
+      .fmt = fb->fmt,
+  };
+  return frame;
+}
+
+void dev_framebuffer_unlock(dev_framebuffer_t *fb) {
+  if (!_dev_framebuffer_ready(fb)) {
+    return;
+  }
+
+  if (!fb->locked) {
+    sys_debugf("[framebuffer] unlock called while not locked");
+  }
+
+  fb->locked = false;
+}
+
+///////////////////////////////////////////////////////////////////////////////
 // METHODS
 
 void dev_framebuffer_clear(const dev_framebuffer_t *fb,
                            const pix_color_t color) {
   if (!_dev_framebuffer_ready(fb)) {
     return;
+  }
+
+  if (!fb->locked) {
+    sys_debugf("[framebuffer] clear called without lock (writes may tear)");
   }
 
   uint32_t pixel = _dev_framebuffer_pack(fb, color);
@@ -274,6 +322,17 @@ pix_size_t dev_framebuffer_info(const dev_framebuffer_t *fb,
   pix_size_t empty = {0};
   return empty;
 }
+
+///////////////////////////////////////////////////////////////////////////////
+// LOCKING
+
+pix_frame_t dev_framebuffer_lock(dev_framebuffer_t *fb) {
+  (void)fb;
+  pix_frame_t empty = {0};
+  return empty;
+}
+
+void dev_framebuffer_unlock(dev_framebuffer_t *fb) { (void)fb; }
 
 ///////////////////////////////////////////////////////////////////////////////
 // METHODS

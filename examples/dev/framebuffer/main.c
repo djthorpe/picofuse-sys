@@ -24,16 +24,16 @@ int main(int argc, char **argv) {
     dev_framebuffer_clear(fb, 0xFF0000FFu); // Red
     sys_sleep_ms(1000u);
 
-    dev_framebuffer_clear(fb, 0xFF00FF00u); // Green
+    dev_framebuffer_clear(fb, 0x00FF00FFu); // Green
     sys_sleep_ms(1000u);
 
-    dev_framebuffer_clear(fb, 0xFFFF0000u); // Blue
+    dev_framebuffer_clear(fb, 0x0000FFFFu); // Blue
     sys_sleep_ms(1000u);
 
     dev_framebuffer_clear(fb, 0xFFFFFFFFu); // White
     sys_sleep_ms(1000u);
 
-    dev_framebuffer_clear(fb, 0xFF000000u); // Black
+    dev_framebuffer_clear(fb, 0x000000FFu); // Black
     sys_sleep_ms(1000u);
 
     dev_framebuffer_deinit(fb);

@@ -70,6 +70,29 @@ pix_size_t dev_framebuffer_info(const dev_framebuffer_t *fb,
  * @{ */
 
 /**
+ * @brief Lock the framebuffer for direct writing.
+ * @ingroup Framebuffer
+ * @param fb Framebuffer handle.
+ * @return Frame descriptor pointing at the mapped framebuffer memory, or a
+ * zeroed frame (NULL data) when the handle is invalid.
+ * @details Blocks, on a best-effort basis, until the next vertical blanking
+ * interval before returning, so that writes made before the matching
+ * dev_framebuffer_unlock() call land during blanking rather than tearing a
+ * frame already being scanned out. Callers are expected to manage any
+ * back-buffering themselves; this call only synchronizes access to the
+ * live framebuffer memory. When the underlying driver does not support
+ * vsync notification, this returns immediately without blocking.
+ */
+pix_frame_t dev_framebuffer_lock(dev_framebuffer_t *fb);
+
+/**
+ * @brief Unlock a framebuffer previously locked with dev_framebuffer_lock().
+ * @ingroup Framebuffer
+ * @param fb Framebuffer handle.
+ */
+void dev_framebuffer_unlock(dev_framebuffer_t *fb);
+
+/**
  * @brief Clear the framebuffer with a specified color.
  * @ingroup Framebuffer
  * @param fb Framebuffer handle.
