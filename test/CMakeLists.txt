@@ -1,5 +1,5 @@
 
-include(PicofuseTests)
+include(tests)
 
 # Just print "hello world" to verify that the test framework is working.
 picofuse_add_sys_test(sys_001

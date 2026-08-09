@@ -33,6 +33,8 @@ typedef struct {
  */
 typedef enum {
   PIX_FMT_RGBA32, ///< 32-bit RGBA format with alpha channel
+  PIX_FMT_RGB888, ///< 24-bit RGB format without alpha channel
+  PIX_FMT_RGB565, ///< 16-bit RGB format without alpha channel
   PIX_FMT_MONO,   ///< Monochrome format (1-bit per pixel)
 } pix_format_t;
 

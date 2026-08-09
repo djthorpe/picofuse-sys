@@ -29,6 +29,8 @@
  * @par Examples
  * @example examples/hw/gpio/main.c
  * Basic GPIO initialization and pin operations.
+ * @example examples/hw/infrared/main.c
+ * Infrared receiver initialization and event callback wiring.
  * @example examples/hw/i2c-scan/main.c
  * I2C bus setup and peripheral discovery.
  * @example examples/hw/led-blink/main.c
@@ -45,6 +47,7 @@
 #include "hw/flash.h"
 #include "hw/gpio.h"
 #include "hw/i2c.h"
+#include "hw/infrared.h"
 #include "hw/led.h"
 #include "hw/pwm.h"
 #include "hw/spi.h"
