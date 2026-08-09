@@ -83,7 +83,8 @@ static void _sys_timer_wait_for_callback(sys_timer_t *timer) {
       return;
     }
 
-    usleep(1000);
+    struct timespec delay = {.tv_sec = 0, .tv_nsec = 1000000L};
+    nanosleep(&delay, NULL);
   }
 }
 
