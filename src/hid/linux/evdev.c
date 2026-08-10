@@ -30,7 +30,19 @@ static const hid_device_callbacks_t _hid_evdev_callbacks = {
 // CALLBACKS
 
 /**
- * @brief Drain pending evdev input events and queue keycode HID events.
+ * @brief Drain pending evdev input events and queue keycode/touch HID
+ * events.
+ *
+ * Handles EV_KEY directly, and multitouch protocol B (EV_ABS
+ * ABS_MT_SLOT/ABS_MT_TRACKING_ID/ABS_MT_POSITION_X/Y, flushed on the
+ * following EV_SYN SYN_REPORT). ABS_MT_SLOT persists on device->mt_slot
+ * across calls since drivers often omit re-selecting slot 0 once it is
+ * already selected; the rest of the per-frame state (position, tracking id)
+ * is local to this call, since a full multitouch frame is expected to
+ * arrive as one contiguous burst before the non-blocking read below would
+ * otherwise stop draining. Plain single-touch ABS_X/ABS_Y (without the
+ * multitouch protocol) is not handled, since it carries no self-describing
+ * press/release state to pair with the coordinates.
  */
 static bool _hid_evdev_read(hid_device_t *device, void *userdata) {
   (void)userdata;
@@ -43,16 +55,72 @@ static bool _hid_evdev_read(hid_device_t *device, void *userdata) {
   struct input_event ev;
   ssize_t n;
 
-  while ((n = read(device->fd, &ev, sizeof(ev))) == (ssize_t)sizeof(ev)) {
-    if (ev.type != EV_KEY) {
-      continue;
-    }
+  int32_t x = 0;
+  int32_t y = 0;
+  int32_t tracking_id = 0;
+  bool have_x = false;
+  bool have_y = false;
+  bool have_tracking_id = false;
 
-    // The kernel's KEY_*/BTN_* codes already match picofuse's KEYCODE_*
-    // values, so no translation table is needed here.
-    hid_state_t state = ev.value != 0 ? hid_state_on : hid_state_off;
-    if (hid_event_queue_keycode(device, state, (uint16_t)ev.code)) {
-      processed = true;
+  while ((n = read(device->fd, &ev, sizeof(ev))) == (ssize_t)sizeof(ev)) {
+    switch (ev.type) {
+    case EV_KEY:
+      // The kernel's KEY_*/BTN_* codes already match picofuse's KEYCODE_*
+      // values, so no translation table is needed here.
+      if (hid_event_queue_keycode(
+              device, ev.value != 0 ? hid_state_on : hid_state_off,
+              (uint16_t)ev.code)) {
+        processed = true;
+      }
+      break;
+
+    case EV_ABS:
+      switch (ev.code) {
+      case ABS_MT_SLOT:
+        device->mt_slot = ev.value;
+        break;
+      case ABS_MT_TRACKING_ID:
+        have_tracking_id = true;
+        tracking_id = ev.value;
+        break;
+      case ABS_MT_POSITION_X:
+        have_x = true;
+        x = ev.value;
+        break;
+      case ABS_MT_POSITION_Y:
+        have_y = true;
+        y = ev.value;
+        break;
+      default:
+        break;
+      }
+      break;
+
+    case EV_SYN:
+      if (ev.code == SYN_REPORT) {
+        if (have_tracking_id) {
+          pix_point_t point = {(int16_t)x, (int16_t)y};
+          hid_state_t state =
+              (tracking_id < 0) ? hid_state_off : hid_state_on;
+          if (hid_event_queue_touch(device, state, point,
+                                    (uint8_t)device->mt_slot)) {
+            processed = true;
+          }
+        } else if (have_x && have_y) {
+          pix_point_t point = {(int16_t)x, (int16_t)y};
+          if (hid_event_queue_touch(device, hid_state_on, point,
+                                    (uint8_t)device->mt_slot)) {
+            processed = true;
+          }
+        }
+        have_x = false;
+        have_y = false;
+        have_tracking_id = false;
+      }
+      break;
+
+    default:
+      break;
     }
   }
 

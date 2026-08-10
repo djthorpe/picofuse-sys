@@ -58,6 +58,16 @@ static void handle_event(const hid_event_t *event) {
     break;
   }
 
+  case hid_event_type_touch: {
+    const hid_touch_t *touch_event = &event->data.touch;
+    sys_printf("src=%s id=0x%08X slot=%u state=0x%08X x=%d y=%d\n",
+               device_name, (unsigned int)device_id,
+               (unsigned int)touch_event->slot,
+               (unsigned int)touch_event->state, (int)touch_event->point.x,
+               (int)touch_event->point.y);
+    break;
+  }
+
   case hid_event_type_signal:
     if (event->data.signal.signal == SYS_ENV_SIGNAL_TERM ||
         event->data.signal.signal == SYS_ENV_SIGNAL_INT ||
@@ -68,7 +78,6 @@ static void handle_event(const hid_event_t *event) {
     break;
 
   case hid_event_type_none:
-  case hid_event_type_touch:
   case hid_event_type_metric:
   case hid_event_type_timer:
     break;
