@@ -214,39 +214,6 @@ void *sys_memset(void *dest, int value, size_t count) {
 }
 
 /**
- * @brief Copy bytes from one memory region to another.
- * @param dest Destination memory region.
- * @param src Source memory region.
- * @param count Number of bytes to copy.
- * @return The original `dest` pointer.
- */
-void *sys_memcpy(void *dest, const void *src, size_t count) {
-  unsigned char *dst = dest;
-  const unsigned char *source = src;
-  uintptr_t dst_addr = (uintptr_t)dst;
-  uintptr_t source_addr = (uintptr_t)source;
-
-  if (dst == source || count == 0) {
-    return dest;
-  }
-
-  if (dst_addr < source_addr || dst_addr - source_addr >= count) {
-    while (count-- != 0) {
-      *dst++ = *source++;
-    }
-    return dest;
-  }
-
-  dst += count;
-  source += count;
-  while (count-- != 0) {
-    *--dst = *--source;
-  }
-
-  return dest;
-}
-
-/**
  * @brief Compare two memory regions byte by byte.
  * @param lhs First memory region.
  * @param rhs Second memory region.

@@ -14,6 +14,7 @@ add_library(${NAME} OBJECT
     hash.c
     halt.c
     init.c
+    memcpy.c
     mutex.c
     panicf.c
     ../printf/float.c
@@ -32,6 +33,7 @@ target_include_directories(${NAME} PUBLIC
     ${CMAKE_CURRENT_LIST_DIR}
 )
 target_link_libraries(${NAME} PUBLIC
+    pico_bootrom
     pico_mbedtls
     pico_multicore
     pico_rand

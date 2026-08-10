@@ -13,6 +13,7 @@ add_library(${NAME} OBJECT
     ../openssl/hash.c
     ../openssl/random.c
     env.c
+    memcpy.c
     timer.c
     ../posix/date.c
     ../posix/init.c
