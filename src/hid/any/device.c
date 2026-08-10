@@ -304,6 +304,12 @@ bool hid_deregister(hid_t *instance, hid_device_t *device) {
     return false;
   }
 
+  // Logged before running teardown callbacks, since a backend's .deinit may
+  // free/null fields such as device->name (see hid_register_evdev()).
+  sys_debugf("[hid] device de-registered: name=%s id=%08X type=%u",
+             device->name, (unsigned int)device->id,
+             (unsigned int)device->type);
+
   if (device->callbacks.deinit != NULL) {
     deinit_called = true;
     (void)device->callbacks.deinit(device, device->userdata);
@@ -316,9 +322,6 @@ bool hid_deregister(hid_t *instance, hid_device_t *device) {
     device->userdata = NULL;
   }
 
-  sys_debugf("[hid] device de-registered: name=%s id=%08X type=%u",
-             device->name, (unsigned int)device->id,
-             (unsigned int)device->type);
   _hid_device_release(instance, device);
   return true;
 }
