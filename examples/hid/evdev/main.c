@@ -52,8 +52,10 @@ static void handle_event(const hid_event_t *event) {
   switch (event->type) {
   case hid_event_type_keycode: {
     const hid_keycode_t *key_event = &event->data.keycode;
-    sys_printf("src=%s id=0x%08X state=0x%08X keycode=%s\n", device_name,
-               (unsigned int)device_id, (unsigned int)key_event->state,
+    char state_buf[256];
+    (void)hid_state_to_string(key_event->state, state_buf, sizeof(state_buf));
+    sys_printf("src=%s id=0x%08X state=%s keycode=%s\n", device_name,
+               (unsigned int)device_id, state_buf,
                hid_keycode_to_string(key_event->keycode));
     break;
   }

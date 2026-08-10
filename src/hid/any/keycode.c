@@ -1,4 +1,5 @@
 #include <picofuse/hid/keycode.h>
+#include <picofuse/sys.h>
 
 #include <stddef.h>
 
@@ -245,4 +246,58 @@ const char *hid_keycode_to_string(uint16_t keycode) {
 #endif
   (void)keycode;
   return "unknown";
+}
+
+size_t hid_state_to_string(hid_state_t state, char *buf, size_t buf_size) {
+  static const struct {
+    hid_state_t flag;
+    const char *name;
+  } flags[] = {
+      {hid_state_on, "on"},
+      {hid_state_off, "off"},
+      {hid_state_click, "click"},
+      {hid_state_double_click, "double_click"},
+      {hid_state_triple_click, "triple_click"},
+      {hid_state_long_click, "long_click"},
+      {hid_state_repeat, "repeat"},
+      {hid_state_function, "function"},
+      {hid_state_caps_lock, "caps_lock"},
+      {hid_state_num_lock, "num_lock"},
+      {hid_state_scroll_lock, "scroll_lock"},
+      {hid_state_left_shift, "left_shift"},
+      {hid_state_right_shift, "right_shift"},
+      {hid_state_left_meta, "left_meta"},
+      {hid_state_right_meta, "right_meta"},
+      {hid_state_left_alt, "left_alt"},
+      {hid_state_right_alt, "right_alt"},
+      {hid_state_left_control, "left_control"},
+      {hid_state_right_control, "right_control"},
+      {hid_state_left_windows, "left_windows"},
+      {hid_state_right_windows, "right_windows"},
+  };
+
+  if (buf == NULL || buf_size == 0u) {
+    return 0u;
+  }
+
+  size_t offset = 0u;
+  bool any = false;
+
+  for (size_t i = 0u; i < sizeof(flags) / sizeof(flags[0]); i++) {
+    if ((state & flags[i].flag) == 0u) {
+      continue;
+    }
+    if (offset >= buf_size) {
+      break;
+    }
+    offset += sys_sprintf(buf + offset, buf_size - offset, "%s%s",
+                          any ? "|" : "", flags[i].name);
+    any = true;
+  }
+
+  if (!any) {
+    offset = sys_sprintf(buf, buf_size, "none");
+  }
+
+  return offset;
 }
