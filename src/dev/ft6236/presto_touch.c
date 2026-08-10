@@ -242,7 +242,8 @@ hid_device_t *dev_presto_touch_register(hid_t *hid, uint32_t i2c_baud_rate) {
 
   hid_device = hid_register(
       hid, "presto_touch", (uint32_t)PIMORONI_PRESTO_TOUCH_I2C_ADDR,
-      hid_type_other, 0u, ctx, _dev_presto_touch_hid_callbacks);
+      hid_type_other, hid_class_touchscreen, 0u, ctx,
+      _dev_presto_touch_hid_callbacks);
   if (hid_device == NULL) {
     _dev_presto_touch_hid_deinit(NULL, ctx);
     return NULL;

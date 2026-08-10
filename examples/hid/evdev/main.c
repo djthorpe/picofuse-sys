@@ -46,7 +46,7 @@ static void handle_event(const hid_event_t *event) {
   hid_type_t device_type = hid_type_none;
   if (event->device != NULL) {
     (void)hid_device_info(event->device, &device_name, &device_id,
-                          &device_type);
+                          &device_type, NULL);
   }
 
   switch (event->type) {
@@ -118,9 +118,12 @@ static int capture_device(const char *path) {
   const char *name = NULL;
   uint32_t id = 0u;
   hid_type_t type = hid_type_none;
-  (void)hid_device_info(device, &name, &id, &type);
-  sys_printf("capturing %s (\"%s\", id=0x%08X); press Ctrl+C to stop\n", path,
-             (name != NULL) ? name : "?", (unsigned int)id);
+  hid_class_t hid_class = hid_class_unknown;
+  (void)hid_device_info(device, &name, &id, &type, &hid_class);
+  sys_printf("capturing %s (\"%s\", id=0x%08X, class=%s); press Ctrl+C to "
+             "stop\n",
+             path, (name != NULL) ? name : "?", (unsigned int)id,
+             hid_class_name(hid_class));
 
   if (hid_register_signal(hid) == NULL) {
     sys_printf("hid signal registration failed; Ctrl+C will hard-exit\n");

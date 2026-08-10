@@ -157,9 +157,9 @@ static hid_device_t *_hid_register_gpio_mode(hid_t *instance, uint8_t bank,
   }
 
   uint32_t id = ((uint32_t)bank << 16) | (uint32_t)pin;
-  hid_device_t *device =
-      hid_register(instance, _hid_device_gpio_name, id, hid_type_gpio, 0u, gpio,
-                   _hid_gpio_device_callbacks);
+  hid_device_t *device = hid_register(instance, _hid_device_gpio_name, id,
+                                      hid_type_gpio, hid_class_unknown, 0u,
+                                      gpio, _hid_gpio_device_callbacks);
   if (device == NULL) {
     sys_debugf("[hid] gpio register failed: hid_register bank=%u pin=%u",
                (unsigned int)bank, (unsigned int)pin);

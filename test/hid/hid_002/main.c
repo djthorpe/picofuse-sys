@@ -72,12 +72,12 @@ bool test_main(void) {
   callbacks.deinit = fake_deinit;
 
   device_a = hid_register(instance, "fake-device-a", 0xABCDu, hid_type_other,
-                          0u, &ctx_a, callbacks);
+                          hid_class_unknown, 0u, &ctx_a, callbacks);
   TestAssert(device_a != NULL, "hid_register should return first device");
   TestAssert(ctx_a.init_count == 1u, "init callback should run for device A");
 
   device_b = hid_register(instance, "fake-device-b", 0xBCDEu, hid_type_other,
-                          0u, &ctx_b, callbacks);
+                          hid_class_unknown, 0u, &ctx_b, callbacks);
   TestAssert(device_b != NULL, "hid_register should return second device");
   TestAssert(ctx_b.init_count == 1u, "init callback should run for device B");
 
@@ -88,7 +88,7 @@ bool test_main(void) {
   TestAssert(hid_device_next(device_b) == NULL,
              "hid_device_next(device_b) should reach end of list");
 
-  TestAssert(hid_device_info(device_a, &name, &id, &type),
+  TestAssert(hid_device_info(device_a, &name, &id, &type, NULL),
              "hid_device_info should succeed for device A");
   TestAssert(name != NULL && strcmp(name, "fake-device-a") == 0,
              "hid_device_info should return correct name for device A");
@@ -96,7 +96,7 @@ bool test_main(void) {
   TestAssert(type == hid_type_other,
              "hid_device_info should return correct type for A");
 
-  TestAssert(hid_device_info(device_b, &name, &id, &type),
+  TestAssert(hid_device_info(device_b, &name, &id, &type, NULL),
              "hid_device_info should succeed for device B");
   TestAssert(name != NULL && strcmp(name, "fake-device-b") == 0,
              "hid_device_info should return correct name for device B");
@@ -128,14 +128,14 @@ bool test_main(void) {
              "hid_deregister should succeed for device A");
   TestAssert(ctx_a.deinit_count == 1u,
              "deinit callback should run once for device A");
-  TestAssert(!hid_device_info(device_a, NULL, NULL, NULL),
+  TestAssert(!hid_device_info(device_a, NULL, NULL, NULL, NULL),
              "hid_device_info should fail after deregister of device A");
 
   TestAssert(hid_deregister(instance, device_b),
              "hid_deregister should succeed for device B");
   TestAssert(ctx_b.deinit_count == 1u,
              "deinit callback should run once for device B");
-  TestAssert(!hid_device_info(device_b, NULL, NULL, NULL),
+  TestAssert(!hid_device_info(device_b, NULL, NULL, NULL, NULL),
              "hid_device_info should fail after deregister of device B");
   TestAssert(hid_device_next(NULL) == NULL,
              "hid_device_next(NULL) should return NULL after all deregister");

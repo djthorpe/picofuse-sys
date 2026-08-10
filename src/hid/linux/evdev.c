@@ -312,8 +312,11 @@ hid_device_t *hid_register_evdev(hid_t *instance, const char *path,
     return NULL;
   }
 
-  hid_device_t *device = hid_register(instance, name, id, hid_type_evdev, 0u,
-                                      userdata, _hid_evdev_callbacks);
+  hid_class_t hid_class = _hid_evdev_classify(fd);
+
+  hid_device_t *device =
+      hid_register(instance, name, id, hid_type_evdev, hid_class, 0u,
+                   userdata, _hid_evdev_callbacks);
   if (device == NULL) {
     sys_debugf("[hid] evdev register failed: hid_register %s", path);
     sys_free(name);

@@ -146,7 +146,9 @@ bool hid_poll(hid_t *instance);
  * @param instance HID instance that owns the registration.
  * @param name Device name.
  * @param id Device identifier.
- * @param type Device type classification.
+ * @param type Device type (backend mechanism) classification.
+ * @param hid_class Device semantic classification (see hid_class_t). Pass
+ * hid_class_unknown when none applies.
  * @param polling_interval_ms Polling interval in milliseconds for read
  * callbacks. Use 0 to evaluate on every hid_poll() call.
  * @param userdata Opaque user data passed to callback functions.
@@ -154,8 +156,9 @@ bool hid_poll(hid_t *instance);
  * @return Registered HID device descriptor, or NULL on failure.
  */
 hid_device_t *hid_register(hid_t *instance, const char *name, uint32_t id,
-                           hid_type_t type, uint32_t polling_interval_ms,
-                           void *userdata, hid_device_callbacks_t callbacks);
+                           hid_type_t type, hid_class_t hid_class,
+                           uint32_t polling_interval_ms, void *userdata,
+                           hid_device_callbacks_t callbacks);
 
 /**
  * @brief Register a GPIO pin as HID input.
@@ -293,11 +296,15 @@ hid_device_t *hid_device_next(hid_device_t *device);
  * @param out_name Receives device name when non-NULL.
  * @param out_id Receives device id when non-NULL.
  * @param out_type Receives device type when non-NULL.
+ * @param out_class Receives device classification when non-NULL. Devices
+ * registered with hid_class_unknown (the default choice when no more
+ * specific classification applies) report hid_class_unknown here.
  * @retval true Metadata was returned.
  * @retval false Device handle was invalid.
  */
 bool hid_device_info(const hid_device_t *device, const char **out_name,
-                     uint32_t *out_id, hid_type_t *out_type);
+                     uint32_t *out_id, hid_type_t *out_type,
+                     hid_class_t *out_class);
 
 /**
  * @brief Get the userdata pointer associated with a registered HID device.

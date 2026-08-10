@@ -133,8 +133,9 @@ _dev_bme680_hid_register_device(hid_t *hid, dev_bme680_t *device,
                                       : polling_interval_ms;
 
   hid_device = hid_register(hid, "bme680", (uint32_t)dev_bme680_chip_id(device),
-                            hid_type_other, effective_polling_interval_ms,
-                            device, _dev_bme680_hid_callbacks);
+                            hid_type_other, hid_class_sensor,
+                            effective_polling_interval_ms, device,
+                            _dev_bme680_hid_callbacks);
   if (hid_device == NULL) {
     dev_bme680_deinit(device);
     return NULL;

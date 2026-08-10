@@ -217,7 +217,8 @@ hid_device_t *dev_pimoroni_pad_register(hid_t *hid, hw_i2c_t *i2c,
 
   hid_device =
       hid_register(hid, "pimoroni_pad", (uint32_t)dev_tca9555_i2c_addr(device),
-                   hid_type_other, 0u, ctx, _dev_pimoroni_pad_hid_callbacks);
+                   hid_type_other, hid_class_joystick, 0u, ctx,
+                   _dev_pimoroni_pad_hid_callbacks);
   if (hid_device == NULL) {
     sys_free(ctx);
     dev_tca9555_deinit(device);

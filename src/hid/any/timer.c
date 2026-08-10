@@ -101,8 +101,8 @@ hid_device_t *hid_register_timer(hid_t *instance, uint32_t id,
   }
 
   hid_device_t *device;
-  device = hid_register(instance, _hid_timer_name, id, hid_type_timer, 0u,
-                        timer, _hid_timer_callbacks);
+  device = hid_register(instance, _hid_timer_name, id, hid_type_timer,
+                        hid_class_unknown, 0u, timer, _hid_timer_callbacks);
   if (device == NULL) {
     sys_timer_deinit(timer);
     return NULL;
