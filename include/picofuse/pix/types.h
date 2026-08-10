@@ -125,13 +125,13 @@ struct pix_frame_t {
               pix_size_t size, pix_op_t op);
 
   /**
-   * @brief Copy a source frame onto this frame.
+   * @brief Copy pixel data from an in-memory bitmap onto this frame.
    * @param frame The destination frame.
-   * @param src Source frame to copy from.
+   * @param src Source bitmap to copy pixel data from.
    * @param origin Destination coordinate on @ref frame.
    * @param size Region of @ref src to copy, in pixels.
    * @param op Operation used to combine @ref src with existing pixels.
    */
-  void (*copy)(pix_frame_t *frame, const pix_frame_t *src, pix_point_t origin,
-               pix_size_t size, pix_op_t op);
+  void (*copy)(pix_frame_t *frame, const pix_bitmap_t *src,
+               pix_point_t origin, pix_size_t size, pix_op_t op);
 };

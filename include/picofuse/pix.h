@@ -6,4 +6,5 @@
  */
 #pragma once
 #include "pix/color.h"
+#include "pix/font.h"
 #include "pix/types.h"

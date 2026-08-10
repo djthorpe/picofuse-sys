@@ -14,20 +14,25 @@
 ///////////////////////////////////////////////////////////////////////////////
 // TYPES
 
+/**
+ * @brief Internal state for an open Linux framebuffer device.
+ * @ingroup Framebuffer
+ */
 struct dev_framebuffer_t {
-  int fd;
-  uint8_t *data;
-  size_t size;
-  uint32_t bpp;
-  pix_frame_t frame;
-  uint32_t r_offset;
-  uint32_t r_length;
-  uint32_t g_offset;
-  uint32_t g_length;
-  uint32_t b_offset;
-  uint32_t b_length;
-  bool locked;
-  bool vsync_warned;
+  int fd;         /**< Open file descriptor for the framebuffer device. */
+  uint8_t *data;  /**< mmap'd base address of the framebuffer memory. */
+  size_t size;    /**< Size in bytes of the mmap'd framebuffer memory. */
+  uint32_t bpp;   /**< Bits per pixel, as reported by the driver. */
+  pix_frame_t frame; /**< Public frame descriptor exposed to callers. */
+  uint32_t r_offset; /**< Bit offset of the red channel within a pixel. */
+  uint32_t r_length; /**< Bit length of the red channel within a pixel. */
+  uint32_t g_offset; /**< Bit offset of the green channel within a pixel. */
+  uint32_t g_length; /**< Bit length of the green channel within a pixel. */
+  uint32_t b_offset; /**< Bit offset of the blue channel within a pixel. */
+  uint32_t b_length; /**< Bit length of the blue channel within a pixel. */
+  bool locked;       /**< True while the frame is locked for writing. */
+  bool vsync_warned; /**< True once a vsync-unsupported warning has been
+                           logged, to avoid repeating it. */
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -48,6 +53,19 @@ static uint32_t _dev_framebuffer_pack_component(uint8_t value8,
   }
 
   return (uint32_t)(value8 >> (8u - length));
+}
+
+static uint8_t _dev_framebuffer_unpack_component(uint32_t valueN,
+                                                  uint32_t length) {
+  if (length == 0u) {
+    return 0u;
+  }
+
+  if (length >= 8u) {
+    return (uint8_t)(valueN >> (length - 8u));
+  }
+
+  return (uint8_t)(valueN << (8u - length));
 }
 
 static bool
@@ -96,8 +114,8 @@ static void _dev_framebuffer_write_pixel(const dev_framebuffer_t *fb,
                                          uint16_t x, uint16_t y,
                                          uint32_t pixel) {
   uint32_t bytes_per_pixel = fb->bpp / 8u;
-  uint8_t *px = fb->data + ((size_t)y * fb->frame.stride) +
-               ((size_t)x * bytes_per_pixel);
+  uint8_t *px =
+      fb->data + ((size_t)y * fb->frame.stride) + ((size_t)x * bytes_per_pixel);
 
   if (bytes_per_pixel == 2u) {
     *(uint16_t *)px = (uint16_t)pixel;
@@ -207,16 +225,99 @@ static void _dev_framebuffer_do_set(const dev_framebuffer_t *fb,
   }
 }
 
+// Reads the pixel at (x, y) in src and returns it as a 0xRRGGBBAA color,
+// matching the byte order dev_st7701_paint already assumes for RGBA32 data
+// (blue at the lowest address, red next, alpha/padding highest).
+static bool _dev_framebuffer_read_bitmap_pixel(const pix_bitmap_t *src,
+                                               uint16_t x, uint16_t y,
+                                               pix_color_t *color_out) {
+  const uint8_t *row = (const uint8_t *)src->data + ((size_t)y * src->stride);
+  uint8_t r, g, b;
+
+  switch (src->fmt) {
+  case PIX_FMT_RGBA32: {
+    const uint8_t *px = row + ((size_t)x * 4u);
+    b = px[0];
+    g = px[1];
+    r = px[2];
+    break;
+  }
+  case PIX_FMT_RGB888: {
+    const uint8_t *px = row + ((size_t)x * 3u);
+    b = px[0];
+    g = px[1];
+    r = px[2];
+    break;
+  }
+  case PIX_FMT_RGB565: {
+    const uint8_t *px = row + ((size_t)x * 2u);
+    uint16_t value = (uint16_t)(px[0] | (px[1] << 8));
+    r = _dev_framebuffer_unpack_component((value >> 11) & 0x1Fu, 5u);
+    g = _dev_framebuffer_unpack_component((value >> 5) & 0x3Fu, 6u);
+    b = _dev_framebuffer_unpack_component(value & 0x1Fu, 5u);
+    break;
+  }
+  default:
+    sys_debugf("[framebuffer] copy: unsupported source format %d",
+               (int)src->fmt);
+    return false;
+  }
+
+  *color_out = ((pix_color_t)r << 24) | ((pix_color_t)g << 16) |
+               ((pix_color_t)b << 8) | 0xFFu;
+  return true;
+}
+
 static void _dev_framebuffer_do_copy(const dev_framebuffer_t *fb,
-                                     const pix_frame_t *src,
+                                     const pix_bitmap_t *src,
                                      pix_point_t origin, pix_size_t size) {
-  (void)fb;
-  (void)src;
-  (void)origin;
-  (void)size;
-  // pix_frame_t no longer exposes a raw data pointer, so there is currently
-  // no generic way to read source pixels here; see the caller for context.
-  sys_debugf("[framebuffer] copy is not yet implemented");
+  if (!_dev_framebuffer_ready(fb) || src == NULL || src->data == NULL) {
+    return;
+  }
+
+  if (origin.x < 0 || origin.y < 0) {
+    return;
+  }
+
+  if (!fb->locked) {
+    sys_debugf("[framebuffer] copy called without lock (writes may tear)");
+  }
+
+  uint16_t w = size.w;
+  uint16_t h = size.h;
+  if (w > src->size.w) {
+    w = src->size.w;
+  }
+  if (h > src->size.h) {
+    h = src->size.h;
+  }
+
+  uint32_t x0 = (uint32_t)origin.x;
+  uint32_t y0 = (uint32_t)origin.y;
+  if (x0 >= fb->frame.size.w || y0 >= fb->frame.size.h) {
+    return;
+  }
+
+  uint32_t x1 = x0 + w;
+  uint32_t y1 = y0 + h;
+  if (x1 > fb->frame.size.w) {
+    x1 = fb->frame.size.w;
+  }
+  if (y1 > fb->frame.size.h) {
+    y1 = fb->frame.size.h;
+  }
+
+  for (uint32_t y = y0; y < y1; y++) {
+    for (uint32_t x = x0; x < x1; x++) {
+      pix_color_t color;
+      if (!_dev_framebuffer_read_bitmap_pixel(
+              src, (uint16_t)(x - x0), (uint16_t)(y - y0), &color)) {
+        return;
+      }
+      uint32_t pixel = _dev_framebuffer_pack(fb, color);
+      _dev_framebuffer_write_pixel(fb, (uint16_t)x, (uint16_t)y, pixel);
+    }
+  }
 }
 
 static bool _dev_framebuffer_frame_lock(pix_frame_t *frame) {
@@ -229,23 +330,32 @@ static void _dev_framebuffer_frame_unlock(pix_frame_t *frame) {
 
 static void _dev_framebuffer_frame_clear(pix_frame_t *frame, pix_color_t color,
                                          pix_op_t op) {
-  (void)op;
+  if (op != PIX_SET) {
+    sys_debugf("[framebuffer] clear: unsupported op %d", (int)op);
+    return;
+  }
   _dev_framebuffer_do_clear((const dev_framebuffer_t *)frame->ctx, color);
 }
 
 static void _dev_framebuffer_frame_set(pix_frame_t *frame, pix_color_t color,
                                        pix_point_t origin, pix_size_t size,
                                        pix_op_t op) {
-  (void)op;
+  if (op != PIX_SET) {
+    sys_debugf("[framebuffer] set: unsupported op %d", (int)op);
+    return;
+  }
   _dev_framebuffer_do_set((const dev_framebuffer_t *)frame->ctx, color, origin,
                           size);
 }
 
 static void _dev_framebuffer_frame_copy(pix_frame_t *frame,
-                                        const pix_frame_t *src,
+                                        const pix_bitmap_t *src,
                                         pix_point_t origin, pix_size_t size,
                                         pix_op_t op) {
-  (void)op;
+  if (op != PIX_SET) {
+    sys_debugf("[framebuffer] copy: unsupported op %d", (int)op);
+    return;
+  }
   _dev_framebuffer_do_copy((const dev_framebuffer_t *)frame->ctx, src, origin,
                            size);
 }
@@ -371,28 +481,4 @@ void dev_framebuffer_deinit(dev_framebuffer_t *fb) {
   sys_free(fb);
 }
 
-#else // !SYSTEM_NAME_LINUX
-
-///////////////////////////////////////////////////////////////////////////////
-// TYPES
-
-struct dev_framebuffer_t {
-  bool _unused;
-};
-
-///////////////////////////////////////////////////////////////////////////////
-// LIFECYCLE
-
-dev_framebuffer_t *dev_framebuffer_init(const char *device,
-                                        pix_frame_t **frame) {
-  (void)device;
-  if (frame != NULL) {
-    *frame = NULL;
-  }
-  sys_debugf("[framebuffer] unsupported on this platform");
-  return NULL;
-}
-
-void dev_framebuffer_deinit(dev_framebuffer_t *fb) { (void)fb; }
-
-#endif
+#endif // SYSTEM_NAME_LINUX
