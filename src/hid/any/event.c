@@ -142,9 +142,18 @@ bool hid_event_queue_keycode(hid_device_t *device, hid_state_t state,
   }
 
   device->state = next_state;
+
+  // Transient one-shot annotations (e.g. auto-repeat, click counts) describe
+  // this event only, so they are reported here without being folded into
+  // device->state, where they would otherwise incorrectly linger and show
+  // up on unrelated later events.
+  hid_state_t transient_state =
+      state & (hid_state_repeat | hid_state_click | hid_state_double_click |
+               hid_state_triple_click | hid_state_long_click);
+
   event->device = device;
   event->type = hid_event_type_keycode;
-  event->data.keycode.state = next_state;
+  event->data.keycode.state = next_state | transient_state;
   event->data.keycode.keycode = keycode;
 
   if (!sys_event_queue_try_push(instance->queue, (sys_event_t)event)) {

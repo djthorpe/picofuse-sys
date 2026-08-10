@@ -64,15 +64,25 @@ static bool _hid_evdev_read(hid_device_t *device, void *userdata) {
 
   while ((n = read(device->fd, &ev, sizeof(ev))) == (ssize_t)sizeof(ev)) {
     switch (ev.type) {
-    case EV_KEY:
+    case EV_KEY: {
       // The kernel's KEY_*/BTN_* codes already match picofuse's KEYCODE_*
-      // values, so no translation table is needed here.
-      if (hid_event_queue_keycode(
-              device, ev.value != 0 ? hid_state_on : hid_state_off,
-              (uint16_t)ev.code)) {
+      // values, so no translation table is needed here. ev.value is 0 for
+      // release, 1 for a fresh press, and 2 for a kernel-generated
+      // auto-repeat while the key is held; only the latter should be
+      // flagged as a repeat.
+      hid_state_t key_state;
+      if (ev.value == 0) {
+        key_state = hid_state_off;
+      } else if (ev.value == 2) {
+        key_state = hid_state_on | hid_state_repeat;
+      } else {
+        key_state = hid_state_on;
+      }
+      if (hid_event_queue_keycode(device, key_state, (uint16_t)ev.code)) {
         processed = true;
       }
       break;
+    }
 
     case EV_ABS:
       switch (ev.code) {
