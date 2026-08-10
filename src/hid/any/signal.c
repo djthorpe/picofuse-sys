@@ -11,7 +11,7 @@ static hid_device_t *_hid_signal_device = NULL;
 ///////////////////////////////////////////////////////////////////////////////
 // FORWARD DECLARATIONS
 
-static bool _hid_signal_deinit(void *userdata);
+static bool _hid_signal_deinit(hid_device_t *device, void *userdata);
 
 static const hid_device_callbacks_t _hid_signal_callbacks = {
     .deinit = _hid_signal_deinit,
@@ -26,7 +26,8 @@ static void _hid_signal_callback(sys_env_signal_t signal) {
   }
 }
 
-static bool _hid_signal_deinit(void *userdata) {
+static bool _hid_signal_deinit(hid_device_t *device, void *userdata) {
+  (void)device;
   (void)userdata;
   _hid_signal_device = NULL;
   return sys_env_signalhandler(SYS_ENV_SIGNAL_NONE, NULL);

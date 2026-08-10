@@ -18,6 +18,7 @@ struct hid_device_t {
   void *userdata;
   bool timer_repeating;
   bool timer_remove_after_event;
+  int fd; // Backing file descriptor for hid_type_evdev devices.
   hid_device_callbacks_t callbacks;
 };
 

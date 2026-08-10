@@ -53,6 +53,7 @@ typedef enum {
   hid_type_other = 2,
   hid_type_timer = 3,
   hid_type_signal = 4,
+  hid_type_evdev = 5,
 } hid_type_t;
 
 /**
@@ -62,10 +63,44 @@ typedef enum {
  * Each callback returns true on success and false on failure.
  */
 typedef struct {
-  bool (*init)(void *userdata);
+  bool (*init)(hid_device_t *device, void *userdata);
   bool (*read)(hid_device_t *device, void *userdata);
-  bool (*deinit)(void *userdata);
+  bool (*deinit)(hid_device_t *device, void *userdata);
 } hid_device_callbacks_t;
+
+/**
+ * @brief Coarse semantic classification of a HID device.
+ * @ingroup HID
+ *
+ * Unlike hid_type_t (which identifies the backend mechanism, e.g. gpio vs
+ * evdev vs timer), this describes what kind of thing the device is to an
+ * application. For evdev devices this is determined heuristically from the
+ * event/key/axis capability bits the kernel reports for the device node;
+ * see hid_evdev_list().
+ */
+typedef enum {
+  hid_class_unknown = 0,
+  hid_class_keyboard = 1,
+  hid_class_mouse = 2,
+  hid_class_joystick = 3,
+  hid_class_touchscreen = 4,
+  hid_class_sensor = 5,
+} hid_class_t;
+
+/**
+ * @brief Callback invoked once per device node found by hid_evdev_list().
+ * @ingroup HID
+ * @param name Identifier for the device node (for example
+ * "/dev/input/event3" for evdev), suitable for passing to the matching
+ * hid_register_* function. Valid only for the duration of the callback.
+ * @param type Backend type that would be used to register this device (for
+ * example hid_type_evdev). Always hid_type_evdev for hid_evdev_list().
+ * @param hid_class Coarse classification of the device's capabilities.
+ * @param userdata Opaque user pointer passed to hid_evdev_list().
+ */
+typedef void (*hid_device_list_callback_t)(const char *name, hid_type_t type,
+                                           hid_class_t hid_class,
+                                           void *userdata);
 
 ///////////////////////////////////////////////////////////////////////////////
 // LIFECYCLE
@@ -180,6 +215,39 @@ hid_device_t *hid_register_user_button(hid_t *instance, uint16_t keycode);
 hid_device_t *hid_register_timer(hid_t *instance, uint32_t id,
                                  uint32_t interval_ms, bool repeating,
                                  void *userdata);
+
+/**
+ * @brief Register a Linux evdev device as a HID input source.
+ * @ingroup HID
+ * @param instance HID instance that owns the evdev registration.
+ * @param path Path to the evdev device node (for example "/dev/input/event0").
+ * @param exclusive When true, grab the device exclusively (`EVIOCGRAB`) so
+ * no other process (X11, Wayland, another evdev reader) also receives its
+ * events while registered.
+ * @param userdata Opaque user data retrievable via hid_device_userdata().
+ * @return Registered HID device descriptor, or NULL on failure.
+ *
+ * The device is opened non-blocking and polled on every hid_poll() call.
+ */
+hid_device_t *hid_register_evdev(hid_t *instance, const char *path,
+                                 bool exclusive, void *userdata);
+
+/**
+ * @brief Enumerate available Linux evdev device nodes.
+ * @ingroup HID
+ * @param callback Callback invoked once for each discovered device node.
+ * Must not be NULL.
+ * @param userdata Opaque user pointer passed to @p callback.
+ * @return Number of device nodes reported to @p callback.
+ *
+ * Scans `/dev/input` for evdev device nodes and reports each one's path and
+ * a best-effort classification, so callers can decide which to pass to
+ * hid_register_evdev(). Nodes are reported regardless of whether they are
+ * already registered with a HID instance. This is a one-shot snapshot, not
+ * a live hotplug subscription. Only available on Linux; returns 0 without
+ * invoking @p callback on other platforms.
+ */
+size_t hid_evdev_list(hid_device_list_callback_t callback, void *userdata);
 
 /**
  * @brief Register an environment-signal HID source.

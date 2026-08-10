@@ -8,8 +8,8 @@
 ///////////////////////////////////////////////////////////////////////////////
 // FORWARD DECLARATIONS
 
-static bool _hid_gpio_device_init(void *userdata);
-static bool _hid_gpio_device_deinit(void *userdata);
+static bool _hid_gpio_device_init(hid_device_t *device, void *userdata);
+static bool _hid_gpio_device_deinit(hid_device_t *device, void *userdata);
 static hid_device_t *_hid_register_gpio_mode(hid_t *instance, uint8_t bank,
                                              uint8_t pin, uint16_t keycode,
                                              hw_gpio_mode_t mode);
@@ -121,15 +121,17 @@ static void _hid_gpio_callback(uint8_t bank, uint8_t pin, hw_gpio_event_t event,
 /**
  * @brief Initialize a GPIO-backed HID device.
  */
-static bool _hid_gpio_device_init(void *userdata) {
+static bool _hid_gpio_device_init(hid_device_t *device, void *userdata) {
   hw_gpio_t *gpio = (hw_gpio_t *)userdata;
+  (void)device;
   return gpio != NULL && hw_gpio_valid(gpio);
 }
 
 /**
  * @brief Deinitialize a GPIO-backed HID device.
  */
-static bool _hid_gpio_device_deinit(void *userdata) {
+static bool _hid_gpio_device_deinit(hid_device_t *device, void *userdata) {
+  (void)device;
   hw_gpio_t *gpio = (hw_gpio_t *)userdata;
   hw_gpio_deinit(gpio);
   return true;

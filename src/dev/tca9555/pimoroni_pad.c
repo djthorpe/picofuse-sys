@@ -47,9 +47,9 @@ static const dev_pimoroni_pad_keymap_t _dev_pimoroni_pad_keymap[] = {
     {PIN_SW_START, KEYCODE_KPPLUS},
 };
 
-static bool _dev_pimoroni_pad_hid_init(void *userdata);
+static bool _dev_pimoroni_pad_hid_init(hid_device_t *device, void *userdata);
 static bool _dev_pimoroni_pad_hid_read(hid_device_t *device, void *userdata);
-static bool _dev_pimoroni_pad_hid_deinit(void *userdata);
+static bool _dev_pimoroni_pad_hid_deinit(hid_device_t *device, void *userdata);
 static bool _dev_pimoroni_pad_hid_event(dev_pimoroni_pad_hid_ctx_t *ctx,
                                         uint16_t value, bool value_valid);
 static void _dev_pimoroni_pad_hid_callback(dev_tca9555_t *tca9555,
@@ -70,8 +70,9 @@ static const hid_device_callbacks_t _dev_pimoroni_pad_hid_callbacks = {
 /**
  * @brief Validate Pimoroni pad userdata during HID registration.
  */
-static bool _dev_pimoroni_pad_hid_init(void *userdata) {
+static bool _dev_pimoroni_pad_hid_init(hid_device_t *device, void *userdata) {
   dev_pimoroni_pad_hid_ctx_t *ctx = (dev_pimoroni_pad_hid_ctx_t *)userdata;
+  (void)device;
   return ctx != NULL && ctx->device != NULL;
 }
 
@@ -107,8 +108,9 @@ static bool _dev_pimoroni_pad_hid_read(hid_device_t *device, void *userdata) {
 /**
  * @brief Restore default callback state on HID deregistration.
  */
-static bool _dev_pimoroni_pad_hid_deinit(void *userdata) {
+static bool _dev_pimoroni_pad_hid_deinit(hid_device_t *device, void *userdata) {
   dev_pimoroni_pad_hid_ctx_t *ctx = (dev_pimoroni_pad_hid_ctx_t *)userdata;
+  (void)device;
   if (ctx == NULL || ctx->device == NULL) {
     return false;
   }

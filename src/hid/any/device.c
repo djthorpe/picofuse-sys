@@ -283,7 +283,7 @@ hid_device_t *hid_register(hid_t *instance, const char *name, uint32_t id,
   // Call the user-provided init callback if available, and release the device
   // on failure.
   if (device->callbacks.init != NULL &&
-      !device->callbacks.init(device->userdata)) {
+      !device->callbacks.init(device, device->userdata)) {
     _hid_device_release(instance, device);
     return NULL;
   } else {
@@ -306,7 +306,7 @@ bool hid_deregister(hid_t *instance, hid_device_t *device) {
 
   if (device->callbacks.deinit != NULL) {
     deinit_called = true;
-    (void)device->callbacks.deinit(device->userdata);
+    (void)device->callbacks.deinit(device, device->userdata);
     device->userdata = NULL;
   }
 

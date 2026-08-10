@@ -11,8 +11,9 @@ typedef struct {
   bool read_result;
 } fake_device_ctx_t;
 
-static bool fake_init(void *userdata) {
+static bool fake_init(hid_device_t *device, void *userdata) {
   fake_device_ctx_t *ctx = (fake_device_ctx_t *)userdata;
+  (void)device;
   if (ctx == NULL) {
     return false;
   }
@@ -30,8 +31,9 @@ static bool fake_read(hid_device_t *device, void *userdata) {
   return ctx->read_result;
 }
 
-static bool fake_deinit(void *userdata) {
+static bool fake_deinit(hid_device_t *device, void *userdata) {
   fake_device_ctx_t *ctx = (fake_device_ctx_t *)userdata;
+  (void)device;
   if (ctx == NULL) {
     return false;
   }
