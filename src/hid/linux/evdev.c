@@ -289,10 +289,15 @@ hid_device_t *hid_register_evdev(hid_t *instance, const char *path,
 
   // Prefer the kernel-reported vendor/product as the device id, since it
   // identifies the device model rather than its (hotplug-order-dependent)
-  // /dev/input/eventN path. Fall back to a path hash if unavailable.
+  // /dev/input/eventN path. Non-USB devices (e.g. I2C touch controllers)
+  // commonly report the ioctl as succeeding but with vendor/product both
+  // left at 0, which is not a useful id, so that also falls back to a path
+  // hash, same as when the ioctl fails outright.
   struct input_id dev_id;
   sys_memset(&dev_id, 0, sizeof(dev_id));
-  uint32_t id = (ioctl(fd, EVIOCGID, &dev_id) == 0)
+  bool have_vendor_product = ioctl(fd, EVIOCGID, &dev_id) == 0 &&
+                             (dev_id.vendor != 0 || dev_id.product != 0);
+  uint32_t id = have_vendor_product
                     ? (((uint32_t)dev_id.vendor << 16) | (uint32_t)dev_id.product)
                     : (uint32_t)sys_hash_djb2(path);
 
