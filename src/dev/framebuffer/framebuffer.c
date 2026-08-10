@@ -4,6 +4,7 @@
 #if defined(SYSTEM_NAME_LINUX)
 #include <fcntl.h>
 #include <linux/fb.h>
+#include <string.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <unistd.h>
@@ -213,7 +214,7 @@ static void _dev_framebuffer_do_clear(const dev_framebuffer_t *fb,
 
   size_t row_bytes = (size_t)width * bytes_per_pixel;
   for (uint16_t y = 1u; y < height; y++) {
-    sys_memcpy(fb->data + ((size_t)y * fb->frame.stride), row0, row_bytes);
+    memcpy(fb->data + ((size_t)y * fb->frame.stride), row0, row_bytes);
   }
 }
 
@@ -267,7 +268,7 @@ static void _dev_framebuffer_do_set(const dev_framebuffer_t *fb,
   for (uint32_t y = y0 + 1u; y < y1; y++) {
     uint8_t *row = fb->data + ((size_t)y * fb->frame.stride) +
                    ((size_t)x0 * bytes_per_pixel);
-    sys_memcpy(row, row0, row_bytes);
+    memcpy(row, row0, row_bytes);
   }
 }
 
