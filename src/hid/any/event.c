@@ -3,6 +3,15 @@
 
 #include "private.h"
 
+// Lock keys (CapsLock/NumLock/ScrollLock) toggle their bit on each press
+// rather than tracking held/released like other modifiers; see their
+// handling in hid_event_queue_keycode(). Kept private rather than a public
+// hid_state_t mask, since unlike e.g. hid_state_shift (left vs. right sides
+// of the *same* modifier), the three lock keys are unrelated toggles, so
+// "is any lock active" is not a meaningful query to expose.
+#define _HID_STATE_LOCK_MASK                                                  \
+  (hid_state_caps_lock | hid_state_num_lock | hid_state_scroll_lock)
+
 ///////////////////////////////////////////////////////////////////////////////
 // PRIVATE
 
@@ -126,7 +135,14 @@ bool hid_event_queue_keycode(hid_device_t *device, hid_state_t state,
   hid_state_t translated_state = hid_keycode_to_state(keycode);
   hid_state_t next_state = device->state;
   if ((state & hid_state_on) != 0u) {
-    if (translated_state != hid_state_none) {
+    // Lock keys (CapsLock/NumLock/ScrollLock) toggle their bit on each
+    // press; they do not track held/released like Shift/Ctrl/Alt/Meta, so
+    // OR-ing the bit in on every press (as done below for other modifiers)
+    // would be a no-op after the first press instead of alternating the
+    // lock state.
+    if ((translated_state & _HID_STATE_LOCK_MASK) != 0u) {
+      next_state ^= translated_state;
+    } else if (translated_state != hid_state_none) {
       next_state |= translated_state;
     }
     next_state |= hid_state_on;
@@ -134,7 +150,10 @@ bool hid_event_queue_keycode(hid_device_t *device, hid_state_t state,
   }
 
   if ((state & hid_state_off) != 0u) {
-    if (translated_state != hid_state_none) {
+    // Lock keys are left untouched on release: the toggle already happened
+    // on press, and clearing here would immediately undo it.
+    if (translated_state != hid_state_none &&
+        (translated_state & _HID_STATE_LOCK_MASK) == 0u) {
       next_state &= ~translated_state;
     }
     next_state |= hid_state_off;
