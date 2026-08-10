@@ -110,13 +110,12 @@ static uint32_t _dev_framebuffer_pack(const dev_framebuffer_t *fb,
   return rv | gv | bv;
 }
 
-static void _dev_framebuffer_write_pixel(const dev_framebuffer_t *fb,
-                                         uint16_t x, uint16_t y,
-                                         uint32_t pixel) {
-  uint32_t bytes_per_pixel = fb->bpp / 8u;
-  uint8_t *px =
-      fb->data + ((size_t)y * fb->frame.stride) + ((size_t)x * bytes_per_pixel);
-
+// Writes one pixel at an already-resolved address. Callers own the address
+// arithmetic (row/column stepping) so this never repeats a multiply that the
+// caller has already hoisted out of its loop.
+static void _dev_framebuffer_write_pixel_at(uint8_t *px,
+                                            uint32_t bytes_per_pixel,
+                                            uint32_t pixel) {
   if (bytes_per_pixel == 2u) {
     *(uint16_t *)px = (uint16_t)pixel;
   } else if (bytes_per_pixel == 3u) {
@@ -125,6 +124,37 @@ static void _dev_framebuffer_write_pixel(const dev_framebuffer_t *fb,
     px[2] = (uint8_t)((pixel >> 16) & 0xFFu);
   } else {
     *(uint32_t *)px = pixel;
+  }
+}
+
+// Fills width pixels starting at row with a single packed pixel value. The
+// bytes_per_pixel branch is taken once per call (not once per pixel), so
+// callers that need to fill more than one row should call this for the
+// first row and memcpy that row into the rest.
+static void _dev_framebuffer_fill_row(uint8_t *row, uint16_t width,
+                                      uint32_t bytes_per_pixel,
+                                      uint32_t pixel) {
+  if (bytes_per_pixel == 2u) {
+    uint16_t v = (uint16_t)pixel;
+    uint16_t *p = (uint16_t *)row;
+    for (uint16_t x = 0u; x < width; x++) {
+      p[x] = v;
+    }
+  } else if (bytes_per_pixel == 3u) {
+    uint8_t b0 = (uint8_t)(pixel & 0xFFu);
+    uint8_t b1 = (uint8_t)((pixel >> 8) & 0xFFu);
+    uint8_t b2 = (uint8_t)((pixel >> 16) & 0xFFu);
+    for (uint16_t x = 0u; x < width; x++) {
+      row[0] = b0;
+      row[1] = b1;
+      row[2] = b2;
+      row += 3;
+    }
+  } else {
+    uint32_t *p = (uint32_t *)row;
+    for (uint16_t x = 0u; x < width; x++) {
+      p[x] = pixel;
+    }
   }
 }
 
@@ -169,12 +199,21 @@ static void _dev_framebuffer_do_clear(const dev_framebuffer_t *fb,
     sys_debugf("[framebuffer] clear called without lock (writes may tear)");
   }
 
-  uint32_t pixel = _dev_framebuffer_pack(fb, color);
+  uint16_t width = fb->frame.size.w;
+  uint16_t height = fb->frame.size.h;
+  if (width == 0u || height == 0u) {
+    return;
+  }
 
-  for (uint16_t y = 0u; y < fb->frame.size.h; y++) {
-    for (uint16_t x = 0u; x < fb->frame.size.w; x++) {
-      _dev_framebuffer_write_pixel(fb, x, y, pixel);
-    }
+  uint32_t pixel = _dev_framebuffer_pack(fb, color);
+  uint32_t bytes_per_pixel = fb->bpp / 8u;
+
+  uint8_t *row0 = fb->data;
+  _dev_framebuffer_fill_row(row0, width, bytes_per_pixel, pixel);
+
+  size_t row_bytes = (size_t)width * bytes_per_pixel;
+  for (uint16_t y = 1u; y < height; y++) {
+    sys_memcpy(fb->data + ((size_t)y * fb->frame.stride), row0, row_bytes);
   }
 }
 
@@ -217,24 +256,33 @@ static void _dev_framebuffer_do_set(const dev_framebuffer_t *fb,
   }
 
   uint32_t pixel = _dev_framebuffer_pack(fb, color);
+  uint32_t bytes_per_pixel = fb->bpp / 8u;
+  uint16_t width = (uint16_t)(x1 - x0);
 
-  for (uint32_t y = y0; y < y1; y++) {
-    for (uint32_t x = x0; x < x1; x++) {
-      _dev_framebuffer_write_pixel(fb, (uint16_t)x, (uint16_t)y, pixel);
-    }
+  uint8_t *row0 =
+      fb->data + ((size_t)y0 * fb->frame.stride) + ((size_t)x0 * bytes_per_pixel);
+  _dev_framebuffer_fill_row(row0, width, bytes_per_pixel, pixel);
+
+  size_t row_bytes = (size_t)width * bytes_per_pixel;
+  for (uint32_t y = y0 + 1u; y < y1; y++) {
+    uint8_t *row = fb->data + ((size_t)y * fb->frame.stride) +
+                   ((size_t)x0 * bytes_per_pixel);
+    sys_memcpy(row, row0, row_bytes);
   }
 }
 
-// Reads the pixel at (x, y) in src and returns it as a 0xRRGGBBAA color,
-// matching the byte order dev_st7701_paint already assumes for RGBA32 data
-// (blue at the lowest address, red next, alpha/padding highest).
-static bool _dev_framebuffer_read_bitmap_pixel(const pix_bitmap_t *src,
-                                               uint16_t x, uint16_t y,
-                                               pix_color_t *color_out) {
-  const uint8_t *row = (const uint8_t *)src->data + ((size_t)y * src->stride);
+// Reads the pixel at column x of a source bitmap row and returns it as a
+// 0xRRGGBBAA color, matching the byte order dev_st7701_paint already
+// assumes for RGBA32 data (blue at the lowest address, red next,
+// alpha/padding highest). Callers hoist the row lookup themselves so this
+// never repeats the row's y * stride multiply for every column.
+static bool _dev_framebuffer_read_bitmap_pixel_row(const uint8_t *row,
+                                                    pix_format_t fmt,
+                                                    uint16_t x,
+                                                    pix_color_t *color_out) {
   uint8_t r, g, b;
 
-  switch (src->fmt) {
+  switch (fmt) {
   case PIX_FMT_RGBA32: {
     const uint8_t *px = row + ((size_t)x * 4u);
     b = px[0];
@@ -258,8 +306,7 @@ static bool _dev_framebuffer_read_bitmap_pixel(const pix_bitmap_t *src,
     break;
   }
   default:
-    sys_debugf("[framebuffer] copy: unsupported source format %d",
-               (int)src->fmt);
+    sys_debugf("[framebuffer] copy: unsupported source format %d", (int)fmt);
     return false;
   }
 
@@ -307,15 +354,24 @@ static void _dev_framebuffer_do_copy(const dev_framebuffer_t *fb,
     y1 = fb->frame.size.h;
   }
 
+  uint32_t bytes_per_pixel = fb->bpp / 8u;
+
   for (uint32_t y = y0; y < y1; y++) {
+    const uint8_t *src_row =
+        (const uint8_t *)src->data + ((size_t)(y - y0) * src->stride);
+    uint8_t *dst_px = fb->data + ((size_t)y * fb->frame.stride) +
+                      ((size_t)x0 * bytes_per_pixel);
+
     for (uint32_t x = x0; x < x1; x++) {
       pix_color_t color;
-      if (!_dev_framebuffer_read_bitmap_pixel(
-              src, (uint16_t)(x - x0), (uint16_t)(y - y0), &color)) {
+      if (!_dev_framebuffer_read_bitmap_pixel_row(src_row, src->fmt,
+                                                   (uint16_t)(x - x0),
+                                                   &color)) {
         return;
       }
       uint32_t pixel = _dev_framebuffer_pack(fb, color);
-      _dev_framebuffer_write_pixel(fb, (uint16_t)x, (uint16_t)y, pixel);
+      _dev_framebuffer_write_pixel_at(dst_px, bytes_per_pixel, pixel);
+      dst_px += bytes_per_pixel;
     }
   }
 }
