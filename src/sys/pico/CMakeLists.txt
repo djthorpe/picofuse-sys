@@ -8,6 +8,7 @@ add_library(${NAME} OBJECT
     ../any/djb2.c
     ../any/event.c
     ../any/mem.c
+    ../any/memcmp.c
     cond.c
     env.c
     date.c
@@ -15,6 +16,7 @@ add_library(${NAME} OBJECT
     halt.c
     init.c
     memcpy.c
+    memset.c
     mutex.c
     panicf.c
     ../printf/float.c
@@ -22,6 +24,7 @@ add_library(${NAME} OBJECT
     random.c
     sleep.c
     stdio.c
+    strlen.c
     thread.c
     timer.c
     timestamp.c

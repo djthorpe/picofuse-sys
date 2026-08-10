@@ -13,7 +13,9 @@ add_library(${NAME} OBJECT
     ../openssl/hash.c
     ../openssl/random.c
     env.c
+    memcmp.c
     memcpy.c
+    memset.c
     timer.c
     ../posix/date.c
     ../posix/init.c
@@ -24,6 +26,7 @@ add_library(${NAME} OBJECT
     ../printf/printf.c
     ../posix/stdio.c
     ../posix/sleep.c
+    ../posix/strlen.c
     ../posix/timestamp.c
     ../pthread/cond.c
     ../pthread/mutex.c

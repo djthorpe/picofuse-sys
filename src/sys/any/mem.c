@@ -199,53 +199,6 @@ void _sys_mem_module_exit(void) {
 // PUBLIC METHODS
 
 /**
- * @brief Fill a memory region with a byte value.
- * @param dest Destination memory region.
- * @param value Byte value to write.
- * @param count Number of bytes to set.
- * @return The original `dest` pointer.
- */
-void *sys_memset(void *dest, int value, size_t count) {
-  unsigned char *ptr = dest;
-  while (count--) {
-    *ptr++ = (unsigned char)value;
-  }
-  return dest;
-}
-
-/**
- * @brief Compare two memory regions byte by byte.
- * @param lhs First memory region.
- * @param rhs Second memory region.
- * @param count Number of bytes to compare.
- * @return Negative, zero, or positive depending on the first differing byte.
- */
-int sys_memcmp(const void *lhs, const void *rhs, size_t count) {
-  const unsigned char *left = lhs;
-  const unsigned char *right = rhs;
-  while (count--) {
-    int diff = (int)*left++ - (int)*right++;
-    if (diff != 0) {
-      return diff;
-    }
-  }
-  return 0;
-}
-
-/**
- * @brief Measure the length of a null-terminated string.
- * @param str String to measure.
- * @return Number of characters before the terminating null byte.
- */
-size_t sys_strlen(const char *str) {
-  const char *s = str;
-  while (*s) {
-    s++;
-  }
-  return s - str;
-}
-
-/**
  * @brief Print per-arena statistics for a chain.
  * @param arena First arena in the chain, or `NULL` for the default arena.
  */
