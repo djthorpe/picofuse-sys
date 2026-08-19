@@ -110,6 +110,10 @@ bool test_main(void) {
              "create with a missing parent should fail");
 
   // The generic dispatcher must be NULL-safe.
+  TestAssert(fs_file_create(NULL, "/x").ctx == NULL,
+             "create(NULL, ...) should fail");
+  TestAssert(fs_file_open(NULL, "/x", false).ctx == NULL,
+             "open(NULL, ...) should fail");
   TestAssert(fs_file_read(NULL, buf, sizeof(buf)) == 0,
              "read(NULL) should return 0");
   TestAssert(fs_file_write(NULL, "x", 1) == 0,

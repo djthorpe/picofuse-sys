@@ -198,3 +198,9 @@ picofuse_add_fs_test(fs_006
 picofuse_add_fs_test(fs_007
 	main.c
 )
+
+# Check every fs_vol_*/fs_file_* generic dispatcher is safe when given a
+# NULL volume/file (platform-independent - never mounts a volume).
+picofuse_add_fs_test(fs_008
+	main.c
+)
