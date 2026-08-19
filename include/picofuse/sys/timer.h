@@ -3,13 +3,29 @@
  * @brief Periodic and one-shot timer scheduling.
  * @defgroup SystemTimer Timers
  * @ingroup System
+ * @details
+ * The timer module provides lightweight callback-based scheduling for
+ * periodic work and one-shot delays.
  *
- * Periodic and one-shot timers for scheduling tasks. Timers are allocated
- * from a static pool and fire a callback at a fixed interval. To implement
- * a one-shot timer, call sys_timer_deinit() from within the callback.
+ * Timers are allocated from an implementation-defined pool. After
+ * `sys_timer_init()`, timers are configured but idle; work begins only after
+ * `sys_timer_start()` succeeds.
  *
- * On Pico, callbacks fire on the core that called sys_timer_start(), via the
- * platform alarm pool.
+ * Callback model:
+ * - The callback receives the owning `sys_timer_t *` handle.
+ * - The timer userdata pointer is retrievable via `sys_timer_get_userdata()`.
+ * - One-shot behavior is implemented by calling `sys_timer_deinit()` from
+ *   within the callback.
+ *
+ * Lifecycle summary:
+ * 1. Create with `sys_timer_init(interval_ms, userdata, callback)`.
+ * 2. Start with `sys_timer_start()`.
+ * 3. Optionally check run state using `sys_timer_valid()`.
+ * 4. Release with `sys_timer_deinit()`.
+ *
+ * Platform note:
+ * - On Pico, callbacks fire on the core that called `sys_timer_start()`, via
+ *   the platform alarm pool.
  */
 #pragma once
 
@@ -69,9 +85,10 @@ sys_timer_t *sys_timer_init(uint32_t interval_ms, void *userdata,
  * @ingroup SystemTimer
  * @param timer Timer to release.
  *
- * Stops the timer if it is running and returns its pool slot. The pointer
- * becomes invalid after this call. Safe to call from within the timer
- * callback to implement one-shot behaviour.
+ * Stops the timer if it is running and returns its pool slot. If a callback is
+ * currently executing on another thread or core, this call waits for it to
+ * finish before returning. The pointer becomes invalid after this call. Safe
+ * to call from within the timer callback to implement one-shot behaviour.
  */
 void sys_timer_deinit(sys_timer_t *timer);
 
@@ -99,6 +116,14 @@ bool sys_timer_start(sys_timer_t *timer);
  * @return `true` if the timer is allocated and currently running.
  */
 bool sys_timer_valid(sys_timer_t *timer);
+
+/**
+ * @brief Return user data associated with a timer.
+ * @ingroup SystemTimer
+ * @param timer Timer to query.
+ * @return User data pointer provided to @ref sys_timer_init, or `NULL`.
+ */
+void *sys_timer_get_userdata(sys_timer_t *timer);
 
 /** @} */
 

@@ -1,5 +1,6 @@
 #include "private.h"
 #include <pico/critical_section.h>
+#include <pico/stdlib.h>
 #include <pico/time.h>
 #include <picofuse/sys.h>
 #include <stddef.h>
@@ -14,6 +15,7 @@ struct sys_timer_t {
   repeating_timer_t repeating_timer;
   bool init;
   bool running;
+  bool callback_active;
 };
 
 static critical_section_t _sys_timer_pool_lock;
@@ -25,10 +27,30 @@ static size_t _sys_timer_pool_index = 0;
 
 static bool _sys_timer_callback(repeating_timer_t *rt) {
   sys_timer_t *timer = (sys_timer_t *)rt->user_data;
-  if (timer->running && timer->callback != NULL) {
-    timer->callback(timer);
+  if (timer == NULL) {
+    return false;
   }
-  return timer->running;
+
+  void (*callback)(sys_timer_t *) = NULL;
+  critical_section_enter_blocking(&_sys_timer_pool_lock);
+  if (timer->running && timer->callback != NULL && !timer->callback_active) {
+    timer->callback_active = true;
+    callback = timer->callback;
+  }
+  critical_section_exit(&_sys_timer_pool_lock);
+
+  if (callback != NULL) {
+    callback(timer);
+  }
+
+  critical_section_enter_blocking(&_sys_timer_pool_lock);
+  if (callback != NULL) {
+    timer->callback_active = false;
+  }
+  bool keep_running = timer->running;
+  critical_section_exit(&_sys_timer_pool_lock);
+
+  return keep_running;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -55,7 +77,7 @@ sys_timer_t *sys_timer_init(uint32_t interval_ms, void *userdata,
   for (size_t offset = 0; offset < SYS_TIMER_CAPACITY; offset++) {
     size_t index = (_sys_timer_pool_index + offset) % SYS_TIMER_CAPACITY;
     sys_timer_t *timer = &_sys_timer_pool[index];
-    if (timer->init) {
+    if (timer->init || timer->callback_active) {
       continue;
     }
 
@@ -63,6 +85,7 @@ sys_timer_t *sys_timer_init(uint32_t interval_ms, void *userdata,
     timer->interval_ms = interval_ms;
     timer->userdata = userdata;
     timer->running = false;
+    timer->callback_active = false;
     timer->init = true;
 
     _sys_timer_pool_index = (index + 1) % SYS_TIMER_CAPACITY;
@@ -75,17 +98,50 @@ sys_timer_t *sys_timer_init(uint32_t interval_ms, void *userdata,
 }
 
 void sys_timer_deinit(sys_timer_t *timer) {
-  if (timer == NULL || !timer->init) {
+  if (timer == NULL) {
     return;
   }
 
+  critical_section_enter_blocking(&_sys_timer_pool_lock);
+  bool inited = timer->init;
+  critical_section_exit(&_sys_timer_pool_lock);
+  if (!inited) {
+    return;
+  }
+
+  bool in_callback = __get_current_exception() != 0;
+
+  bool was_running = false;
+  critical_section_enter_blocking(&_sys_timer_pool_lock);
   if (timer->running) {
+    was_running = true;
     timer->running = false;
+  }
+  critical_section_exit(&_sys_timer_pool_lock);
+
+  if (was_running) {
     cancel_repeating_timer(&timer->repeating_timer);
+  }
+
+  if (!in_callback) {
+    while (true) {
+      critical_section_enter_blocking(&_sys_timer_pool_lock);
+      bool active = timer->callback_active;
+      critical_section_exit(&_sys_timer_pool_lock);
+
+      if (!active) {
+        break;
+      }
+
+      sleep_ms(1u);
+    }
   }
 
   critical_section_enter_blocking(&_sys_timer_pool_lock);
   timer->init = false;
+  if (!in_callback) {
+    timer->callback_active = false;
+  }
   critical_section_exit(&_sys_timer_pool_lock);
 }
 
@@ -93,7 +149,14 @@ void sys_timer_deinit(sys_timer_t *timer) {
 // METHODS
 
 bool sys_timer_start(sys_timer_t *timer) {
-  if (timer == NULL || !timer->init || timer->running) {
+  if (timer == NULL) {
+    return false;
+  }
+
+  critical_section_enter_blocking(&_sys_timer_pool_lock);
+  bool can_start = timer->init && !timer->running;
+  critical_section_exit(&_sys_timer_pool_lock);
+  if (!can_start) {
     return false;
   }
 
@@ -102,11 +165,16 @@ bool sys_timer_start(sys_timer_t *timer) {
     return false;
   }
 
+  critical_section_enter_blocking(&_sys_timer_pool_lock);
   timer->running = true;
+  critical_section_exit(&_sys_timer_pool_lock);
+
   if (!alarm_pool_add_repeating_timer_ms(pool, (int32_t)timer->interval_ms,
                                          _sys_timer_callback, timer,
                                          &timer->repeating_timer)) {
+    critical_section_enter_blocking(&_sys_timer_pool_lock);
     timer->running = false;
+    critical_section_exit(&_sys_timer_pool_lock);
     return false;
   }
 
@@ -114,5 +182,23 @@ bool sys_timer_start(sys_timer_t *timer) {
 }
 
 bool sys_timer_valid(sys_timer_t *timer) {
-  return timer != NULL && timer->init && timer->running;
+  if (timer == NULL) {
+    return false;
+  }
+
+  critical_section_enter_blocking(&_sys_timer_pool_lock);
+  bool valid = timer->init && timer->running;
+  critical_section_exit(&_sys_timer_pool_lock);
+  return valid;
+}
+
+void *sys_timer_get_userdata(sys_timer_t *timer) {
+  if (timer == NULL) {
+    return NULL;
+  }
+
+  critical_section_enter_blocking(&_sys_timer_pool_lock);
+  void *userdata = timer->init ? timer->userdata : NULL;
+  critical_section_exit(&_sys_timer_pool_lock);
+  return userdata;
 }

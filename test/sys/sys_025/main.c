@@ -6,7 +6,7 @@ static sys_atomic_t _init_index;
 static sys_atomic_t _exit_count;
 
 static uint8_t _shutdown_sentinel;
-#define SHUTDOWN_EVENT ((sys_event_t)&_shutdown_sentinel)
+#define SHUTDOWN_EVENT ((sys_event_t) & _shutdown_sentinel)
 
 static void on_init(uint8_t worker_index) {
   sys_atomic_inc(&_init_count);
@@ -36,12 +36,11 @@ bool test_main(void) {
   sys_atomic_init(&_init_index, 255);
   sys_atomic_init(&_exit_count, 0);
 
-  TestAssert(!sys_runloop_valid(),
-             "run loop should not be valid before run");
+  TestAssert(!sys_runloop_valid(), "run loop should not be valid before run");
   TestAssert(!sys_runloop_post((sys_event_t)(uintptr_t)1u),
              "post should fail before run");
 
-  uint32_t result = sys_runloop_run(1, on_init, on_event, on_exit);
+  uint32_t result = sys_runloop_run(1, on_init, on_event, NULL, on_exit);
 
   TestAssert(result == 99, "run should return the shutdown exit value");
   TestAssert(!sys_runloop_valid(), "run loop should not be valid after run");
@@ -59,7 +58,7 @@ bool test_main(void) {
   sys_atomic_set(&_init_count, 0);
   sys_atomic_set(&_exit_count, 0);
 
-  result = sys_runloop_run(1, on_init, on_event, on_exit);
+  result = sys_runloop_run(1, on_init, on_event, NULL, on_exit);
   TestAssert(result == 99, "second run should also return correct exit value");
   TestAssert(sys_atomic_get(&_event_count) == 3,
              "second run should process all events");

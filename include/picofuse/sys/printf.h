@@ -45,7 +45,7 @@
  *   - `%80d`: Number specifying the minimum width of the output
  *   - `%.3f`: Precision for floating-point output
  * - Data Type:
- *   - `%%ld`, `%%lu`: long data type
+ *   - `%%ld`, `%%lu`: 64-bit signed/unsigned integer data type
  *   - `%%zu`, `%%zd`: size_t-sized unsigned and signed integers
  * - Flags:
  *   - `%-10s`: Left-aligned output

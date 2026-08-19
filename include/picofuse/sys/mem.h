@@ -3,8 +3,31 @@
  * @brief Defines heap and string utility functions.
  * @defgroup SystemMemory Memory Operations
  * @ingroup System
- * @details This file provides default heap wrappers and byte-string
- * manipulation.
+ * @details
+ * The SystemMemory module provides core byte/string helpers and default heap
+ * allocation wrappers used across the runtime.
+ *
+ * It includes:
+ * - Byte-oriented memory primitives (`sys_memset`, `sys_memcpy`,
+ *   `sys_memcmp`).
+ * - String-length helper (`sys_strlen`).
+ * - Heap lifecycle APIs (`sys_malloc`, `sys_calloc`, `sys_realloc`,
+ *   `sys_free`).
+ *
+ * Allocation wrappers are intentionally portable and may be backed by
+ * platform allocators or arena-based implementations depending on target
+ * configuration.
+ *
+ * Usage notes:
+ * - `sys_calloc` returns zero-initialized memory.
+ * - `sys_realloc(NULL, size)` behaves like `sys_malloc(size)`.
+ * - `sys_free(NULL)` is a no-op.
+ *
+ * Typical flow:
+ * 1. Allocate using `sys_malloc` or `sys_calloc`.
+ * 2. Use memory utilities for initialization/copy/compare operations.
+ * 3. Resize with `sys_realloc` when needed.
+ * 4. Release with `sys_free`.
  */
 
 #pragma once
@@ -73,19 +96,6 @@ int sys_memcmp(const void *lhs, const void *rhs, size_t count);
  * @return Number of characters preceding the terminating `\0`.
  */
 size_t sys_strlen(const char *str);
-
-/**
- * @brief Print arena-chain statistics.
- * @ingroup SystemMemory
- *
- * Walks the arena chain starting at `arena` and prints one line of usage
- * statistics per arena via `sys_printf`. Passing `NULL` uses the default arena
- * chain managed by the global heap wrappers.
- *
- * @param arena First arena in the chain to dump, or `NULL` for the default
- * arena chain.
- */
-void sys_mem_dump(sys_mem_arena_t *arena);
 
 /**
  * @brief Allocate an uninitialized block of memory.

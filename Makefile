@@ -1,6 +1,6 @@
 # Installation prefix and build directory
 BUILD_DIR ?= build
-PREFIX ?= /opt/picofuse
+PREFIX ?= $(BUILD_DIR)
 CMAKE_BUILD_TYPE ?= Release
 
 # Tools
@@ -8,29 +8,41 @@ CMAKE ?= $(shell which cmake 2>/dev/null)
 DOCKER ?= $(shell which docker 2>/dev/null)
 GIT ?= $(shell which git 2>/dev/null)
 
+# Set make configure PICOFUSE_USB=ON to enable hw_usb support 
+PICOFUSE_USB ?= OFF
+PROGRAM_VERSION ?= $(shell \
+	if test -x "${GIT}"; then \
+		${GIT} describe --tags --exact-match 2>/dev/null || \
+		${GIT} rev-parse --short HEAD 2>/dev/null; \
+	fi)
+VERSION_NUMBER := $(if $(strip ${PROGRAM_VERSION}),${PROGRAM_VERSION},0.0.0)
 
 ###############################################################################
 # CONFIGURE AND BUILD
 
 .PHONY: configure
-configure: dep-cmake submodule
+configure: dep-cmake
 	@${CMAKE} -B ${BUILD_DIR} \
 		-D CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} \
-		$(if ${PICO_BOARD},-D PICO_BOARD=${PICO_BOARD})
+		$(if ${PROGRAM_VERSION},-D PROGRAM_VERSION=${PROGRAM_VERSION}) \
+		$(if ${PICO_BOARD},-D PICO_BOARD=${PICO_BOARD}) \
+		-D PICOFUSE_USB=${PICOFUSE_USB}
 
 .PHONY: build
 build: configure
-	@${CMAKE} --build ${BUILD_DIR} --target all -j 4
+	@${CMAKE} --build ${BUILD_DIR} --target all -j 8
+
+.PHONY: install
+install: build
+	@${CMAKE} --install ${BUILD_DIR} --prefix ${PREFIX}
 
 .PHONY: test
 test: build
 	@${CMAKE} --build ${BUILD_DIR} --target test
 
-.PHONY: submodule
-submodule: dep-git
-	@echo
-	@echo "checking out submodules"
-	@${GIT} submodule update --init --recursive
+.PHONY: version
+version:
+	@echo ${VERSION_NUMBER}
 
 ###############################################################################
 # DOCUMENTATION

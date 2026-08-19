@@ -1,6 +1,6 @@
-#include <picofuse/sys.h>
 #include <CoreFoundation/CoreFoundation.h>
 #include <IOKit/IOKitLib.h>
+#include <picofuse/sys.h>
 #include <stdlib.h>
 
 const char *sys_env_serial(void) {
@@ -28,6 +28,8 @@ const char *sys_env_name(void) {
   const char *name = getprogname();
   return (name && *name) ? name : "unknown";
 }
+
+const char *sys_env_system(void) { return "darwin"; }
 
 const char *sys_env_version(void) {
 #ifdef PROGRAM_VERSION

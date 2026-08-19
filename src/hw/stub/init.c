@@ -1,22 +1,20 @@
 #include <picofuse/hw.h>
 
+void _hw_watchdog_module_init(void);
+void _hw_watchdog_module_exit(void);
+void _hw_watchdog_poll(void);
+
 /**
  * @brief Initializes the hardware system on startup.
  */
-void hw_init(void) {
-  // No-op stub implementation for unsupported platforms.
-}
+void hw_init(void) { _hw_watchdog_module_init(); }
 
 /**
  * @brief Cleans up the hardware system on shutdown.
  */
-void hw_exit(void) {
-  // No-op stub implementation for unsupported platforms.
-}
+void hw_exit(void) { _hw_watchdog_module_exit(); }
 
 /**
  * @brief Occasional polling function for the hardware system.
  */
-void hw_poll(void) {
-  // No-op stub implementation for unsupported platforms.
-}
+void hw_poll(void) { _hw_watchdog_poll(); }

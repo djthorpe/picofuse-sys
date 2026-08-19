@@ -1,30 +1,65 @@
 set(NAME "picofuse-hw-obj")
 
+set(PICOFUSE_PICO_USB_SOURCE ../stub/usb.c)
+if(PICOFUSE_USB)
+    set(PICOFUSE_PICO_USB_SOURCE usb.c)
+endif()
+
 add_library(${NAME} OBJECT
+    ../any/block.c
+    infrared_rx.c
     adc.c
+    lock.c
+    flash.c
     gpio.c
     init.c
     i2c.c
+    led.c
+    pwm.c
     spi.c
-    usb.c
+    ${PICOFUSE_PICO_USB_SOURCE}
     uart.c
+    watchdog.c
     wifi.c
 )
+
 target_include_directories(${NAME} PUBLIC
     ${PROJECT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_BINARY_DIR}
     ${CMAKE_CURRENT_LIST_DIR}
 )
+
 target_link_libraries(${NAME} PUBLIC
     pico_stdlib
+    pico_flash
+    hardware_flash
     hardware_gpio
     hardware_i2c
+    hardware_pio
     hardware_uart
     hardware_spi
     hardware_adc
-    tinyusb_host
-    tinyusb_board
+    hardware_pwm
+    hardware_watchdog
 )
+
+pico_generate_pio_header(${NAME}
+    ${CMAKE_CURRENT_LIST_DIR}/led_neopixel.pio
+)
+
+pico_generate_pio_header(${NAME}
+    ${CMAKE_CURRENT_LIST_DIR}/infrared_rx.pio
+)
+
+if(PICOFUSE_USB)
+    target_compile_definitions(${NAME} PRIVATE
+        CFG_TUSB_CONFIG_FILE=\"host_tusb_config.h\"
+    )
+    target_link_libraries(${NAME} PRIVATE
+        tinyusb_host
+        tinyusb_board
+    )
+endif()
 
 # Check if we're building for a board with CYW43 support
 if (PICO_CYW43_SUPPORTED)

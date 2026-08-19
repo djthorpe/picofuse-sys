@@ -3,7 +3,32 @@
  * @brief Environment information.
  * @defgroup SystemEnv Environment
  * @ingroup System
- * @details System methods for reading information about the environment.
+ * @details
+ * The Environment module provides runtime metadata about the active execution
+ * context and a lightweight interface for handling process-level environment
+ * signals.
+ *
+ * Metadata methods return stable identifiers that help applications report or
+ * route behavior per environment, including:
+ * - `sys_env_serial()` for unique identity information when available.
+ * - `sys_env_name()` for process/program naming.
+ * - `sys_env_system()` for platform identification.
+ * - `sys_env_version()` for runtime version reporting.
+ *
+ * Signal integration is exposed through `sys_env_signalhandler()`, which
+ * registers a callback for termination-related signals. This is useful for
+ * graceful shutdown, cancellation, and runloop exit coordination.
+ *
+ * Signal handling notes:
+ * - Only one callback registration is active at a time.
+ * - Signal support may vary by platform.
+ * - Callbacks may run in constrained contexts; keep handlers minimal and
+ *   non-blocking.
+ *
+ * Typical flow:
+ * 1. Register a signal callback during startup (if needed).
+ * 2. Read environment metadata for diagnostics/logging/capability decisions.
+ * 3. On shutdown, clear signal callbacks or let deinit paths unregister.
  */
 
 #pragma once
@@ -83,6 +108,14 @@ const char *sys_env_serial(void);
  * @return The name of the running program or environment.
  */
 const char *sys_env_name(void);
+
+/**
+ * @brief Return the system identifier for the current environment.
+ * @ingroup SystemEnv
+ * @return A system identifier string such as "linux", "darwin", or a Pico
+ * board name when running on Pico targets.
+ */
+const char *sys_env_system(void);
 
 /**
  * @brief Return the version of the current environment.

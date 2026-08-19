@@ -6,6 +6,7 @@
 #include <signal.h>
 #include <stddef.h>
 #include <time.h>
+#include <unistd.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 // TYPES
@@ -15,6 +16,7 @@ struct sys_timer_t {
   uint32_t interval_ms;
   void *userdata;
   timer_t timer_id;
+  pthread_t callback_thread;
   bool init;
   bool running;
   bool callback_active;
@@ -40,6 +42,7 @@ static void _sys_timer_callback(union sigval sv) {
   // deterministic across platforms.
   if (timer->init && timer->running && !timer->callback_active) {
     timer->callback_active = true;
+    timer->callback_thread = pthread_self();
     callback = timer->callback;
   }
   pthread_mutex_unlock(&_sys_timer_pool_lock);
@@ -50,6 +53,37 @@ static void _sys_timer_callback(union sigval sv) {
     pthread_mutex_lock(&_sys_timer_pool_lock);
     timer->callback_active = false;
     pthread_mutex_unlock(&_sys_timer_pool_lock);
+  }
+}
+
+static bool
+_sys_timer_callback_in_progress_for_current_thread(sys_timer_t *timer) {
+  if (timer == NULL) {
+    return false;
+  }
+
+  pthread_mutex_lock(&_sys_timer_pool_lock);
+  bool in_progress = timer->callback_active &&
+                     pthread_equal(pthread_self(), timer->callback_thread);
+  pthread_mutex_unlock(&_sys_timer_pool_lock);
+  return in_progress;
+}
+
+static void _sys_timer_wait_for_callback(sys_timer_t *timer) {
+  if (timer == NULL) {
+    return;
+  }
+
+  while (true) {
+    pthread_mutex_lock(&_sys_timer_pool_lock);
+    bool active = timer->callback_active;
+    pthread_mutex_unlock(&_sys_timer_pool_lock);
+
+    if (!active) {
+      return;
+    }
+
+    usleep(1000);
   }
 }
 
@@ -103,6 +137,7 @@ void sys_timer_deinit(sys_timer_t *timer) {
   }
 
   timer_t timer_id = (timer_t)0;
+  bool in_callback = _sys_timer_callback_in_progress_for_current_thread(timer);
 
   pthread_mutex_lock(&_sys_timer_pool_lock);
   if (timer->init && timer->running) {
@@ -116,6 +151,10 @@ void sys_timer_deinit(sys_timer_t *timer) {
 
   if (timer_id != (timer_t)0) {
     timer_delete(timer_id);
+  }
+
+  if (!in_callback) {
+    _sys_timer_wait_for_callback(timer);
   }
 }
 
@@ -178,4 +217,15 @@ bool sys_timer_valid(sys_timer_t *timer) {
   bool valid = timer->init && timer->running;
   pthread_mutex_unlock(&_sys_timer_pool_lock);
   return valid;
+}
+
+void *sys_timer_get_userdata(sys_timer_t *timer) {
+  if (timer == NULL) {
+    return NULL;
+  }
+
+  pthread_mutex_lock(&_sys_timer_pool_lock);
+  void *userdata = timer->init ? timer->userdata : NULL;
+  pthread_mutex_unlock(&_sys_timer_pool_lock);
+  return userdata;
 }

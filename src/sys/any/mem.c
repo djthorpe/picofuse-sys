@@ -183,7 +183,7 @@ void _sys_mem_module_exit(void) {
 
 #ifndef NDEBUG
   if (head != NULL) {
-    sys_printf("mem deinit:\n");
+    sys_debugf("mem_deinit:");
     sys_mem_dump(head);
   }
 #endif
@@ -287,14 +287,14 @@ void sys_mem_dump(sys_mem_arena_t *arena) {
   size_t index = 0;
 
   if (current == NULL) {
-    sys_printf("mem: no arenas\n");
+    sys_printf("  no arenas\n");
     return;
   }
 
   while (current != NULL) {
     sys_mem_arena_stats_t stats = {0};
     sys_mem_arena_t *next = sys_mem_arena_next(current, &stats);
-    sys_printf("mem arena %zu: size=%zu used=%zu allocations=%zu\n", index,
+    sys_printf("  arena %zu: size=%zu used=%zu allocations=%zu\n", index,
                stats.size_bytes, stats.used_bytes, stats.allocations);
     current = next;
     index++;

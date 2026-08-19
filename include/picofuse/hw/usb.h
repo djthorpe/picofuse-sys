@@ -12,13 +12,12 @@
  * @ref hw_usb_event_attached event. Subsequently, the callback fires whenever
  * a device is physically attached or detached.
  *
- * The @ref hw_usb_device_t structure describes a connected device. The
- * @p bus and @p port fields together uniquely identify a physical port, which
- * allows two devices with identical VID/PID to be distinguished, and allows
- * a detach event to be correlated with a prior attach event. On detach, the
- * @p manufacturer, @p product and @p serial string fields may be empty, as
- * the device is no longer accessible; VID, PID, bus and port are always
- * populated.
+ * The @ref hw_usb_device_t structure describes a connected device. It carries
+ * the USB vendor/product identifiers, the device class metadata, and the
+ * string descriptors that are available from the backend. On detach, the
+ * @p manufacturer, @p product and @p serial string fields may be empty, and
+ * some backends may only be able to provide zeroed identifier fields on a
+ * fallback detach path.
  *
  * Class-specific functionality (HID input, CDC-ACM serial streams, mass
  * storage) is handled by separate modules that consume the device information
@@ -61,32 +60,76 @@ typedef enum {
 } hw_usb_event_t;
 
 /**
+ * @brief USB device class codes.
+ * @ingroup USB
+ *
+ * These are the standard bDeviceClass descriptor values defined by USB.
+ * A value of 0x00 means the class is defined at the interface level.
+ */
+typedef enum {
+  hw_usb_device_class_per_interface = 0x00,
+  hw_usb_device_class_audio = 0x01,
+  hw_usb_device_class_communications = 0x02,
+  hw_usb_device_class_hid = 0x03,
+  hw_usb_device_class_physical = 0x05,
+  hw_usb_device_class_image = 0x06,
+  hw_usb_device_class_printer = 0x07,
+  hw_usb_device_class_mass_storage = 0x08,
+  hw_usb_device_class_hub = 0x09,
+  hw_usb_device_class_cdc_data = 0x0A,
+  hw_usb_device_class_smart_card = 0x0B,
+  hw_usb_device_class_content_security = 0x0D,
+  hw_usb_device_class_video = 0x0E,
+  hw_usb_device_class_personal_healthcare = 0x0F,
+  hw_usb_device_class_audio_video = 0x10,
+  hw_usb_device_class_bluetooth = 0xE0,
+  hw_usb_device_class_miscellaneous = 0xEF,
+  hw_usb_device_class_application_specific = 0xFE,
+  hw_usb_device_class_vendor_specific = 0xFF,
+} hw_usb_device_class_t;
+
+/**
+ * @brief USB device subclass codes.
+ * @ingroup USB
+ *
+ * Subclass values are class-specific USB descriptor codes. Only common raw
+ * values are named here; callers may still observe any 8-bit descriptor value.
+ */
+typedef enum {
+  hw_usb_device_subclass_none = 0x00,
+  hw_usb_device_subclass_boot_interface = 0x01,
+  hw_usb_device_subclass_abstract_control_model = 0x02,
+  hw_usb_device_subclass_vendor_specific = 0xFF,
+} hw_usb_device_subclass_t;
+
+/**
+ * @brief USB device protocol codes.
+ * @ingroup USB
+ *
+ * Protocol values are class-specific USB descriptor codes. Only the raw
+ * descriptor value is standardized here; callers may still observe any 8-bit
+ * value defined by the device's class.
+ */
+typedef enum {
+  hw_usb_device_protocol_none = 0x00,
+} hw_usb_device_protocol_t;
+
+/**
  * @brief Describes a USB device observed by the host.
  * @ingroup USB
  *
- * This structure is populated when a device is attached or detached. The
- * @p bus and @p port fields uniquely identify the physical port the device
- * is connected to, and remain stable across attach/detach events for the
- * same port.
+ * This structure is populated when a device is attached or detached.
  *
  * @note On detach, @p manufacturer, @p product and @p serial may be empty
  * strings. Callers should not rely on them being populated for
- * @ref hw_usb_event_detached. VID, PID, @p bus and @p port are always valid.
- *
- * @note The @p device_class, @p device_subclass and @p device_protocol fields
- * reflect the values in the USB device descriptor. For composite devices or
- * devices that define class information at the interface level, these may be
- * 0x00; in that case the class is determined per-interface by higher-level
- * modules.
+ * @ref hw_usb_event_detached.
  */
 typedef struct {
-  uint16_t vid;            ///< USB Vendor ID
-  uint16_t pid;            ///< USB Product ID
-  uint8_t device_class;    ///< USB device class code
-  uint8_t device_subclass; ///< USB device subclass code
-  uint8_t device_protocol; ///< USB device protocol code
-  uint8_t bus;             ///< Host controller bus number
-  uint8_t port;            ///< Port address on the bus
+  uint16_t vid;                                    ///< USB Vendor ID
+  uint16_t pid;                                    ///< USB Product ID
+  hw_usb_device_class_t device_class;              ///< USB device class code
+  hw_usb_device_subclass_t device_subclass;        ///< USB device subclass code
+  hw_usb_device_protocol_t device_protocol;        ///< USB device protocol code
   char manufacturer[HW_USB_STRING_MAX_LENGTH + 1]; ///< Manufacturer string
   char product[HW_USB_STRING_MAX_LENGTH + 1];      ///< Product string
   char serial[HW_USB_STRING_MAX_LENGTH + 1];       ///< Serial number string
@@ -127,12 +170,13 @@ typedef void (*hw_usb_callback_t)(hw_usb_t *usb, hw_usb_event_t event,
  * @ingroup USB
  *
  * Initializes the USB host controller and registers the hotplug callback.
- * Before returning, this function enumerates any devices already connected
- * to the host and fires the callback with @ref hw_usb_event_attached for
- * each one, then fires one final callback with
- * @ref hw_usb_event_attached and @p device set to NULL to mark completion,
- * so that callers receive a consistent view of attached devices regardless
- * of when @ref hw_usb_init is called.
+ * Backends may enumerate already-connected devices immediately or defer the
+ * initial device callbacks until the next host poll cycle. When initial
+ * enumeration completes, the callback is fired with @ref hw_usb_event_attached
+ * for each attached device, then once more with @ref hw_usb_event_attached
+ * and @p device set to NULL to mark completion, so that callers receive a
+ * consistent view of attached devices regardless of when @ref hw_usb_init is
+ * called.
  *
  * @param callback Callback to invoke on attach and detach events. Must not
  *                 be NULL.

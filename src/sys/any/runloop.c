@@ -1,12 +1,6 @@
 #include <picofuse/sys.h>
 #include <stddef.h>
 
-// Weak no-op stubs — overridden by the hw and net modules when linked.
-// Defining them here (rather than declaring as weak extern) ensures the
-// runloop links cleanly on all platforms regardless of which modules are present.
-__attribute__((weak)) void hw_poll(void) {}
-__attribute__((weak)) void net_poll(void) {}
-
 #define _POLL_INTERVAL_MS 10
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -14,12 +8,16 @@ __attribute__((weak)) void net_poll(void) {}
 
 static sys_event_queue_t *_queue = NULL;
 static sys_runloop_func_t _callback = NULL;
+static sys_runloop_poll_t _poll = NULL;
 static sys_runloop_init_func_t _init = NULL;
 static sys_runloop_exit_func_t _exit = NULL;
 static sys_atomic_t _exit_value = {0};
-static sys_atomic_t _running = {0}; // accepting new events (cleared by shutdown)
-static sys_atomic_t _active  = {0}; // sys_runloop_run is executing (cleared on return)
+static sys_atomic_t _running = {
+    0}; // accepting new events (cleared by shutdown)
+static sys_atomic_t _active = {
+    0}; // sys_runloop_run is executing (cleared on return)
 static sys_waitgroup_t *_wg = NULL;
+static bool _owns_queue = false;
 
 ///////////////////////////////////////////////////////////////////////////////
 // WORKER (index >= 1)
@@ -52,10 +50,16 @@ static void _worker(void *arg) {
 ///////////////////////////////////////////////////////////////////////////////
 // PUBLIC
 
-uint32_t sys_runloop_run(uint8_t num_workers, sys_runloop_init_func_t init,
-                         sys_runloop_func_t callback,
-                         sys_runloop_exit_func_t exit_fn) {
+uint32_t sys_runloop_run_with_queue(uint8_t num_workers,
+                                    sys_event_queue_t *queue,
+                                    sys_runloop_init_func_t init,
+                                    sys_runloop_func_t callback,
+                                    sys_runloop_poll_t poll_fn,
+                                    sys_runloop_exit_func_t exit_fn) {
   if (callback == NULL || sys_atomic_get(&_active)) {
+    return 0;
+  }
+  if (queue != NULL && !sys_event_queue_valid(queue)) {
     return 0;
   }
   sys_atomic_set(&_active, 1);
@@ -66,14 +70,21 @@ uint32_t sys_runloop_run(uint8_t num_workers, sys_runloop_init_func_t init,
   }
 
   _callback = callback;
+  _poll = poll_fn;
   _init = init;
   _exit = exit_fn;
   sys_atomic_set(&_exit_value, 0);
 
-  _queue = sys_event_queue_init(SYS_RUNLOOP_QUEUE_CAPACITY);
-  if (_queue == NULL) {
-    sys_atomic_set(&_active, 0);
-    return 0;
+  if (queue != NULL) {
+    _queue = queue;
+    _owns_queue = false;
+  } else {
+    _queue = sys_event_queue_init(SYS_RUNLOOP_QUEUE_CAPACITY);
+    _owns_queue = true;
+    if (_queue == NULL) {
+      sys_atomic_set(&_active, 0);
+      return 0;
+    }
   }
 
   sys_atomic_set(&_running, 1);
@@ -107,15 +118,16 @@ uint32_t sys_runloop_run(uint8_t num_workers, sys_runloop_init_func_t init,
     }
   }
 
-  // Worker 0: calling thread, drives hw_poll() between events
+  // Worker 0: calling thread, optionally drives poll callback between events.
   if (_init != NULL) {
     _init(0);
   }
 
   while (true) {
     sys_event_t event = sys_event_queue_timed_pop(_queue, _POLL_INTERVAL_MS);
-    hw_poll();
-    net_poll();
+    if (_poll != NULL) {
+      _poll();
+    }
     if (event != NULL) {
       _callback(event);
     } else if (!sys_atomic_get(&_running) && sys_event_queue_empty(_queue)) {
@@ -134,11 +146,23 @@ uint32_t sys_runloop_run(uint8_t num_workers, sys_runloop_init_func_t init,
   }
 
   uint32_t result = sys_atomic_get(&_exit_value);
-  sys_event_queue_deinit(_queue);
+  if (_owns_queue) {
+    sys_event_queue_deinit(_queue);
+  }
   _queue = NULL;
+  _owns_queue = false;
+  _poll = NULL;
   sys_atomic_set(&_active, 0);
 
   return result;
+}
+
+uint32_t sys_runloop_run(uint8_t num_workers, sys_runloop_init_func_t init,
+                         sys_runloop_func_t callback,
+                         sys_runloop_poll_t poll_fn,
+                         sys_runloop_exit_func_t exit_fn) {
+  return sys_runloop_run_with_queue(num_workers, NULL, init, callback, poll_fn,
+                                    exit_fn);
 }
 
 void sys_runloop_shutdown(uint32_t exit_value) {
@@ -159,6 +183,6 @@ bool sys_runloop_post(sys_event_t event) {
   return sys_event_queue_try_push(_queue, event);
 }
 
-bool sys_runloop_valid(void) {
-  return sys_atomic_get(&_active) != 0;
-}
+sys_event_queue_t *sys_runloop_queue(void) { return _queue; }
+
+bool sys_runloop_valid(void) { return sys_atomic_get(&_active) != 0; }

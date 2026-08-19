@@ -5,11 +5,15 @@ static void usb_callback(hw_usb_t *usb, hw_usb_event_t event,
   (void)userdata;
 
   // Basic callback contract checks.
-  if (usb == NULL || device == NULL) {
+  if (usb == NULL) {
     return;
   }
 
   if (event != hw_usb_event_attached && event != hw_usb_event_detached) {
+    return;
+  }
+
+  if (device == NULL) {
     return;
   }
 }

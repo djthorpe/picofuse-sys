@@ -1,4 +1,5 @@
 #include <hardware/i2c.h>
+#include <pico/mutex.h>
 #include <picofuse/hw.h>
 #include <picofuse/sys.h>
 #include <stdbool.h>
@@ -12,6 +13,7 @@ struct hw_i2c_t {
   hw_gpio_t *sda_pin;
   hw_gpio_t *scl_pin;
   uint32_t baud_rate;
+  mutex_t lock;
   bool owns_pins;
   bool init;
 };
@@ -79,6 +81,9 @@ uint8_t hw_i2c_count(void) {
 hw_i2c_t *hw_i2c_init_default(uint32_t baud_rate) {
 #if defined(PICO_DEFAULT_I2C) && defined(PICO_DEFAULT_I2C_SDA_PIN) &&          \
     defined(PICO_DEFAULT_I2C_SCL_PIN)
+  sys_debugf("i2c_init_default: index=%u sda=%u scl=%u baud=%u",
+             PICO_DEFAULT_I2C, PICO_DEFAULT_I2C_SDA_PIN,
+             PICO_DEFAULT_I2C_SCL_PIN, baud_rate);
   hw_gpio_t *sda_pin = hw_gpio_init(0, PICO_DEFAULT_I2C_SDA_PIN, HW_GPIO_I2C);
   if (sda_pin == NULL) {
     return NULL;
@@ -100,6 +105,8 @@ hw_i2c_t *hw_i2c_init_default(uint32_t baud_rate) {
   i2c->owns_pins = true;
   return i2c;
 #else
+  sys_debugf("i2c_init_default: unsupported on this target (baud=%u)",
+             baud_rate);
   (void)baud_rate;
   return NULL;
 #endif
@@ -107,6 +114,8 @@ hw_i2c_t *hw_i2c_init_default(uint32_t baud_rate) {
 
 hw_i2c_t *hw_i2c_init(uint8_t index, hw_gpio_t *sda_pin, hw_gpio_t *scl_pin,
                       uint32_t baud_rate) {
+  sys_debugf("i2c_init: index=%u baud=%u sda_valid=%u scl_valid=%u", index,
+             baud_rate, hw_gpio_valid(sda_pin), hw_gpio_valid(scl_pin));
   if (index >= hw_i2c_count() || !hw_gpio_valid(sda_pin) ||
       !hw_gpio_valid(scl_pin) || baud_rate == 0) {
     return NULL;
@@ -140,6 +149,7 @@ hw_i2c_t *hw_i2c_init(uint8_t index, hw_gpio_t *sda_pin, hw_gpio_t *scl_pin,
   i2c->sda_pin = sda_pin;
   i2c->scl_pin = scl_pin;
   i2c->baud_rate = actual_baud_rate;
+  mutex_init(&i2c->lock);
   i2c->owns_pins = false;
   i2c->init = true;
   return i2c;
@@ -152,6 +162,7 @@ hw_i2c_t *hw_i2c_init_device(const char *device, uint32_t baud_rate) {
 }
 
 void hw_i2c_deinit(hw_i2c_t *i2c) {
+  sys_debugf("i2c_deinit: i2c=%p", i2c);
   if (!hw_i2c_valid(i2c)) {
     return;
   }
@@ -182,8 +193,20 @@ bool hw_i2c_detect(hw_i2c_t *i2c, uint8_t addr) {
     return false;
   }
 
-  uint8_t dummy = 0;
-  return _hw_i2c_write(i2c->instance, addr & 0x7Fu, &dummy, 0, false, 100) >= 0;
+  mutex_enter_blocking(&i2c->lock);
+
+  // Some devices ACK reads, others only ACK writes during scan-style probing.
+  uint8_t probe = 0;
+  if (_hw_i2c_read(i2c->instance, addr & 0x7Fu, &probe, 1, false, 100) == 1) {
+    mutex_exit(&i2c->lock);
+    return true;
+  }
+
+  probe = 0;
+  bool detected =
+      _hw_i2c_write(i2c->instance, addr & 0x7Fu, &probe, 1, false, 100) == 1;
+  mutex_exit(&i2c->lock);
+  return detected;
 }
 
 size_t hw_i2c_xfr(hw_i2c_t *i2c, uint8_t addr, void *data, size_t tx, size_t rx,
@@ -194,24 +217,32 @@ size_t hw_i2c_xfr(hw_i2c_t *i2c, uint8_t addr, void *data, size_t tx, size_t rx,
   }
 
   uint8_t *bytes = data;
+  size_t transferred = 0;
+
+  mutex_enter_blocking(&i2c->lock);
 
   if (tx > 0) {
     int ret = _hw_i2c_write(i2c->instance, addr & 0x7Fu, bytes, tx, rx > 0,
                             timeout_ms);
     if (ret != (int)tx) {
-      return 0;
+      goto hw_i2c_xfr_exit;
     }
+    transferred += tx;
   }
 
   if (rx > 0) {
     int ret = _hw_i2c_read(i2c->instance, addr & 0x7Fu, bytes + tx, rx, false,
                            timeout_ms);
     if (ret != (int)rx) {
-      return 0;
+      transferred = 0;
+      goto hw_i2c_xfr_exit;
     }
+    transferred += rx;
   }
 
-  return tx + rx;
+hw_i2c_xfr_exit:
+  mutex_exit(&i2c->lock);
+  return transferred;
 }
 
 size_t hw_i2c_read(hw_i2c_t *i2c, uint8_t addr, uint8_t reg, void *data,
@@ -221,15 +252,19 @@ size_t hw_i2c_read(hw_i2c_t *i2c, uint8_t addr, uint8_t reg, void *data,
     return 0;
   }
 
+  size_t result = 0;
+
+  mutex_enter_blocking(&i2c->lock);
+
   if (_hw_i2c_write(i2c->instance, addr & 0x7Fu, &reg, sizeof(reg), true,
-                    timeout_ms) != (int)sizeof(reg)) {
-    return 0;
+                    timeout_ms) == (int)sizeof(reg) &&
+      _hw_i2c_read(i2c->instance, addr & 0x7Fu, data, len, false, timeout_ms) ==
+          (int)len) {
+    result = len;
   }
 
-  return _hw_i2c_read(i2c->instance, addr & 0x7Fu, data, len, false,
-                      timeout_ms) == (int)len
-             ? len
-             : 0;
+  mutex_exit(&i2c->lock);
+  return result;
 }
 
 size_t hw_i2c_write(hw_i2c_t *i2c, uint8_t addr, uint8_t reg, const void *data,
@@ -260,8 +295,11 @@ size_t hw_i2c_write(hw_i2c_t *i2c, uint8_t addr, uint8_t reg, const void *data,
     sys_memcpy(buffer + 1, data, len);
   }
 
+  mutex_enter_blocking(&i2c->lock);
   int ret = _hw_i2c_write(i2c->instance, addr & 0x7Fu, buffer, total_len, false,
                           timeout_ms);
+  mutex_exit(&i2c->lock);
+
   if (use_heap) {
     sys_free(buffer);
   }

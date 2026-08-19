@@ -1,5 +1,5 @@
 
-include(PicofuseTests)
+include(tests)
 
 # Just print "hello world" to verify that the test framework is working.
 picofuse_add_sys_test(sys_001
@@ -121,6 +121,11 @@ picofuse_add_sys_test(sys_024
 	main.c
 )
 
+# Check timer deinit waits for an in-flight callback to complete.
+picofuse_add_sys_test(sys_027
+	main.c
+)
+
 # Check single-worker run loop: lifecycle, events, exit value, reuse.
 picofuse_add_sys_test(sys_025
 	main.c
@@ -128,6 +133,11 @@ picofuse_add_sys_test(sys_025
 
 # Check multi-worker run loop: both workers initialize, all events processed.
 picofuse_add_sys_test(sys_026
+	main.c
+)
+
+# Check sys_sprintf formatting for fixed-width integer types.
+picofuse_add_sys_test(sys_028
 	main.c
 )
 
@@ -153,6 +163,31 @@ picofuse_add_hw_test(hw_003
 
 # Check USB API lifecycle behavior on supported and stub backends.
 picofuse_add_hw_test(hw_004
+	main.c
+)
+
+# Check PWM API behavior: init, config, period, duty, enable, and callbacks.
+picofuse_add_hw_test(hw_005
+	main.c
+)
+
+# Check block storage API behavior: capacity, init, erase/read/write, and deinit.
+picofuse_add_hw_test(hw_006
+	main.c
+)
+
+# Check watchdog API behavior: init, enable/reset flows, and stub fallback.
+picofuse_add_hw_test(hw_007
+	main.c
+)
+
+# Check HID init constraints, pool capacity, and slot reuse behavior.
+picofuse_add_hid_test(hid_001
+	main.c
+)
+
+# Check HID fake-device callbacks, polling, and enumeration/info behavior.
+picofuse_add_hid_test(hid_002
 	main.c
 )
 

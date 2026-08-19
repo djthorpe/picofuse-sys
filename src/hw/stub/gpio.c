@@ -13,6 +13,8 @@ struct hw_gpio_t {};
  * @brief Initialize a GPIO pin with the specified mode.
  */
 hw_gpio_t *hw_gpio_init(uint8_t bank, uint8_t pin, hw_gpio_mode_t mode) {
+  sys_debugf("gpio_init: bank=%u pin=%u mode=%u unsupported on this platform",
+             bank, pin, mode);
   (void)bank;
   (void)pin;
   (void)mode;
@@ -23,6 +25,7 @@ hw_gpio_t *hw_gpio_init(uint8_t bank, uint8_t pin, hw_gpio_mode_t mode) {
  * @brief Deinitialize and release a GPIO pin.
  */
 void hw_gpio_deinit(hw_gpio_t *gpio) {
+  sys_debugf("gpio_deinit: gpio=%p unsupported on this platform", gpio);
   (void)gpio;
   // No-op stub implementation for unsupported platforms.
 }

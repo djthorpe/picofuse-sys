@@ -4,14 +4,56 @@
  * hooks.
  * @defgroup Hardware Hardware Interfaces
  * @ingroup Picofuse
+ * @details
+ * The Hardware module exposes platform-facing interfaces for low-level
+ * peripherals and board resources, such as GPIO, ADC, PWM, I2C, SPI, UART,
+ * storage, USB, networking, and board LEDs.
+ *
+ * These APIs provide the portability layer between application logic and the
+ * underlying target implementation (for example, desktop simulation backends
+ * or microcontroller-specific drivers). The goal is to offer a consistent
+ * programming model across supported environments.
+ *
+ * Runtime lifecycle is coordinated through:
+ * - `hw_init()` to initialize hardware backends and board-level resources.
+ * - `hw_poll()` for cooperative processing where periodic backend work is
+ *   required.
+ * - `hw_exit()` to release resources during shutdown.
+ *
+ * Typical flow:
+ * 1. Call `sys_init()` and then `hw_init()` during startup.
+ * 2. Acquire/configure peripheral handles through the specific `hw/` headers.
+ * 3. Periodically call `hw_poll()` in the main loop or runloop callback.
+ * 4. Deinitialize explicit handles, then call `hw_exit()` on shutdown.
+ *
+ * @par Examples
+ * @example examples/hw/gpio/main.c
+ * Basic GPIO initialization and pin operations.
+ * @example examples/hw/infrared/main.c
+ * Infrared receiver initialization and event callback wiring.
+ * @example examples/hw/i2c-scan/main.c
+ * I2C bus setup and peripheral discovery.
+ * @example examples/hw/led-blink/main.c
+ * Board LED lifecycle and periodic toggling.
+ * @example examples/picosdk/stdout-flood/main.c
+ * Pico SDK board/runtime integration behavior.
+ *
+ * Include `picofuse/hw.h` to access hardware lifecycle APIs (`hw_init`,
+ * `hw_poll`, `hw_exit`) and hardware abstractions from a single entry point.
  */
 #pragma once
 #include "hw/adc.h"
+#include "hw/block.h"
+#include "hw/flash.h"
 #include "hw/gpio.h"
 #include "hw/i2c.h"
+#include "hw/infrared.h"
+#include "hw/led.h"
+#include "hw/pwm.h"
 #include "hw/spi.h"
 #include "hw/uart.h"
 #include "hw/usb.h"
+#include "hw/watchdog.h"
 #include "hw/wifi.h"
 
 /**

@@ -46,6 +46,11 @@ const char *sys_env_name(void) {
 }
 
 /**
+ * @brief Returns the current system identifier.
+ */
+const char *sys_env_system(void) { return "linux"; }
+
+/**
  * @brief Returns the version of the current environment.
  */
 const char *sys_env_version(void) {

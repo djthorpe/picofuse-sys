@@ -15,6 +15,9 @@ struct hw_uart_t {};
 hw_uart_t *hw_uart_init(const hw_gpio_t *rx_pin, const hw_gpio_t *tx_pin,
                         uint32_t baud_rate, hw_uart_callback_t callback,
                         void *userdata, const hw_uart_config_t *config) {
+  sys_debugf("uart_init: rx=%p tx=%p baud=%u callback=%p userdata=%p config=%p "
+             "unsupported on this platform",
+             rx_pin, tx_pin, baud_rate, (void *)callback, userdata, config);
   (void)rx_pin;
   (void)tx_pin;
   (void)baud_rate;
@@ -27,7 +30,10 @@ hw_uart_t *hw_uart_init(const hw_gpio_t *rx_pin, const hw_gpio_t *tx_pin,
 /**
  * @brief Deinitialize a UART device.
  */
-void hw_uart_deinit(hw_uart_t *uart) { (void)uart; }
+void hw_uart_deinit(hw_uart_t *uart) {
+  sys_debugf("uart_deinit: uart=%p unsupported on this platform", uart);
+  (void)uart;
+}
 
 /**
  * @brief Check whether a UART handle is valid.

@@ -1,4 +1,5 @@
 #include <hardware/spi.h>
+#include <pico/mutex.h>
 #include <picofuse/hw.h>
 #include <picofuse/sys.h>
 
@@ -11,8 +12,10 @@ struct hw_spi_t {
   hw_gpio_t *tx;
   hw_gpio_t *rx;
   hw_gpio_t *cs;
+  mutex_t lock;
   bool cs_active_low;
   bool owns_pins;
+  uint8_t bits_per_word;
   uint32_t baud_rate;
   bool init;
 };
@@ -87,6 +90,9 @@ hw_spi_t *hw_spi_init_default(uint32_t baud_rate,
                               const hw_spi_config_t *config) {
 #if defined(PICO_DEFAULT_SPI) && defined(PICO_DEFAULT_SPI_SCK_PIN) &&          \
     defined(PICO_DEFAULT_SPI_TX_PIN) && defined(PICO_DEFAULT_SPI_RX_PIN)
+  sys_debugf("spi_init_default: index=%u sck=%u tx=%u rx=%u baud=%u",
+             PICO_DEFAULT_SPI, PICO_DEFAULT_SPI_SCK_PIN,
+             PICO_DEFAULT_SPI_TX_PIN, PICO_DEFAULT_SPI_RX_PIN, baud_rate);
   hw_spi_config_t settings =
       config != NULL ? *config : _hw_spi_default_config();
   hw_gpio_t *sck_pin = hw_gpio_init(0, PICO_DEFAULT_SPI_SCK_PIN, HW_GPIO_SPI);
@@ -121,6 +127,7 @@ hw_spi_t *hw_spi_init_default(uint32_t baud_rate,
 #else
   (void)baud_rate;
   (void)config;
+  sys_debugf("spi_init_default: unsupported on this target");
   return NULL;
 #endif
 }
@@ -128,6 +135,10 @@ hw_spi_t *hw_spi_init_default(uint32_t baud_rate,
 hw_spi_t *hw_spi_init(uint8_t index, hw_gpio_t *sck_pin, hw_gpio_t *tx_pin,
                       hw_gpio_t *rx_pin, hw_gpio_t *cs_pin, uint32_t baud_rate,
                       const hw_spi_config_t *config) {
+  sys_debugf("spi_init: index=%u baud=%u sck_valid=%u tx_valid=%u rx_valid=%u "
+             "cs_valid=%u",
+             index, baud_rate, hw_gpio_valid(sck_pin), hw_gpio_valid(tx_pin),
+             hw_gpio_valid(rx_pin), hw_gpio_valid(cs_pin));
   hw_spi_config_t settings =
       config != NULL ? *config : _hw_spi_default_config();
   spi_inst_t *instance = _hw_spi_instance_for_index(index);
@@ -165,7 +176,9 @@ hw_spi_t *hw_spi_init(uint8_t index, hw_gpio_t *sck_pin, hw_gpio_t *tx_pin,
   spi->tx = tx_pin;
   spi->rx = rx_pin;
   spi->cs = configured_cs;
+  mutex_init(&spi->lock);
   spi->cs_active_low = settings.cs_active_low;
+  spi->bits_per_word = settings.bits_per_word;
   spi->baud_rate = baud_rate;
   spi->owns_pins = false;
   spi->init = true;
@@ -189,6 +202,7 @@ hw_spi_t *hw_spi_init_device(const char *device, uint32_t baud_rate,
 }
 
 void hw_spi_deinit(hw_spi_t *spi) {
+  sys_debugf("spi_deinit: spi=%p", spi);
   if (!hw_spi_valid(spi)) {
     return;
   }
@@ -214,6 +228,33 @@ bool hw_spi_valid(const hw_spi_t *spi) {
   return spi != NULL && spi->instance != NULL && spi->baud_rate > 0;
 }
 
+uint8_t hw_spi_get_bits_per_word(const hw_spi_t *spi) {
+  if (!hw_spi_valid(spi)) {
+    return 0u;
+  }
+
+  return spi->bits_per_word;
+}
+
+bool hw_spi_set_format(hw_spi_t *spi, hw_spi_mode_t mode,
+                       uint8_t bits_per_word) {
+  if (!hw_spi_valid(spi) || bits_per_word == 0u) {
+    return false;
+  }
+
+  spi_cpol_t cpol = SPI_CPOL_0;
+  spi_cpha_t cpha = SPI_CPHA_0;
+  if (!_hw_spi_map_mode(mode, &cpol, &cpha)) {
+    return false;
+  }
+
+  mutex_enter_blocking(&spi->lock);
+  spi_set_format(spi->instance, bits_per_word, cpol, cpha, SPI_MSB_FIRST);
+  spi->bits_per_word = bits_per_word;
+  mutex_exit(&spi->lock);
+  return true;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // METHODS
 
@@ -229,6 +270,7 @@ size_t hw_spi_xfr(hw_spi_t *spi, void *data, size_t tx, size_t rx,
     return 0;
   }
 
+  mutex_enter_blocking(&spi->lock);
   _hw_spi_set_cs(spi, true);
 
   size_t bytes_transferred = 0;
@@ -255,6 +297,7 @@ size_t hw_spi_xfr(hw_spi_t *spi, void *data, size_t tx, size_t rx,
   }
 
   _hw_spi_set_cs(spi, false);
+  mutex_exit(&spi->lock);
   return bytes_transferred;
 }
 
@@ -266,6 +309,7 @@ size_t hw_spi_read(hw_spi_t *spi, uint8_t reg, void *data, size_t len,
     return 0;
   }
 
+  mutex_enter_blocking(&spi->lock);
   _hw_spi_set_cs(spi, true);
 
   size_t bytes_transferred = 0;
@@ -278,6 +322,7 @@ size_t hw_spi_read(hw_spi_t *spi, uint8_t reg, void *data, size_t len,
   }
 
   _hw_spi_set_cs(spi, false);
+  mutex_exit(&spi->lock);
   return bytes_transferred;
 }
 
@@ -289,6 +334,7 @@ size_t hw_spi_write(hw_spi_t *spi, uint8_t reg, const void *data, size_t len,
     return 0;
   }
 
+  mutex_enter_blocking(&spi->lock);
   _hw_spi_set_cs(spi, true);
 
   size_t bytes_transferred = 0;
@@ -303,5 +349,27 @@ size_t hw_spi_write(hw_spi_t *spi, uint8_t reg, const void *data, size_t len,
   }
 
   _hw_spi_set_cs(spi, false);
+  mutex_exit(&spi->lock);
   return bytes_transferred;
+}
+
+size_t hw_spi_write_words(hw_spi_t *spi, const uint16_t *words, size_t len,
+                          uint32_t timeout_ms) {
+  (void)timeout_ms;
+
+  if (!hw_spi_valid(spi) || words == NULL || len == 0) {
+    return 0;
+  }
+
+  mutex_enter_blocking(&spi->lock);
+  _hw_spi_set_cs(spi, true);
+  int ret = spi_write16_blocking(spi->instance, words, len);
+  _hw_spi_set_cs(spi, false);
+  mutex_exit(&spi->lock);
+
+  if (ret != (int)len) {
+    return 0;
+  }
+
+  return len;
 }

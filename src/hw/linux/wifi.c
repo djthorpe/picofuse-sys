@@ -215,6 +215,9 @@ static bool _hw_wifi_request(hw_wifi_t *wifi, const char *command, char *reply,
 
 hw_wifi_t *hw_wifi_init_client(const char *country_code,
                                hw_wifi_callback_t callback, void *userdata) {
+  sys_debugf("wifi_init_client: country_code=%s callback=%p userdata=%p",
+             country_code != NULL ? country_code : "(null)", (void *)callback,
+             userdata);
   (void)country_code;
 
   hw_wifi_deinit(&_hw_wifi_instance);
@@ -241,6 +244,7 @@ bool hw_wifi_valid(hw_wifi_t *wifi) {
 }
 
 void hw_wifi_deinit(hw_wifi_t *wifi) {
+  sys_debugf("wifi_deinit: wifi=%p", wifi);
   if (wifi == NULL) {
     return;
   }
