@@ -13,7 +13,7 @@ GIT ?= $(shell which git 2>/dev/null)
 # CONFIGURE AND BUILD
 
 .PHONY: configure
-configure: dep-cmake
+configure: dep-cmake submodule
 	@${CMAKE} -B ${BUILD_DIR} \
 		-D CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} \
 		$(if ${PICO_BOARD},-D PICO_BOARD=${PICO_BOARD})
@@ -25,6 +25,12 @@ build: configure
 .PHONY: test
 test: build
 	@${CMAKE} --build ${BUILD_DIR} --target test
+
+.PHONY: submodule
+submodule: dep-git
+	@echo
+	@echo "checking out submodules"
+	@${GIT} submodule update --init --recursive
 
 ###############################################################################
 # DOCUMENTATION
