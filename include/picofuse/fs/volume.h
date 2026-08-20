@@ -139,7 +139,7 @@ extern size_t fs_vol_size(fs_volume_t *volume, size_t *free);
  *
  * On first call, iterator must be zeroed to start iteration.
  * Successive calls return the next entry until no more are available, at
- * which point false is returned and iterator->name is set to NULL. The
+ * which point false is returned and iterator->name[0] is set to '\0'. The
  * iterator state is allocated internally and freed when iteration
  * ends or an error occurs.
  *
