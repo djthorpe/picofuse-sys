@@ -1,14 +1,17 @@
 #include <test.h>
 #include <string.h>
 
-// Exercises fs_vol_init_flash() against real flash hardware, so this only
-// runs on Pico - and only when someone actually flashes this test binary to
-// a board (Pico ELF/UF2 targets aren't executed by ctest). Kept to a single,
-// non-exhaustive check rather than mirroring every fs_00X test against
-// flash too: hw_block_flash_init() is a single, process-lifetime
-// allocation (only one flash-backed volume can exist at a time), and every
-// mount/format/erase cycle here wears real NOR flash, which has finite
-// write endurance.
+// Exercises fs_vol_init_flash() against real flash hardware. This test is
+// still built and run by ctest on every platform - like fs_vol_init_flash()
+// itself, it just degrades to asserting the "unsupported here" NULL return
+// on host builds (see the #else branch below). The real flash-backed checks
+// only actually execute on Pico, and even then only once someone flashes
+// this test binary to a board (ctest can't run a Pico ELF/UF2 on the host).
+// Kept to a single, non-exhaustive check rather than mirroring every
+// fs_00X test against flash too: hw_block_flash_init() is a single,
+// process-lifetime allocation (only one flash-backed volume can exist at a
+// time), and every mount/format/erase cycle here wears real NOR flash,
+// which has finite write endurance.
 #if defined(SYSTEM_NAME_PICO)
 
 static bool write_file(fs_volume_t *volume, const char *path,

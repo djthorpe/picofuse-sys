@@ -85,13 +85,17 @@ fs_volume_t *fs_vol_init_memory(sys_mem_arena_t *arena, size_t size) {
       .lookahead_size = LFS_LOOKAHEAD_SIZE,
   };
 
-  if (lfs_mount(&ctx->lfs, &ctx->cfg) != LFS_ERR_OK) {
-    if (lfs_format(&ctx->lfs, &ctx->cfg) != LFS_ERR_OK ||
-        lfs_mount(&ctx->lfs, &ctx->cfg) != LFS_ERR_OK) {
-      sys_free(storage);
-      _fs_vol_free(volume);
-      return NULL;
-    }
+  // Always format rather than trying to mount first: sys_malloc() gives no
+  // guarantee the buffer is genuinely fresh - sys_free() reuses buffers via
+  // the arena's free list, so a same-sized allocation can come back holding
+  // a *previous* volume's still-valid littlefs image, and lfs_mount() would
+  // silently "succeed" on it instead of returning the empty volume this API
+  // promises.
+  if (lfs_format(&ctx->lfs, &ctx->cfg) != LFS_ERR_OK ||
+      lfs_mount(&ctx->lfs, &ctx->cfg) != LFS_ERR_OK) {
+    sys_free(storage);
+    _fs_vol_free(volume);
+    return NULL;
   }
 
   volume->ops = &fs_lfs_mem_ops;
