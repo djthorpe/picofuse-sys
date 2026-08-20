@@ -190,3 +190,52 @@ picofuse_add_hid_test(hid_001
 picofuse_add_hid_test(hid_002
 	main.c
 )
+
+# Check mounting the current working directory as a POSIX path volume.
+picofuse_add_fs_test(fs_000
+	main.c
+)
+
+# Check directory listing via fs_vol_readdir.
+picofuse_add_fs_test(fs_001
+	main.c
+)
+
+# Check rejection of ".", "..", relative, and out-of-root paths.
+picofuse_add_fs_test(fs_002
+	main.c
+)
+
+# Check volume size/free-space reporting.
+picofuse_add_fs_test(fs_003
+	main.c
+)
+
+# Check recursively walking and stating files under a volume.
+picofuse_add_fs_test(fs_004
+	main.c
+)
+
+# Check hidden ("." prefixed) entries are skipped by readdir but remain
+# directly reachable via stat/mkdir/remove/move.
+picofuse_add_fs_test(fs_005
+	main.c
+)
+
+# Check move/rename overwrite semantics match littlefs/rename(2): same-type
+# targets are atomically replaced, type mismatches and non-empty directory
+# targets are rejected, and the volume root can never be overwritten.
+picofuse_add_fs_test(fs_006
+	main.c
+)
+
+# Check file create/open/close/read/write/seek lifecycle and edge cases.
+picofuse_add_fs_test(fs_007
+	main.c
+)
+
+# Check every fs_vol_*/fs_file_* generic dispatcher is safe when given a
+# NULL volume/file (platform-independent - never mounts a volume).
+picofuse_add_fs_test(fs_008
+	main.c
+)

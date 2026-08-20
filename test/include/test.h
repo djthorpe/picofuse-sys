@@ -2,6 +2,7 @@
 #pragma once
 
 #include <inttypes.h>
+#include <picofuse/fs.h>
 #include <picofuse/hw.h>
 #include <picofuse/sys.h>
 #include <stdbool.h>
