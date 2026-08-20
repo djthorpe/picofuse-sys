@@ -193,40 +193,41 @@ picofuse_add_hid_test(hid_002
 
 # Check mounting the current working directory as a POSIX path volume, and
 # fs_vol_init_memory construction (default size, size=0 rounding, and that a
-# non-NULL arena is rejected until arena-backed volumes are implemented).
+# non-NULL arena is rejected until arena-backed volumes are implemented) and
+# fs_vol_init_file construction (fresh image, NULL/empty path rejection).
 picofuse_add_fs_test(fs_000
 	main.c
 )
 
-# Check directory listing via fs_vol_readdir, on both the POSIX path and
-# in-memory (littlefs) backends.
+# Check directory listing via fs_vol_readdir, on the POSIX path, host
+# file-backed, and in-memory (littlefs) backends.
 picofuse_add_fs_test(fs_001
 	main.c
 )
 
-# Check rejection of ".", "..", relative, and out-of-root paths, on both the
-# POSIX path and in-memory (littlefs) backends - the two backends confine
-# paths by different mechanisms (real chroot-style confinement vs. a
-# symbolic root) but must reject the same forms.
+# Check rejection of ".", "..", relative, and out-of-root paths, on the
+# POSIX path, host file-backed, and in-memory (littlefs) backends - each
+# backend confines paths by a different mechanism (real chroot-style
+# confinement vs. a symbolic root) but must reject the same forms.
 picofuse_add_fs_test(fs_002
 	main.c
 )
 
-# Check volume size/free-space reporting, on both the POSIX path and
-# in-memory (littlefs) backends.
+# Check volume size/free-space reporting, on the POSIX path, host
+# file-backed, and in-memory (littlefs) backends.
 picofuse_add_fs_test(fs_003
 	main.c
 )
 
-# Check recursively walking and stating files under a volume, on both the
-# POSIX path and in-memory (littlefs) backends.
+# Check recursively walking and stating files under a volume, on the POSIX
+# path, host file-backed, and in-memory (littlefs) backends.
 picofuse_add_fs_test(fs_004
 	main.c
 )
 
 # Check hidden ("." prefixed) entries are skipped by readdir but remain
-# directly reachable via stat/mkdir/remove/move, on both the POSIX path and
-# in-memory (littlefs) backends.
+# directly reachable via stat/mkdir/remove/move, on the POSIX path, host
+# file-backed, and in-memory (littlefs) backends.
 picofuse_add_fs_test(fs_005
 	main.c
 )
@@ -234,13 +235,14 @@ picofuse_add_fs_test(fs_005
 # Check move/rename overwrite semantics match littlefs/rename(2): same-type
 # targets are atomically replaced, type mismatches and non-empty directory
 # targets are rejected, and the volume root can never be overwritten. Run
-# against both the POSIX path and in-memory (littlefs) backends.
+# against the POSIX path, host file-backed, and in-memory (littlefs)
+# backends.
 picofuse_add_fs_test(fs_006
 	main.c
 )
 
 # Check file create/open/close/read/write/seek lifecycle and edge cases, on
-# both the POSIX path and in-memory (littlefs) backends.
+# the POSIX path, host file-backed, and in-memory (littlefs) backends.
 picofuse_add_fs_test(fs_007
 	main.c
 )
@@ -248,5 +250,14 @@ picofuse_add_fs_test(fs_007
 # Check every fs_vol_*/fs_file_* generic dispatcher is safe when given a
 # NULL volume/file (platform-independent - never mounts a volume).
 picofuse_add_fs_test(fs_008
+	main.c
+)
+
+# Check fs_vol_init_flash against real flash hardware: mount/format, file
+# round-trip, mkdir/stat/remove, single-region exclusivity, and persistence
+# across a deinit/remount. Pico-only - flash.h stubs out to NULL elsewhere -
+# and only exercised when this test binary is actually flashed to a board,
+# since ctest can't execute a Pico ELF/UF2 on the host.
+picofuse_add_fs_test(fs_009
 	main.c
 )

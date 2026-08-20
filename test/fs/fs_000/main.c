@@ -1,6 +1,7 @@
 #include <test.h>
 
 #if defined(SYSTEM_NAME_LINUX) || defined(SYSTEM_NAME_DARWIN)
+#include <stdlib.h>
 #include <unistd.h>
 #endif
 
@@ -17,6 +18,29 @@ bool test_main(void) {
   fs_volume_t *volume = fs_vol_init_path("/");
   TestAssert(volume == NULL,
              "fs_vol_init_path should be unsupported on this platform");
+#endif
+
+#if defined(SYSTEM_NAME_LINUX) || defined(SYSTEM_NAME_DARWIN)
+  // A host file-backed volume should mount, creating and formatting a
+  // fresh image when the file doesn't already hold one.
+  char file_path[] = "/tmp/picofuse_fs_000_file_XXXXXX";
+  int file_fd = mkstemp(file_path);
+  TestAssert(file_fd >= 0, "mkstemp should create a scratch image file");
+  close(file_fd);
+
+  fs_volume_t *file_vol = fs_vol_init_file(file_path, 64 * 1024);
+  TestAssert(file_vol != NULL, "fs_vol_init_file should succeed");
+  fs_vol_deinit(file_vol);
+  unlink(file_path);
+
+  // A NULL/empty path names no file at all and must be rejected outright.
+  TestAssert(fs_vol_init_file(NULL, 64 * 1024) == NULL,
+             "fs_vol_init_file(NULL, ...) should fail");
+  TestAssert(fs_vol_init_file("", 64 * 1024) == NULL,
+             "fs_vol_init_file(\"\", ...) should fail");
+#else
+  TestAssert(fs_vol_init_file("/some/path", 64 * 1024) == NULL,
+             "fs_vol_init_file should be unsupported on this platform");
 #endif
 
   // A RAM-backed volume should mount unconditionally on every platform.

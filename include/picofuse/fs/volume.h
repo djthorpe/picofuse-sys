@@ -61,6 +61,8 @@ extern fs_volume_t *fs_vol_init_memory(sys_mem_arena_t *arena, size_t size);
  * @param path Host path to the image file (created if absent).
  * @param size Minimum size in bytes; ignored if existing file is larger.
  * @return Mounted volume pointer, or NULL on error.
+ *
+ * @note Not available on embedded (Flash-backed) builds; returns NULL there.
  */
 extern fs_volume_t *fs_vol_init_file(const char *path, size_t size);
 
@@ -72,7 +74,11 @@ extern fs_volume_t *fs_vol_init_file(const char *path, size_t size);
  * the volume in flash memory is implementation-specific. If mounting fails,
  * a format is performed and a fresh filesystem created.
  *
- * @param size Minimum size in bytes; ignored if an existing volume is larger.
+ * @param size Requested size in bytes (rounded down to flash erase-size
+ * granularity). The backing region is allocated relative to this value on
+ * every call, so remounting a volume formatted by a previous call requires
+ * passing the same size again - a different size allocates a different
+ * region and will not find the earlier filesystem.
  * @return Mounted volume pointer, or NULL on error.
  *
  * @note Not available on host (Linux/macOS) builds; returns NULL there.

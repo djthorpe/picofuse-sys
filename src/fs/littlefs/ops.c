@@ -1,10 +1,12 @@
 #include "littlefs.h"
 #include <picofuse/sys.h>
 
-///////////////////////////////////////////////////////////////////////////////
-// FORWARD DECLARATIONS
-
-static const struct fs_volume_ops_t fs_lfs_mem_ops;
+// Backend-agnostic littlefs volume/file operations, shared by every backend
+// (mem.c, flash.c, ...). None of this touches `ctx->storage` directly - it
+// only ever goes through ctx->lfs/ctx->cfg, so it's identical regardless of
+// which block device backs the mounted filesystem. Each backend supplies
+// its own block-device callbacks, fs_vol_init_*(), and `deinit` (since
+// releasing `ctx->storage` is backend-specific - see littlefs.h).
 
 // Handle for an open file, heap-allocated (via sys_malloc) and stashed in
 // fs_file_t.ctx - unlike a POSIX fd, an lfs_file_t doesn't fit in a pointer.
@@ -18,108 +20,9 @@ typedef struct {
 } fs_lfs_file_ctx_t;
 
 ///////////////////////////////////////////////////////////////////////////////
-// BLOCK DEVICE (in-memory storage)
-
-static int _fs_lfs_mem_read(const struct lfs_config *c, lfs_block_t block,
-                            lfs_off_t off, void *buffer, lfs_size_t size) {
-  fs_lfs_ctx_t *ctx = (fs_lfs_ctx_t *)c->context;
-  const uint8_t *src = (const uint8_t *)ctx->storage +
-                       (size_t)block * c->block_size + off;
-  sys_memcpy(buffer, src, size);
-  return LFS_ERR_OK;
-}
-
-static int _fs_lfs_mem_prog(const struct lfs_config *c, lfs_block_t block,
-                            lfs_off_t off, const void *buffer,
-                            lfs_size_t size) {
-  fs_lfs_ctx_t *ctx = (fs_lfs_ctx_t *)c->context;
-  uint8_t *dst = (uint8_t *)ctx->storage + (size_t)block * c->block_size + off;
-  sys_memcpy(dst, buffer, size);
-  return LFS_ERR_OK;
-}
-
-static int _fs_lfs_mem_erase(const struct lfs_config *c, lfs_block_t block) {
-  fs_lfs_ctx_t *ctx = (fs_lfs_ctx_t *)c->context;
-  uint8_t *dst = (uint8_t *)ctx->storage + (size_t)block * c->block_size;
-  sys_memset(dst, 0xFF, c->block_size);
-  return LFS_ERR_OK;
-}
-
-static int _fs_lfs_mem_sync(const struct lfs_config *c) {
-  (void)c;
-  return LFS_ERR_OK;
-}
-
-///////////////////////////////////////////////////////////////////////////////
-// LIFECYCLE
-
-fs_volume_t *fs_vol_init_memory(sys_mem_arena_t *arena, size_t size) {
-  if (arena != NULL) {
-    return NULL; // arena-backed memory volumes are not yet supported
-  }
-
-  size_t block_count = (size + LFS_BLOCK_SIZE - 1) / LFS_BLOCK_SIZE;
-  if (block_count < 2) {
-    block_count = 2; // littlefs needs at least 2 blocks for its superblock
-                      // metadata pair - fewer and lfs_format() fails outright
-  }
-  size_t storage_size = block_count * LFS_BLOCK_SIZE;
-
-  void *storage = sys_malloc(storage_size);
-  if (storage == NULL) {
-    return NULL;
-  }
-
-  fs_volume_t *volume = _fs_vol_alloc();
-  if (volume == NULL) {
-    sys_free(storage);
-    return NULL;
-  }
-
-  fs_lfs_ctx_t *ctx = (fs_lfs_ctx_t *)volume->ctx;
-  sys_memset(ctx, 0, sizeof(*ctx));
-  ctx->storage = storage;
-  ctx->storage_size = storage_size;
-  ctx->file = false;
-  ctx->cfg = (struct lfs_config){
-      .context = ctx,
-      .read = _fs_lfs_mem_read,
-      .prog = _fs_lfs_mem_prog,
-      .erase = _fs_lfs_mem_erase,
-      .sync = _fs_lfs_mem_sync,
-      .read_size = LFS_READ_SIZE,
-      .prog_size = LFS_PROG_SIZE,
-      .block_size = LFS_BLOCK_SIZE,
-      .block_count = (lfs_size_t)block_count,
-      .block_cycles = 500,
-      .cache_size = LFS_CACHE_SIZE,
-      .lookahead_size = LFS_LOOKAHEAD_SIZE,
-  };
-
-  if (lfs_mount(&ctx->lfs, &ctx->cfg) != LFS_ERR_OK) {
-    if (lfs_format(&ctx->lfs, &ctx->cfg) != LFS_ERR_OK ||
-        lfs_mount(&ctx->lfs, &ctx->cfg) != LFS_ERR_OK) {
-      sys_free(storage);
-      _fs_vol_free(volume);
-      return NULL;
-    }
-  }
-
-  volume->ops = &fs_lfs_mem_ops;
-  return volume;
-}
-
-static void _fs_lfs_mem_vol_deinit(fs_volume_t *volume) {
-  fs_lfs_ctx_t *ctx = (fs_lfs_ctx_t *)volume->ctx;
-  lfs_unmount(&ctx->lfs);
-  sys_free(ctx->storage);
-  sys_memset(ctx, 0, sizeof(*ctx));
-}
-
-///////////////////////////////////////////////////////////////////////////////
 // PROPERTIES
 
-static size_t _fs_lfs_mem_vol_size(fs_volume_t *volume, size_t *free) {
+size_t _fs_lfs_vol_size(fs_volume_t *volume, size_t *free) {
   fs_lfs_ctx_t *ctx = (fs_lfs_ctx_t *)volume->ctx;
   size_t block_size = ctx->cfg.block_size;
   size_t block_count = ctx->cfg.block_count;
@@ -136,8 +39,8 @@ static size_t _fs_lfs_mem_vol_size(fs_volume_t *volume, size_t *free) {
 ///////////////////////////////////////////////////////////////////////////////
 // METHODS
 
-static bool _fs_lfs_mem_vol_readdir(fs_volume_t *volume, const char *path,
-                                    fs_file_t *iterator) {
+bool _fs_lfs_vol_readdir(fs_volume_t *volume, const char *path,
+                         fs_file_t *iterator) {
   if (iterator == NULL) {
     return false;
   }
@@ -188,7 +91,7 @@ static bool _fs_lfs_mem_vol_readdir(fs_volume_t *volume, const char *path,
   }
 }
 
-static fs_file_t _fs_lfs_mem_vol_stat(fs_volume_t *volume, const char *path) {
+fs_file_t _fs_lfs_vol_stat(fs_volume_t *volume, const char *path) {
   fs_lfs_ctx_t *ctx = (fs_lfs_ctx_t *)volume->ctx;
   fs_file_t result = {0};
 
@@ -211,7 +114,7 @@ static fs_file_t _fs_lfs_mem_vol_stat(fs_volume_t *volume, const char *path) {
   return result;
 }
 
-static bool _fs_lfs_mem_vol_mkdir(fs_volume_t *volume, const char *path) {
+bool _fs_lfs_vol_mkdir(fs_volume_t *volume, const char *path) {
   fs_lfs_ctx_t *ctx = (fs_lfs_ctx_t *)volume->ctx;
 
   char resolved[FS_PATH_MAX + 1];
@@ -229,7 +132,7 @@ static bool _fs_lfs_mem_vol_mkdir(fs_volume_t *volume, const char *path) {
   return lfs_mkdir(&ctx->lfs, target) == LFS_ERR_OK;
 }
 
-static bool _fs_lfs_mem_vol_remove(fs_volume_t *volume, const char *path) {
+bool _fs_lfs_vol_remove(fs_volume_t *volume, const char *path) {
   fs_lfs_ctx_t *ctx = (fs_lfs_ctx_t *)volume->ctx;
 
   char resolved[FS_PATH_MAX + 1];
@@ -242,8 +145,8 @@ static bool _fs_lfs_mem_vol_remove(fs_volume_t *volume, const char *path) {
   return lfs_remove(&ctx->lfs, resolved) == LFS_ERR_OK;
 }
 
-static bool _fs_lfs_mem_vol_move(fs_volume_t *volume, const char *old_path,
-                                 const char *new_path) {
+bool _fs_lfs_vol_move(fs_volume_t *volume, const char *old_path,
+                      const char *new_path) {
   fs_lfs_ctx_t *ctx = (fs_lfs_ctx_t *)volume->ctx;
 
   char old_resolved[FS_PATH_MAX + 1];
@@ -269,8 +172,7 @@ static bool _fs_lfs_mem_vol_move(fs_volume_t *volume, const char *old_path,
 ///////////////////////////////////////////////////////////////////////////////
 // FILE LIFECYCLE
 
-static fs_file_t _fs_lfs_mem_file_create(fs_volume_t *volume,
-                                         const char *path) {
+fs_file_t _fs_lfs_file_create(fs_volume_t *volume, const char *path) {
   fs_file_t result = {0};
   fs_lfs_ctx_t *ctx = (fs_lfs_ctx_t *)volume->ctx;
 
@@ -306,8 +208,8 @@ static fs_file_t _fs_lfs_mem_file_create(fs_volume_t *volume,
   return result;
 }
 
-static fs_file_t _fs_lfs_mem_file_open(fs_volume_t *volume, const char *path,
-                                       bool write) {
+fs_file_t _fs_lfs_file_open(fs_volume_t *volume, const char *path,
+                            bool write) {
   fs_file_t result = {0};
   fs_lfs_ctx_t *ctx = (fs_lfs_ctx_t *)volume->ctx;
 
@@ -343,7 +245,7 @@ static fs_file_t _fs_lfs_mem_file_open(fs_volume_t *volume, const char *path,
   return result;
 }
 
-static bool _fs_lfs_mem_file_close(fs_file_t *file) {
+bool _fs_lfs_file_close(fs_file_t *file) {
   if (file == NULL || file->ctx == NULL || file->volume == NULL) {
     return false;
   }
@@ -359,8 +261,7 @@ static bool _fs_lfs_mem_file_close(fs_file_t *file) {
 ///////////////////////////////////////////////////////////////////////////////
 // FILE METHODS
 
-static size_t _fs_lfs_mem_file_read(fs_file_t *file, void *buffer,
-                                    size_t size) {
+size_t _fs_lfs_file_read(fs_file_t *file, void *buffer, size_t size) {
   if (file == NULL || file->ctx == NULL || file->volume == NULL ||
       buffer == NULL || size == 0) {
     return 0;
@@ -377,8 +278,7 @@ static size_t _fs_lfs_mem_file_read(fs_file_t *file, void *buffer,
   return (size_t)n;
 }
 
-static size_t _fs_lfs_mem_file_write(fs_file_t *file, const void *buffer,
-                                     size_t size) {
+size_t _fs_lfs_file_write(fs_file_t *file, const void *buffer, size_t size) {
   if (file == NULL || file->ctx == NULL || file->volume == NULL ||
       buffer == NULL || size == 0) {
     return 0;
@@ -401,7 +301,7 @@ static size_t _fs_lfs_mem_file_write(fs_file_t *file, const void *buffer,
   return (size_t)n;
 }
 
-static bool _fs_lfs_mem_file_seek(fs_file_t *file, size_t offset) {
+bool _fs_lfs_file_seek(fs_file_t *file, size_t offset) {
   if (file == NULL || file->ctx == NULL || file->volume == NULL) {
     return false;
   }
@@ -416,22 +316,3 @@ static bool _fs_lfs_mem_file_seek(fs_file_t *file, size_t offset) {
   file->pos = (size_t)res;
   return true;
 }
-
-///////////////////////////////////////////////////////////////////////////////
-// OPS TABLE
-
-static const struct fs_volume_ops_t fs_lfs_mem_ops = {
-    .deinit = _fs_lfs_mem_vol_deinit,
-    .size = _fs_lfs_mem_vol_size,
-    .readdir = _fs_lfs_mem_vol_readdir,
-    .stat = _fs_lfs_mem_vol_stat,
-    .mkdir = _fs_lfs_mem_vol_mkdir,
-    .remove = _fs_lfs_mem_vol_remove,
-    .move = _fs_lfs_mem_vol_move,
-    .file_create = _fs_lfs_mem_file_create,
-    .file_open = _fs_lfs_mem_file_open,
-    .file_close = _fs_lfs_mem_file_close,
-    .file_read = _fs_lfs_mem_file_read,
-    .file_write = _fs_lfs_mem_file_write,
-    .file_seek = _fs_lfs_mem_file_seek,
-};

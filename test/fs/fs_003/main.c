@@ -36,6 +36,20 @@ bool test_main(void) {
     TestAssert(rmdir(root) == 0,
                "rmdir of the now-empty scratch directory should succeed");
   }
+
+  {
+    char file_path[] = "/tmp/picofuse_fs_003_file_XXXXXX";
+    int file_fd = mkstemp(file_path);
+    TestAssert(file_fd >= 0, "mkstemp should create a scratch image file");
+    close(file_fd);
+
+    fs_volume_t *volume = fs_vol_init_file(file_path, 64 * 1024);
+    TestAssert(volume != NULL, "fs_vol_init_file should succeed");
+    TestAssert(run_checks(volume), "checks (file backend) should pass");
+    fs_vol_deinit(volume);
+
+    unlink(file_path);
+  }
 #endif
 
   {
