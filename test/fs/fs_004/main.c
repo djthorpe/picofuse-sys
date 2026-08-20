@@ -1,21 +1,72 @@
 #include <test.h>
+#include <string.h>
 
 #if defined(SYSTEM_NAME_LINUX) || defined(SYSTEM_NAME_DARWIN)
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <sys/stat.h>
 #include <unistd.h>
+#endif
 
-static bool create_file(const char *path, const char *content) {
-  FILE *f = fopen(path, "w");
-  if (f == NULL) {
+static bool write_file(fs_volume_t *volume, const char *path,
+                       const char *content) {
+  fs_file_t f = fs_file_create(volume, path);
+  if (f.ctx == NULL) {
     return false;
   }
   size_t len = strlen(content);
-  bool ok = fwrite(content, 1, len, f) == len;
-  fclose(f);
-  return ok;
+  bool ok = fs_file_write(&f, content, len) == len;
+  return fs_file_close(&f) && ok;
+}
+
+static bool cleanup_all(fs_volume_t *volume, const char *path) {
+  typedef struct {
+    char name[FS_PATH_MAX + 1];
+    bool dir;
+  } entry_t;
+  entry_t entries[32];
+  int count = 0;
+
+  fs_file_t it;
+  memset(&it, 0, sizeof(it));
+  while (fs_vol_readdir(volume, path, &it)) {
+    if (count >= 32) {
+      return false;
+    }
+    strcpy(entries[count].name, it.name);
+    entries[count].dir = it.dir;
+    count++;
+  }
+
+  for (int i = 0; i < count; i++) {
+    char child[512];
+    int n = (strcmp(path, "/") == 0)
+                ? sys_sprintf(child, sizeof(child), "/%s", entries[i].name)
+                : sys_sprintf(child, sizeof(child), "%s/%s", path,
+                              entries[i].name);
+    if (n <= 0 || (size_t)n >= sizeof(child)) {
+      return false;
+    }
+    if (entries[i].dir && !cleanup_all(volume, child)) {
+      return false;
+    }
+    if (!fs_vol_remove(volume, child)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+// root/
+//   file1.txt         (3 bytes)
+//   dirA/
+//     file2.txt        (5 bytes)
+//     dirB/
+//       file3.txt       (7 bytes)
+static bool build_fixture(fs_volume_t *volume) {
+  return write_file(volume, "/file1.txt", "abc") &&
+         fs_vol_mkdir(volume, "/dirA") &&
+         write_file(volume, "/dirA/file2.txt", "abcde") &&
+         fs_vol_mkdir(volume, "/dirA/dirB") &&
+         write_file(volume, "/dirA/dirB/file3.txt", "abcdefg");
 }
 
 typedef struct {
@@ -60,40 +111,8 @@ static bool walk(fs_volume_t *volume, const char *path, walk_stats_t *stats) {
   }
   return true;
 }
-#endif
 
-bool test_main(void) {
-#if defined(SYSTEM_NAME_LINUX) || defined(SYSTEM_NAME_DARWIN)
-  char root[] = "/tmp/picofuse_fs_004_XXXXXX";
-  TestAssert(mkdtemp(root) != NULL,
-             "mkdtemp should create a scratch directory");
-
-  // root/
-  //   file1.txt         (3 bytes)
-  //   dirA/
-  //     file2.txt        (5 bytes)
-  //     dirB/
-  //       file3.txt       (7 bytes)
-  char path[512];
-  sys_sprintf(path, sizeof(path), "%s/file1.txt", root);
-  TestAssert(create_file(path, "abc"), "creating file1.txt should succeed");
-
-  sys_sprintf(path, sizeof(path), "%s/dirA", root);
-  TestAssert(mkdir(path, 0777) == 0, "mkdir dirA should succeed");
-
-  sys_sprintf(path, sizeof(path), "%s/dirA/file2.txt", root);
-  TestAssert(create_file(path, "abcde"), "creating file2.txt should succeed");
-
-  sys_sprintf(path, sizeof(path), "%s/dirA/dirB", root);
-  TestAssert(mkdir(path, 0777) == 0, "mkdir dirB should succeed");
-
-  sys_sprintf(path, sizeof(path), "%s/dirA/dirB/file3.txt", root);
-  TestAssert(create_file(path, "abcdefg"),
-             "creating file3.txt should succeed");
-
-  fs_volume_t *volume = fs_vol_init_path(root);
-  TestAssert(volume != NULL, "fs_vol_init_path should succeed");
-
+static bool run_checks(fs_volume_t *volume) {
   walk_stats_t stats = {0};
   TestAssert(walk(volume, "/", &stats), "recursive walk should succeed");
   TestAssert(stats.files == 3, "expected 3 files, got %d", stats.files);
@@ -104,20 +123,54 @@ bool test_main(void) {
   TestAssert(!f3.dir, "file3.txt should not be a directory");
   TestAssert(f3.size == 7, "file3.txt should be 7 bytes, got %zu", f3.size);
 
-  fs_vol_deinit(volume);
+  return true;
+}
 
-  sys_sprintf(path, sizeof(path), "%s/dirA/dirB/file3.txt", root);
-  unlink(path);
-  sys_sprintf(path, sizeof(path), "%s/dirA/dirB", root);
-  rmdir(path);
-  sys_sprintf(path, sizeof(path), "%s/dirA/file2.txt", root);
-  unlink(path);
-  sys_sprintf(path, sizeof(path), "%s/dirA", root);
-  rmdir(path);
-  sys_sprintf(path, sizeof(path), "%s/file1.txt", root);
-  unlink(path);
-  rmdir(root);
+bool test_main(void) {
+#if defined(SYSTEM_NAME_LINUX) || defined(SYSTEM_NAME_DARWIN)
+  {
+    char root[] = "/tmp/picofuse_fs_004_XXXXXX";
+    TestAssert(mkdtemp(root) != NULL,
+               "mkdtemp should create a scratch directory");
+
+    fs_volume_t *volume = fs_vol_init_path(root);
+    TestAssert(volume != NULL, "fs_vol_init_path should succeed");
+    TestAssert(build_fixture(volume),
+               "fixture setup (path backend) should succeed");
+    TestAssert(run_checks(volume), "checks (path backend) should pass");
+    TestAssert(cleanup_all(volume, "/"),
+               "cleanup (path backend) should succeed");
+    fs_vol_deinit(volume);
+
+    TestAssert(rmdir(root) == 0,
+               "rmdir of the now-empty scratch directory should succeed");
+  }
+
+  {
+    char file_path[] = "/tmp/picofuse_fs_004_file_XXXXXX";
+    int file_fd = mkstemp(file_path);
+    TestAssert(file_fd >= 0, "mkstemp should create a scratch image file");
+    close(file_fd);
+
+    fs_volume_t *volume = fs_vol_init_file(file_path, 64 * 1024);
+    TestAssert(volume != NULL, "fs_vol_init_file should succeed");
+    TestAssert(build_fixture(volume),
+               "fixture setup (file backend) should succeed");
+    TestAssert(run_checks(volume), "checks (file backend) should pass");
+    fs_vol_deinit(volume);
+
+    unlink(file_path);
+  }
 #endif
+
+  {
+    fs_volume_t *volume = fs_vol_init_memory(NULL, 64 * 1024);
+    TestAssert(volume != NULL, "fs_vol_init_memory should succeed");
+    TestAssert(build_fixture(volume),
+               "fixture setup (memory backend) should succeed");
+    TestAssert(run_checks(volume), "checks (memory backend) should pass");
+    fs_vol_deinit(volume);
+  }
 
   return true;
 }

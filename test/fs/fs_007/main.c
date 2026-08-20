@@ -1,20 +1,12 @@
 #include <test.h>
+#include <string.h>
 
 #if defined(SYSTEM_NAME_LINUX) || defined(SYSTEM_NAME_DARWIN)
 #include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
 #endif
 
-bool test_main(void) {
-#if defined(SYSTEM_NAME_LINUX) || defined(SYSTEM_NAME_DARWIN)
-  char root[] = "/tmp/picofuse_fs_007_XXXXXX";
-  TestAssert(mkdtemp(root) != NULL,
-             "mkdtemp should create a scratch directory");
-
-  fs_volume_t *volume = fs_vol_init_path(root);
-  TestAssert(volume != NULL, "fs_vol_init_path should succeed");
-
+static bool run_checks(fs_volume_t *volume) {
   // Create a new file and write to it; size/pos should track the write.
   fs_file_t f = fs_file_create(volume, "/hello.txt");
   TestAssert(f.ctx != NULL, "fs_file_create should succeed");
@@ -109,7 +101,52 @@ bool test_main(void) {
   TestAssert(bad_parent.ctx == NULL,
              "create with a missing parent should fail");
 
-  // The generic dispatcher must be NULL-safe.
+  TestAssert(fs_vol_remove(volume, "/hello.txt"),
+             "cleanup: remove /hello.txt should succeed");
+
+  return true;
+}
+
+bool test_main(void) {
+#if defined(SYSTEM_NAME_LINUX) || defined(SYSTEM_NAME_DARWIN)
+  {
+    char root[] = "/tmp/picofuse_fs_007_XXXXXX";
+    TestAssert(mkdtemp(root) != NULL,
+               "mkdtemp should create a scratch directory");
+
+    fs_volume_t *volume = fs_vol_init_path(root);
+    TestAssert(volume != NULL, "fs_vol_init_path should succeed");
+    TestAssert(run_checks(volume), "checks (path backend) should pass");
+    fs_vol_deinit(volume);
+
+    TestAssert(rmdir(root) == 0,
+               "rmdir of the now-empty scratch directory should succeed");
+  }
+
+  {
+    char file_path[] = "/tmp/picofuse_fs_007_file_XXXXXX";
+    int file_fd = mkstemp(file_path);
+    TestAssert(file_fd >= 0, "mkstemp should create a scratch image file");
+    close(file_fd);
+
+    fs_volume_t *volume = fs_vol_init_file(file_path, 64 * 1024);
+    TestAssert(volume != NULL, "fs_vol_init_file should succeed");
+    TestAssert(run_checks(volume), "checks (file backend) should pass");
+    fs_vol_deinit(volume);
+
+    unlink(file_path);
+  }
+#endif
+
+  {
+    fs_volume_t *volume = fs_vol_init_memory(NULL, 64 * 1024);
+    TestAssert(volume != NULL, "fs_vol_init_memory should succeed");
+    TestAssert(run_checks(volume), "checks (memory backend) should pass");
+    fs_vol_deinit(volume);
+  }
+
+  // The generic dispatcher must be NULL-safe, independent of any backend.
+  char buf[8];
   TestAssert(fs_file_create(NULL, "/x").ctx == NULL,
              "create(NULL, ...) should fail");
   TestAssert(fs_file_open(NULL, "/x", false).ctx == NULL,
@@ -120,14 +157,6 @@ bool test_main(void) {
              "write(NULL) should return 0");
   TestAssert(!fs_file_seek(NULL, 0), "seek(NULL) should return false");
   TestAssert(!fs_file_close(NULL), "close(NULL) should return false");
-
-  fs_vol_deinit(volume);
-
-  char path[512];
-  sys_sprintf(path, sizeof(path), "%s/hello.txt", root);
-  unlink(path);
-  rmdir(root);
-#endif
 
   return true;
 }

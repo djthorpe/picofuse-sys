@@ -21,7 +21,7 @@ VERSION_NUMBER := $(if $(strip ${PROGRAM_VERSION}),${PROGRAM_VERSION},0.0.0)
 # CONFIGURE AND BUILD
 
 .PHONY: configure
-configure: dep-cmake
+configure: dep-cmake submodule
 	@${CMAKE} -B ${BUILD_DIR} \
 		-D CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} \
 		$(if ${PROGRAM_VERSION},-D PROGRAM_VERSION=${PROGRAM_VERSION}) \
@@ -43,6 +43,10 @@ test: build
 .PHONY: version
 version:
 	@echo ${VERSION_NUMBER}
+
+.PHONY: submodule
+submodule: dep-git
+	@${GIT} submodule update --init --recursive
 
 ###############################################################################
 # DOCUMENTATION

@@ -1,54 +1,54 @@
 #include <test.h>
+#include <string.h>
 
 #if defined(SYSTEM_NAME_LINUX) || defined(SYSTEM_NAME_DARWIN)
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <sys/stat.h>
 #include <unistd.h>
+#endif
 
-static bool create_file(const char *path, const char *content) {
-  FILE *f = fopen(path, "w");
-  if (f == NULL) {
+static bool write_file(fs_volume_t *volume, const char *path,
+                       const char *content) {
+  fs_file_t f = fs_file_create(volume, path);
+  if (f.ctx == NULL) {
     return false;
   }
   size_t len = strlen(content);
-  bool ok = fwrite(content, 1, len, f) == len;
-  fclose(f);
-  return ok;
+  bool ok = fs_file_write(&f, content, len) == len;
+  return fs_file_close(&f) && ok;
 }
-#endif
 
-bool test_main(void) {
-#if defined(SYSTEM_NAME_LINUX) || defined(SYSTEM_NAME_DARWIN)
-  char root[] = "/tmp/picofuse_fs_005_XXXXXX";
-  TestAssert(mkdtemp(root) != NULL,
-             "mkdtemp should create a scratch directory");
+// Not readdir-based (unlike the other fs_* tests' cleanup helper): readdir
+// deliberately skips hidden entries, and this fixture's leftovers include
+// several ("/.hidden.txt", "/.hidden_dir", "/.renamed.txt") that a
+// listing-driven walk would never see. The exact fixture is small and
+// known, so remove it by name instead - tolerating paths already renamed
+// or removed by run_checks(), same as the original per-file unlink calls.
+static bool cleanup_all(fs_volume_t *volume) {
+  fs_vol_remove(volume, "/visible.txt");
+  fs_vol_remove(volume, "/.hidden.txt");
+  fs_vol_remove(volume, "/visible_dir");
+  fs_vol_remove(volume, "/.hidden_dir");
+  fs_vol_remove(volume, "/.newhidden");
+  fs_vol_remove(volume, "/.renamed.txt");
+  return true;
+}
 
-  char path[512];
-  sys_sprintf(path, sizeof(path), "%s/visible.txt", root);
-  TestAssert(create_file(path, "abc"), "creating visible.txt should succeed");
+static bool build_fixture(fs_volume_t *volume) {
+  return write_file(volume, "/visible.txt", "abc") &&
+         write_file(volume, "/.hidden.txt", "xyz") &&
+         fs_vol_mkdir(volume, "/visible_dir") &&
+         fs_vol_mkdir(volume, "/.hidden_dir");
+}
 
-  sys_sprintf(path, sizeof(path), "%s/.hidden.txt", root);
-  TestAssert(create_file(path, "xyz"), "creating .hidden.txt should succeed");
-
-  sys_sprintf(path, sizeof(path), "%s/visible_dir", root);
-  TestAssert(mkdir(path, 0777) == 0, "mkdir visible_dir should succeed");
-
-  sys_sprintf(path, sizeof(path), "%s/.hidden_dir", root);
-  TestAssert(mkdir(path, 0777) == 0, "mkdir .hidden_dir should succeed");
-
-  fs_volume_t *volume = fs_vol_init_path(root);
-  TestAssert(volume != NULL, "fs_vol_init_path should succeed");
-
+static bool run_checks(fs_volume_t *volume) {
   // readdir should skip every hidden entry.
   fs_file_t it;
   memset(&it, 0, sizeof(it));
   int count = 0;
   bool saw_visible_file = false, saw_visible_dir = false;
   while (fs_vol_readdir(volume, "/", &it)) {
-    TestAssert(it.name[0] != '.', "readdir should not list hidden entry \"%s\"",
-               it.name);
+    TestAssert(it.name[0] != '.',
+               "readdir should not list hidden entry \"%s\"", it.name);
     if (strcmp(it.name, "visible.txt") == 0) {
       saw_visible_file = true;
     } else if (strcmp(it.name, "visible_dir") == 0) {
@@ -103,18 +103,53 @@ bool test_main(void) {
   TestAssert(rn.name[0] != '\0' && !rn.dir && rn.size == 3,
              ".renamed.txt should exist with the original content");
 
-  fs_vol_deinit(volume);
+  return true;
+}
 
-  sys_sprintf(path, sizeof(path), "%s/.renamed.txt", root);
-  unlink(path);
-  sys_sprintf(path, sizeof(path), "%s/.hidden.txt", root);
-  unlink(path);
-  sys_sprintf(path, sizeof(path), "%s/.hidden_dir", root);
-  rmdir(path);
-  sys_sprintf(path, sizeof(path), "%s/visible_dir", root);
-  rmdir(path);
-  rmdir(root);
+bool test_main(void) {
+#if defined(SYSTEM_NAME_LINUX) || defined(SYSTEM_NAME_DARWIN)
+  {
+    char root[] = "/tmp/picofuse_fs_005_XXXXXX";
+    TestAssert(mkdtemp(root) != NULL,
+               "mkdtemp should create a scratch directory");
+
+    fs_volume_t *volume = fs_vol_init_path(root);
+    TestAssert(volume != NULL, "fs_vol_init_path should succeed");
+    TestAssert(build_fixture(volume),
+               "fixture setup (path backend) should succeed");
+    TestAssert(run_checks(volume), "checks (path backend) should pass");
+    TestAssert(cleanup_all(volume), "cleanup (path backend) should succeed");
+    fs_vol_deinit(volume);
+
+    TestAssert(rmdir(root) == 0,
+               "rmdir of the now-empty scratch directory should succeed");
+  }
+
+  {
+    char file_path[] = "/tmp/picofuse_fs_005_file_XXXXXX";
+    int file_fd = mkstemp(file_path);
+    TestAssert(file_fd >= 0, "mkstemp should create a scratch image file");
+    close(file_fd);
+
+    fs_volume_t *volume = fs_vol_init_file(file_path, 64 * 1024);
+    TestAssert(volume != NULL, "fs_vol_init_file should succeed");
+    TestAssert(build_fixture(volume),
+               "fixture setup (file backend) should succeed");
+    TestAssert(run_checks(volume), "checks (file backend) should pass");
+    fs_vol_deinit(volume);
+
+    unlink(file_path);
+  }
 #endif
+
+  {
+    fs_volume_t *volume = fs_vol_init_memory(NULL, 64 * 1024);
+    TestAssert(volume != NULL, "fs_vol_init_memory should succeed");
+    TestAssert(build_fixture(volume),
+               "fixture setup (memory backend) should succeed");
+    TestAssert(run_checks(volume), "checks (memory backend) should pass");
+    fs_vol_deinit(volume);
+  }
 
   return true;
 }

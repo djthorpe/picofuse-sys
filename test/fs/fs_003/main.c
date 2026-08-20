@@ -5,15 +5,7 @@
 #include <unistd.h>
 #endif
 
-bool test_main(void) {
-#if defined(SYSTEM_NAME_LINUX) || defined(SYSTEM_NAME_DARWIN)
-  char root[] = "/tmp/picofuse_fs_003_XXXXXX";
-  TestAssert(mkdtemp(root) != NULL,
-             "mkdtemp should create a scratch directory");
-
-  fs_volume_t *volume = fs_vol_init_path(root);
-  TestAssert(volume != NULL, "fs_vol_init_path should succeed");
-
+static bool run_checks(fs_volume_t *volume) {
   size_t free_bytes = 0;
   size_t total = fs_vol_size(volume, &free_bytes);
   TestAssert(total > 0, "volume size should be non-zero, got %zu", total);
@@ -26,15 +18,52 @@ bool test_main(void) {
              "same total (%zu vs %zu)",
              total_again, total);
 
+  return true;
+}
+
+bool test_main(void) {
+#if defined(SYSTEM_NAME_LINUX) || defined(SYSTEM_NAME_DARWIN)
+  {
+    char root[] = "/tmp/picofuse_fs_003_XXXXXX";
+    TestAssert(mkdtemp(root) != NULL,
+               "mkdtemp should create a scratch directory");
+
+    fs_volume_t *volume = fs_vol_init_path(root);
+    TestAssert(volume != NULL, "fs_vol_init_path should succeed");
+    TestAssert(run_checks(volume), "checks (path backend) should pass");
+    fs_vol_deinit(volume);
+
+    TestAssert(rmdir(root) == 0,
+               "rmdir of the now-empty scratch directory should succeed");
+  }
+
+  {
+    char file_path[] = "/tmp/picofuse_fs_003_file_XXXXXX";
+    int file_fd = mkstemp(file_path);
+    TestAssert(file_fd >= 0, "mkstemp should create a scratch image file");
+    close(file_fd);
+
+    fs_volume_t *volume = fs_vol_init_file(file_path, 64 * 1024);
+    TestAssert(volume != NULL, "fs_vol_init_file should succeed");
+    TestAssert(run_checks(volume), "checks (file backend) should pass");
+    fs_vol_deinit(volume);
+
+    unlink(file_path);
+  }
+#endif
+
+  {
+    fs_volume_t *volume = fs_vol_init_memory(NULL, 64 * 1024);
+    TestAssert(volume != NULL, "fs_vol_init_memory should succeed");
+    TestAssert(run_checks(volume), "checks (memory backend) should pass");
+    fs_vol_deinit(volume);
+  }
+
   size_t null_free = 123;
   TestAssert(fs_vol_size(NULL, &null_free) == 0,
              "fs_vol_size(NULL, ...) should report 0");
   TestAssert(null_free == 0,
              "fs_vol_size(NULL, ...) should zero the free-space output");
-
-  fs_vol_deinit(volume);
-  rmdir(root);
-#endif
 
   return true;
 }

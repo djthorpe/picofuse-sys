@@ -9,6 +9,7 @@
  */
 #pragma once
 #include "defs.h"
+#include <picofuse/sys/arena.h>
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -36,14 +37,17 @@
  * @brief Create a new volatile (RAM) filesystem volume.
  * @ingroup FileSystemVolume
  *
- * @param size Requested minimum size in bytes (rounded up to block geometry).
+ * @param arena Arena to allocate the volume's storage from, or NULL to use
+ * the default heap allocator.
+ * @param size Requested minimum size in bytes (rounded up to block geometry;
+ * always at least two blocks, littlefs's minimum for its own metadata).
  * @return Pointer to mounted volume on success, NULL on failure.
  *
  * Notes:
  *  - Contents are lost when fs_vol_deinit() is called or the process exits.
  *  - The real capacity may be larger than requested due to block rounding.
  */
-extern fs_volume_t *fs_vol_init_memory(size_t size);
+extern fs_volume_t *fs_vol_init_memory(sys_mem_arena_t *arena, size_t size);
 
 /**
  * @brief Open or create a host file–backed persistent volume.
@@ -57,6 +61,8 @@ extern fs_volume_t *fs_vol_init_memory(size_t size);
  * @param path Host path to the image file (created if absent).
  * @param size Minimum size in bytes; ignored if existing file is larger.
  * @return Mounted volume pointer, or NULL on error.
+ *
+ * @note Not available on embedded (Flash-backed) builds; returns NULL there.
  */
 extern fs_volume_t *fs_vol_init_file(const char *path, size_t size);
 
@@ -68,7 +74,11 @@ extern fs_volume_t *fs_vol_init_file(const char *path, size_t size);
  * the volume in flash memory is implementation-specific. If mounting fails,
  * a format is performed and a fresh filesystem created.
  *
- * @param size Minimum size in bytes; ignored if an existing volume is larger.
+ * @param size Requested size in bytes (rounded down to flash erase-size
+ * granularity). The backing region is allocated relative to this value on
+ * every call, so remounting a volume formatted by a previous call requires
+ * passing the same size again - a different size allocates a different
+ * region and will not find the earlier filesystem.
  * @return Mounted volume pointer, or NULL on error.
  *
  * @note Not available on host (Linux/macOS) builds; returns NULL there.
