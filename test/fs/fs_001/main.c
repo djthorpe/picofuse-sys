@@ -1,43 +1,71 @@
 #include <test.h>
+#include <string.h>
 
 #if defined(SYSTEM_NAME_LINUX) || defined(SYSTEM_NAME_DARWIN)
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <sys/stat.h>
 #include <unistd.h>
+#endif
 
-static bool create_file(const char *path, const char *content) {
-  FILE *f = fopen(path, "w");
-  if (f == NULL) {
+static bool write_file(fs_volume_t *volume, const char *path,
+                       const char *content) {
+  fs_file_t f = fs_file_create(volume, path);
+  if (f.ctx == NULL) {
     return false;
   }
   size_t len = strlen(content);
-  bool ok = fwrite(content, 1, len, f) == len;
-  fclose(f);
-  return ok;
+  bool ok = fs_file_write(&f, content, len) == len;
+  return fs_file_close(&f) && ok;
 }
-#endif
 
-bool test_main(void) {
-#if defined(SYSTEM_NAME_LINUX) || defined(SYSTEM_NAME_DARWIN)
-  char root[] = "/tmp/picofuse_fs_001_XXXXXX";
-  TestAssert(mkdtemp(root) != NULL,
-             "mkdtemp should create a scratch directory");
+// Recursively remove everything under `path` (children before parents), so
+// a POSIX-path volume's real scratch directory can be rmdir'd afterward.
+// A no-op cost for a memory volume, whose storage fs_vol_deinit() frees
+// outright, but kept generic so the same helper works for both backends.
+static bool cleanup_all(fs_volume_t *volume, const char *path) {
+  typedef struct {
+    char name[FS_PATH_MAX + 1];
+    bool dir;
+  } entry_t;
+  entry_t entries[32];
+  int count = 0;
 
-  char path[512];
-  sys_sprintf(path, sizeof(path), "%s/a.txt", root);
-  TestAssert(create_file(path, "hello"), "creating a.txt should succeed");
+  fs_file_t it;
+  memset(&it, 0, sizeof(it));
+  while (fs_vol_readdir(volume, path, &it)) {
+    if (count >= 32) {
+      return false;
+    }
+    strcpy(entries[count].name, it.name);
+    entries[count].dir = it.dir;
+    count++;
+  }
 
-  sys_sprintf(path, sizeof(path), "%s/b.txt", root);
-  TestAssert(create_file(path, "world!"), "creating b.txt should succeed");
+  for (int i = 0; i < count; i++) {
+    char child[512];
+    int n = (strcmp(path, "/") == 0)
+                ? sys_sprintf(child, sizeof(child), "/%s", entries[i].name)
+                : sys_sprintf(child, sizeof(child), "%s/%s", path,
+                              entries[i].name);
+    if (n <= 0 || (size_t)n >= sizeof(child)) {
+      return false;
+    }
+    if (entries[i].dir && !cleanup_all(volume, child)) {
+      return false;
+    }
+    if (!fs_vol_remove(volume, child)) {
+      return false;
+    }
+  }
+  return true;
+}
 
-  sys_sprintf(path, sizeof(path), "%s/subdir", root);
-  TestAssert(mkdir(path, 0777) == 0, "mkdir subdir should succeed");
+static bool build_fixture(fs_volume_t *volume) {
+  return write_file(volume, "/a.txt", "hello") &&
+         write_file(volume, "/b.txt", "world!") &&
+         fs_vol_mkdir(volume, "/subdir");
+}
 
-  fs_volume_t *volume = fs_vol_init_path(root);
-  TestAssert(volume != NULL, "fs_vol_init_path should succeed");
-
+static bool run_checks(fs_volume_t *volume) {
   fs_file_t it;
   memset(&it, 0, sizeof(it));
   int count = 0;
@@ -76,16 +104,38 @@ bool test_main(void) {
   TestAssert(!fs_vol_readdir(volume, "/a.txt", &it),
              "readdir on a regular file should return false");
 
-  fs_vol_deinit(volume);
+  return true;
+}
 
-  sys_sprintf(path, sizeof(path), "%s/a.txt", root);
-  unlink(path);
-  sys_sprintf(path, sizeof(path), "%s/b.txt", root);
-  unlink(path);
-  sys_sprintf(path, sizeof(path), "%s/subdir", root);
-  rmdir(path);
-  rmdir(root);
+bool test_main(void) {
+#if defined(SYSTEM_NAME_LINUX) || defined(SYSTEM_NAME_DARWIN)
+  {
+    char root[] = "/tmp/picofuse_fs_001_XXXXXX";
+    TestAssert(mkdtemp(root) != NULL,
+               "mkdtemp should create a scratch directory");
+
+    fs_volume_t *volume = fs_vol_init_path(root);
+    TestAssert(volume != NULL, "fs_vol_init_path should succeed");
+    TestAssert(build_fixture(volume),
+               "fixture setup (path backend) should succeed");
+    TestAssert(run_checks(volume), "checks (path backend) should pass");
+    TestAssert(cleanup_all(volume, "/"),
+               "cleanup (path backend) should succeed");
+    fs_vol_deinit(volume);
+
+    TestAssert(rmdir(root) == 0,
+               "rmdir of the now-empty scratch directory should succeed");
+  }
 #endif
+
+  {
+    fs_volume_t *volume = fs_vol_init_memory(NULL, 64 * 1024);
+    TestAssert(volume != NULL, "fs_vol_init_memory should succeed");
+    TestAssert(build_fixture(volume),
+               "fixture setup (memory backend) should succeed");
+    TestAssert(run_checks(volume), "checks (memory backend) should pass");
+    fs_vol_deinit(volume);
+  }
 
   return true;
 }

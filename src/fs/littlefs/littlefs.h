@@ -28,3 +28,39 @@ typedef struct {
 
 _Static_assert(sizeof(fs_lfs_ctx_t) <= FS_VOLUME_CTX_SIZE,
                "fs_lfs_ctx_t exceeds FS_VOLUME_CTX_SIZE");
+
+///////////////////////////////////////////////////////////////////////////////
+// PATH CONFINEMENT (see path.c)
+//
+// littlefs has no host filesystem underneath to escape into, but its own
+// path parser is otherwise permissive (bare "relative", ".", leading ".."
+// would all be silently accepted). These mirror ../posix/path.c's stricter,
+// realpath()-equivalent contract - require a leading '/', collapse "."/".."
+// components, and require every *intermediate* component to already exist
+// as a directory - so callers see the same rejection behavior regardless of
+// which backend mounted the volume.
+
+// NULL/empty path means the volume root everywhere in this API.
+extern const char *_fs_lfs_path(const char *path);
+
+// True if `path` (already resolved/canonical) names the volume root itself.
+extern bool _fs_lfs_is_root(const char *path);
+
+// Resolve a volume-relative `path` that must already exist, collapsing "."
+// and ".." components and rejecting any attempt to climb above the volume
+// root. Every component walked through except the final one must already
+// exist as a directory (the final component's existence is the caller's to
+// check, e.g. via lfs_stat()).
+extern bool _fs_lfs_resolve(fs_lfs_ctx_t *ctx, const char *path,
+                            char out[static FS_PATH_MAX + 1]);
+
+// Resolve the (confined, existing) parent directory of a not-yet-existing
+// `path`, and append its final component verbatim. The leaf must be a
+// single path component; "." and ".." are rejected as leaf names.
+extern bool _fs_lfs_resolve_new(fs_lfs_ctx_t *ctx, const char *path,
+                                char out[static FS_PATH_MAX + 1]);
+
+// Extract the final path component of an already-resolved, canonical path
+// into a caller-provided buffer (size FS_PATH_MAX + 1).
+extern void _fs_lfs_basename(const char *resolved,
+                             char out[static FS_PATH_MAX + 1]);

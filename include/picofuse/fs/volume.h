@@ -9,6 +9,7 @@
  */
 #pragma once
 #include "defs.h"
+#include <picofuse/sys/arena.h>
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -36,14 +37,17 @@
  * @brief Create a new volatile (RAM) filesystem volume.
  * @ingroup FileSystemVolume
  *
- * @param size Requested minimum size in bytes (rounded up to block geometry).
+ * @param arena Arena to allocate the volume's storage from, or NULL to use
+ * the default heap allocator.
+ * @param size Requested minimum size in bytes (rounded up to block geometry;
+ * always at least two blocks, littlefs's minimum for its own metadata).
  * @return Pointer to mounted volume on success, NULL on failure.
  *
  * Notes:
  *  - Contents are lost when fs_vol_deinit() is called or the process exits.
  *  - The real capacity may be larger than requested due to block rounding.
  */
-extern fs_volume_t *fs_vol_init_memory(size_t size);
+extern fs_volume_t *fs_vol_init_memory(sys_mem_arena_t *arena, size_t size);
 
 /**
  * @brief Open or create a host file–backed persistent volume.
