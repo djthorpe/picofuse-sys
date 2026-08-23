@@ -87,7 +87,13 @@ static bool _hid_evdev_read(hid_device_t *device, void *userdata) {
     case EV_ABS:
       switch (ev.code) {
       case ABS_MT_SLOT:
-        device->mt_slot = ev.value;
+        if (ev.value < 0) {
+          device->mt_slot = 0;
+        } else if (ev.value > 255) {
+          device->mt_slot = 255;
+        } else {
+          device->mt_slot = ev.value;
+        }
         break;
       case ABS_MT_TRACKING_ID:
         have_tracking_id = true;
