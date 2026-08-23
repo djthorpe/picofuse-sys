@@ -77,7 +77,6 @@ static void _app_on_exit(uint8_t worker) {
   hid_deinit(_app->hid);
   _app->hid = NULL;
   hw_exit();
-
   sys_event_queue_deinit(_app->queue);
   _app->queue = NULL;
 }
@@ -86,8 +85,8 @@ static void _app_on_exit(uint8_t worker) {
 // LIFECYCLE
 
 int app_main(int argc, char *argv[], app_flag_t flags,
-            app_callback_start_t on_start, app_callback_event_t on_event,
-            void *userdata) {
+             app_callback_start_t on_start, app_callback_event_t on_event,
+             void *userdata) {
   (void)argc;
   (void)argv;
 
@@ -109,8 +108,8 @@ int app_main(int argc, char *argv[], app_flag_t flags,
 
   // Run the event loop until app_shutdown() is called, then exit with the
   // provided exit code.
-  uint32_t exit_code = sys_runloop_run(num_workers, _app_on_init,
-                                       _app_on_event, _app_poll, _app_on_exit);
+  uint32_t exit_code = sys_runloop_run(num_workers, _app_on_init, _app_on_event,
+                                       _app_poll, _app_on_exit);
   sys_exit();
   _app = NULL;
   return (int)exit_code;
