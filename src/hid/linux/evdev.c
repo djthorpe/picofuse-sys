@@ -109,12 +109,14 @@ static bool _hid_evdev_read(hid_device_t *device, void *userdata) {
     case EV_SYN:
       if (ev.code == SYN_REPORT) {
         if (have_tracking_id) {
-          pix_point_t point = {(int16_t)x, (int16_t)y};
-          hid_state_t state =
-              (tracking_id < 0) ? hid_state_off : hid_state_on;
-          if (hid_event_queue_touch(device, state, point,
-                                    (uint8_t)device->mt_slot)) {
-            processed = true;
+          if (tracking_id < 0 || (have_x && have_y)) {
+            pix_point_t point = {(int16_t)x, (int16_t)y};
+            hid_state_t state =
+                (tracking_id < 0) ? hid_state_off : hid_state_on;
+            if (hid_event_queue_touch(device, state, point,
+                                      (uint8_t)device->mt_slot)) {
+              processed = true;
+            }
           }
         } else if (have_x && have_y) {
           pix_point_t point = {(int16_t)x, (int16_t)y};
