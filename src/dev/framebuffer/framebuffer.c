@@ -56,7 +56,7 @@ static uint32_t _dev_framebuffer_pack_component(uint8_t value8,
 }
 
 static uint8_t _dev_framebuffer_unpack_component(uint32_t valueN,
-                                                  uint32_t length) {
+                                                 uint32_t length) {
   if (length == 0u) {
     return 0u;
   }
@@ -65,7 +65,8 @@ static uint8_t _dev_framebuffer_unpack_component(uint32_t valueN,
     return (uint8_t)(valueN >> (length - 8u));
   }
 
-  return (uint8_t)(valueN << (8u - length));
+  uint32_t max = (1u << length) - 1u;
+  return (uint8_t)((valueN * 255u + (max / 2u)) / max);
 }
 
 static bool
