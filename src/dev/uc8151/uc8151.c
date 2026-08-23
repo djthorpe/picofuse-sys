@@ -287,17 +287,17 @@ static bool _dev_uc8151_power_off(dev_uc8151_t *uc8151) {
   return _dev_uc8151_wait_ready(uc8151);
 }
 
-static bool _dev_uc8151_validate_frame(const pix_frame_t *frame) {
-  if (frame == NULL || frame->data == NULL || frame->fmt != PIX_FMT_MONO) {
+static bool _dev_uc8151_validate_bitmap(const pix_bitmap_t *bitmap) {
+  if (bitmap == NULL || bitmap->data == NULL || bitmap->fmt != PIX_FMT_MONO) {
     return false;
   }
 
-  if (frame->size.w == 0u || frame->size.h == 0u) {
+  if (bitmap->size.w == 0u || bitmap->size.h == 0u) {
     return false;
   }
 
-  size_t min_stride = ((size_t)frame->size.h + 7u) / 8u;
-  return frame->stride >= min_stride;
+  size_t min_stride = ((size_t)bitmap->size.h + 7u) / 8u;
+  return bitmap->stride >= min_stride;
 }
 
 static dev_uc8151_config_t
@@ -446,17 +446,17 @@ void dev_uc8151_deinit(dev_uc8151_t *uc8151) {
 ///////////////////////////////////////////////////////////////////////////////
 // METHODS
 
-bool dev_uc8151_paint(dev_uc8151_t *uc8151, const pix_frame_t *frame) {
-  if (!_dev_uc8151_ready(uc8151) || !_dev_uc8151_validate_frame(frame)) {
+bool dev_uc8151_paint(dev_uc8151_t *uc8151, const pix_bitmap_t *bitmap) {
+  if (!_dev_uc8151_ready(uc8151) || !_dev_uc8151_validate_bitmap(bitmap)) {
     return false;
   }
 
-  if (frame->size.w != uc8151->width || frame->size.h != uc8151->height) {
+  if (bitmap->size.w != uc8151->width || bitmap->size.h != uc8151->height) {
     return false;
   }
 
   size_t bytes_per_column = ((size_t)uc8151->height + 7u) / 8u;
-  if (frame->stride < bytes_per_column) {
+  if (bitmap->stride < bytes_per_column) {
     return false;
   }
 
@@ -474,9 +474,9 @@ bool dev_uc8151_paint(dev_uc8151_t *uc8151, const pix_frame_t *frame) {
     return false;
   }
 
-  const uint8_t *data = (const uint8_t *)frame->data;
+  const uint8_t *data = (const uint8_t *)bitmap->data;
   for (uint16_t x = 0u; x < uc8151->width; ++x) {
-    const uint8_t *column = data + ((size_t)x * frame->stride);
+    const uint8_t *column = data + ((size_t)x * bitmap->stride);
     if (!_dev_uc8151_send_data(uc8151, column, bytes_per_column)) {
       return false;
     }
@@ -492,9 +492,9 @@ bool dev_uc8151_paint(dev_uc8151_t *uc8151, const pix_frame_t *frame) {
   return !uc8151->blocking || _dev_uc8151_wait_ready(uc8151);
 }
 
-bool dev_uc8151_paint_rect(dev_uc8151_t *uc8151, const pix_frame_t *frame,
+bool dev_uc8151_paint_rect(dev_uc8151_t *uc8151, const pix_bitmap_t *bitmap,
                            pix_point_t origin, pix_size_t region_size) {
-  if (!_dev_uc8151_ready(uc8151) || !_dev_uc8151_validate_frame(frame)) {
+  if (!_dev_uc8151_ready(uc8151) || !_dev_uc8151_validate_bitmap(bitmap)) {
     return false;
   }
 
@@ -513,7 +513,7 @@ bool dev_uc8151_paint_rect(dev_uc8151_t *uc8151, const pix_frame_t *frame,
   }
 
   if (x1 > uc8151->width || y1 > uc8151->height ||
-      frame->size.w != region_size.w || frame->size.h != region_size.h) {
+      bitmap->size.w != region_size.w || bitmap->size.h != region_size.h) {
     return false;
   }
 
@@ -522,7 +522,7 @@ bool dev_uc8151_paint_rect(dev_uc8151_t *uc8151, const pix_frame_t *frame,
   }
 
   size_t bytes_per_column = (size_t)region_size.h / 8u;
-  if (frame->stride < bytes_per_column) {
+  if (bitmap->stride < bytes_per_column) {
     return false;
   }
 
@@ -555,10 +555,10 @@ bool dev_uc8151_paint_rect(dev_uc8151_t *uc8151, const pix_frame_t *frame,
     return false;
   }
 
-  const uint8_t *data = (const uint8_t *)frame->data;
+  const uint8_t *data = (const uint8_t *)bitmap->data;
   size_t bytes_to_send = (size_t)region_size.h / 8u;
   for (uint16_t dx = 0u; dx < region_size.w; ++dx) {
-    const uint8_t *column = data + ((size_t)dx * frame->stride);
+    const uint8_t *column = data + ((size_t)dx * bitmap->stride);
     if (!_dev_uc8151_send_data(uc8151, column, bytes_to_send)) {
       return false;
     }

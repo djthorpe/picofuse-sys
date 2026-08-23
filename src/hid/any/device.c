@@ -266,8 +266,9 @@ bool hid_poll(hid_t *instance) {
  * @brief Register a new HID device and run optional backend init.
  */
 hid_device_t *hid_register(hid_t *instance, const char *name, uint32_t id,
-                           hid_type_t type, uint32_t polling_interval_ms,
-                           void *userdata, hid_device_callbacks_t callbacks) {
+                           hid_type_t type, hid_class_t hid_class,
+                           uint32_t polling_interval_ms, void *userdata,
+                           hid_device_callbacks_t callbacks) {
   hid_device_t *device;
 
   device = _hid_device_retain(instance, name, type);
@@ -275,6 +276,7 @@ hid_device_t *hid_register(hid_t *instance, const char *name, uint32_t id,
     return NULL;
   } else {
     device->id = id;
+    device->hid_class = hid_class;
     device->polling_interval_ms = polling_interval_ms;
     device->userdata = userdata;
     device->callbacks = callbacks;
@@ -283,7 +285,7 @@ hid_device_t *hid_register(hid_t *instance, const char *name, uint32_t id,
   // Call the user-provided init callback if available, and release the device
   // on failure.
   if (device->callbacks.init != NULL &&
-      !device->callbacks.init(device->userdata)) {
+      !device->callbacks.init(device, device->userdata)) {
     _hid_device_release(instance, device);
     return NULL;
   } else {
@@ -304,9 +306,15 @@ bool hid_deregister(hid_t *instance, hid_device_t *device) {
     return false;
   }
 
+  // Logged before running teardown callbacks, since a backend's .deinit may
+  // free/null fields such as device->name (see hid_register_evdev()).
+  sys_debugf("[hid] device de-registered: name=%s id=%08X type=%u",
+             device->name, (unsigned int)device->id,
+             (unsigned int)device->type);
+
   if (device->callbacks.deinit != NULL) {
     deinit_called = true;
-    (void)device->callbacks.deinit(device->userdata);
+    (void)device->callbacks.deinit(device, device->userdata);
     device->userdata = NULL;
   }
 
@@ -316,9 +324,6 @@ bool hid_deregister(hid_t *instance, hid_device_t *device) {
     device->userdata = NULL;
   }
 
-  sys_debugf("[hid] device de-registered: name=%s id=%08X type=%u",
-             device->name, (unsigned int)device->id,
-             (unsigned int)device->type);
   _hid_device_release(instance, device);
   return true;
 }
@@ -389,7 +394,8 @@ hid_device_t *hid_device_next(hid_device_t *device) {
  * @brief Read metadata fields from a HID device descriptor.
  */
 bool hid_device_info(const hid_device_t *device, const char **out_name,
-                     uint32_t *out_id, hid_type_t *out_type) {
+                     uint32_t *out_id, hid_type_t *out_type,
+                     hid_class_t *out_class) {
   size_t i;
 
   if (out_name != NULL) {
@@ -400,6 +406,9 @@ bool hid_device_info(const hid_device_t *device, const char **out_name,
   }
   if (out_type != NULL) {
     *out_type = hid_type_none;
+  }
+  if (out_class != NULL) {
+    *out_class = hid_class_unknown;
   }
 
   if (device == NULL) {
@@ -424,6 +433,9 @@ bool hid_device_info(const hid_device_t *device, const char **out_name,
     }
     if (out_type != NULL) {
       *out_type = device->type;
+    }
+    if (out_class != NULL) {
+      *out_class = device->hid_class;
     }
 
     return true;

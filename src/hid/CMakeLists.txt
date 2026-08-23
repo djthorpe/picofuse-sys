@@ -1,5 +1,11 @@
 set(NAME "picofuse-hid-obj")
 
+if(SYSTEM_NAME_LOWER STREQUAL "linux")
+    set(EVDEV_SOURCE linux/evdev.c)
+else()
+    set(EVDEV_SOURCE stub/evdev.c)
+endif()
+
 add_library(${NAME} OBJECT
     any/device.c
     any/event.c
@@ -7,6 +13,7 @@ add_library(${NAME} OBJECT
     any/keycode.c
     any/signal.c
     any/timer.c
+    ${EVDEV_SOURCE}
 )
 
 target_include_directories(${NAME} PUBLIC

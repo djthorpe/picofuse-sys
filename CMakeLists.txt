@@ -102,6 +102,7 @@ add_subdirectory(examples/picosdk)
 
 # Add hid examples
 add_subdirectory(examples/hid/runloop)
+add_subdirectory(examples/hid/evdev)
 
 # Add hw examples
 add_subdirectory(examples/hw/gpio)

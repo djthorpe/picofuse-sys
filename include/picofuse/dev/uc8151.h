@@ -104,41 +104,41 @@ void dev_uc8151_deinit(dev_uc8151_t *uc8151);
 void dev_uc8151_reset(dev_uc8151_t *uc8151);
 
 /**
- * @brief Paint the full display from a 1bpp framebuffer.
+ * @brief Paint the full display from a 1bpp bitmap.
  * @ingroup UC8151
  * @param uc8151 UC8151 handle.
- * @param frame Source frame descriptor.
+ * @param bitmap Source bitmap descriptor.
  *
- * @p frame dimensions must exactly match the initialized panel size.
+ * @p bitmap dimensions must exactly match the initialized panel size.
  *
  * For @ref PIX_FMT_MONO, UC8151 expects column-major memory layout where each
- * column stores vertical bits and @ref pix_frame_t.stride is bytes per column
- * (`ceil(height / 8)`).
+ * column stores vertical bits and @ref pix_bitmap_t.stride is bytes per
+ * column (`ceil(height / 8)`).
  * @retval true Paint/update was started successfully.
  * @retval false Paint/update failed.
  */
-bool dev_uc8151_paint(dev_uc8151_t *uc8151, const pix_frame_t *frame);
+bool dev_uc8151_paint(dev_uc8151_t *uc8151, const pix_bitmap_t *bitmap);
 
 /**
- * @brief Paint a partial display region from a 1bpp framebuffer.
+ * @brief Paint a partial display region from a 1bpp bitmap.
  * @ingroup UC8151
  * @param uc8151 UC8151 handle.
- * @param frame Source frame descriptor.
+ * @param bitmap Source bitmap descriptor.
  * @param origin Region origin in panel pixel coordinates.
  * @param region_size Region size in pixels.
  *
- * Source pixels are read from the top-left of @p frame (0,0). @p origin
+ * Source pixels are read from the top-left of @p bitmap (0,0). @p origin
  * applies only to the destination position on the panel and is not used as a
- * source offset into @p frame.
+ * source offset into @p bitmap.
  *
- * @p frame dimensions must exactly match @p region_size.
+ * @p bitmap dimensions must exactly match @p region_size.
  *
- * For @ref PIX_FMT_MONO partial updates, frame data is column-major and
- * @ref pix_frame_t.stride is bytes per column (`region_size.h / 8`).
+ * For @ref PIX_FMT_MONO partial updates, bitmap data is column-major and
+ * @ref pix_bitmap_t.stride is bytes per column (`region_size.h / 8`).
  * @retval true Paint/update was started successfully.
  * @retval false Paint/update failed.
  */
-bool dev_uc8151_paint_rect(dev_uc8151_t *uc8151, const pix_frame_t *frame,
+bool dev_uc8151_paint_rect(dev_uc8151_t *uc8151, const pix_bitmap_t *bitmap,
                            pix_point_t origin, pix_size_t region_size);
 
 /** @} */

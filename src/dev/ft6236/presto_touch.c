@@ -29,9 +29,9 @@ typedef struct {
   bool has_previous_events;
 } dev_presto_touch_hid_ctx_t;
 
-static bool _dev_presto_touch_hid_init(void *userdata);
+static bool _dev_presto_touch_hid_init(hid_device_t *device, void *userdata);
 static bool _dev_presto_touch_hid_read(hid_device_t *device, void *userdata);
-static bool _dev_presto_touch_hid_deinit(void *userdata);
+static bool _dev_presto_touch_hid_deinit(hid_device_t *device, void *userdata);
 
 static const hid_device_callbacks_t _dev_presto_touch_hid_callbacks = {
     .init = _dev_presto_touch_hid_init,
@@ -102,8 +102,9 @@ static void _dev_presto_touch_cleanup_bus(hw_i2c_t *i2c, hw_gpio_t *int_pin,
   }
 }
 
-static bool _dev_presto_touch_hid_init(void *userdata) {
+static bool _dev_presto_touch_hid_init(hid_device_t *device, void *userdata) {
   dev_presto_touch_hid_ctx_t *ctx = (dev_presto_touch_hid_ctx_t *)userdata;
+  (void)device;
   return ctx != NULL && ctx->device != NULL && hw_i2c_valid(ctx->i2c) &&
          hw_gpio_valid(ctx->sda) && hw_gpio_valid(ctx->scl);
 }
@@ -154,8 +155,10 @@ static bool _dev_presto_touch_hid_read(hid_device_t *device, void *userdata) {
   return any_queued;
 }
 
-static bool _dev_presto_touch_hid_deinit(void *userdata) {
+static bool _dev_presto_touch_hid_deinit(hid_device_t *device, void *userdata) {
   dev_presto_touch_hid_ctx_t *ctx = (dev_presto_touch_hid_ctx_t *)userdata;
+
+  (void)device;
 
   if (ctx == NULL) {
     return false;
@@ -239,9 +242,10 @@ hid_device_t *dev_presto_touch_register(hid_t *hid, uint32_t i2c_baud_rate) {
 
   hid_device = hid_register(
       hid, "presto_touch", (uint32_t)PIMORONI_PRESTO_TOUCH_I2C_ADDR,
-      hid_type_other, 0u, ctx, _dev_presto_touch_hid_callbacks);
+      hid_type_other, hid_class_touchscreen, 0u, ctx,
+      _dev_presto_touch_hid_callbacks);
   if (hid_device == NULL) {
-    _dev_presto_touch_hid_deinit(ctx);
+    _dev_presto_touch_hid_deinit(NULL, ctx);
     return NULL;
   }
 

@@ -3,6 +3,7 @@
  * @brief HID keycode and input-state definitions
  */
 #pragma once
+#include <stddef.h>
 #include <stdint.h>
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -303,6 +304,23 @@ typedef enum {
  * @return Pointer to an internal string buffer.
  */
 const char *hid_keycode_to_string(uint16_t keycode);
+
+/**
+ * @brief Format a HID state bitmask as a "|"-separated list of active flag
+ * names (for example "on|left_shift").
+ *
+ * Only atomic flags are tested (for example hid_state_left_shift), not the
+ * either-left-or-right convenience masks (hid_state_shift and similar),
+ * since those would otherwise be reported redundantly alongside whichever
+ * side is actually set. Writes "none" when no flags are set.
+ *
+ * @param state State bitmask to format.
+ * @param buf Destination buffer.
+ * @param buf_size Size of @p buf in bytes.
+ * @return Number of characters that would have been written to @p buf, not
+ * counting the null terminator, same truncation semantics as sys_sprintf().
+ */
+size_t hid_state_to_string(hid_state_t state, char *buf, size_t buf_size);
 
 /**
  * Convert a keycode to modifier/input state flags.

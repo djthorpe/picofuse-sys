@@ -8,12 +8,15 @@ add_library(${NAME} OBJECT
     ../any/djb2.c
     ../any/event.c
     ../any/mem.c
+    ../any/memcmp.c
     cond.c
     env.c
     date.c
     hash.c
     halt.c
     init.c
+    memcpy.c
+    memset.c
     mutex.c
     panicf.c
     ../printf/float.c
@@ -21,6 +24,7 @@ add_library(${NAME} OBJECT
     random.c
     sleep.c
     stdio.c
+    strlen.c
     thread.c
     timer.c
     timestamp.c
@@ -32,6 +36,7 @@ target_include_directories(${NAME} PUBLIC
     ${CMAKE_CURRENT_LIST_DIR}
 )
 target_link_libraries(${NAME} PUBLIC
+    pico_bootrom
     pico_mbedtls
     pico_multicore
     pico_rand

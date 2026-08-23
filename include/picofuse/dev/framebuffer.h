@@ -30,9 +30,24 @@ typedef struct dev_framebuffer_t dev_framebuffer_t;
  * @brief Initialize a Linux framebuffer.
  * @ingroup Framebuffer
  * @param device Path to the framebuffer device (e.g., "/dev/fb0").
+ * @param frame Optional pointer to receive the framebuffer's frame
+ * descriptor. On success, set to a pointer (valid for the lifetime of the
+ * returned handle) with its ctx and lock/unlock/clear/set/copy methods
+ * bound. Set to NULL on failure.
  * @return Framebuffer handle or NULL on failure.
+ * @details Use the frame's own methods to interact with the device, e.g.
+ * `frame->lock(frame)` before writing and `frame->unlock(frame)` after, or
+ * `frame->clear(frame, color, op)` to fill it. Locking blocks, on a
+ * best-effort basis, until the next vertical blanking interval before
+ * returning, so that writes made before unlocking land during blanking
+ * rather than tearing a frame already being scanned out. Callers are
+ * expected to manage any back-buffering themselves; locking only
+ * synchronizes access to the live framebuffer memory. When the underlying
+ * driver does not support vsync notification, locking returns immediately
+ * without blocking.
  */
-dev_framebuffer_t *dev_framebuffer_init(const char *device);
+dev_framebuffer_t *dev_framebuffer_init(const char *device,
+                                        pix_frame_t **frame);
 
 /**
  * @brief Deinitialize a Linux framebuffer.
@@ -40,42 +55,5 @@ dev_framebuffer_t *dev_framebuffer_init(const char *device);
  * @param fb Framebuffer handle.
  */
 void dev_framebuffer_deinit(dev_framebuffer_t *fb);
-
-/** @} */
-
-///////////////////////////////////////////////////////////////////////////////
-// PROPERTIES
-
-/** @name Properties
- * @{ */
-
-/**
- * @brief Get the width and height of the framebuffer.
- * @ingroup Framebuffer
- * @param fb Framebuffer handle.
- * @param format Optional pointer to receive the pixel format of the
- * framebuffer. Left unmodified when handle is invalid.
- * @return Size structure containing width and height in pixels, or {0, 0} when
- * handle is invalid.
- */
-pix_size_t dev_framebuffer_info(const dev_framebuffer_t *fb,
-                                pix_format_t *format);
-
-/** @} */
-
-///////////////////////////////////////////////////////////////////////////////
-// METHODS
-
-/** @name Methods
- * @{ */
-
-/**
- * @brief Clear the framebuffer with a specified color.
- * @ingroup Framebuffer
- * @param fb Framebuffer handle.
- * @param color Color value to fill the framebuffer with.
- */
-void dev_framebuffer_clear(const dev_framebuffer_t *fb,
-                           const pix_color_t color);
 
 /** @} */

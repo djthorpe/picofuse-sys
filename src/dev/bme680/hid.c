@@ -19,9 +19,9 @@ static const char *_dev_bme680_unit_ohm = "ohm";
 ///////////////////////////////////////////////////////////////////////////////
 // CALLBACKS
 
-static bool _dev_bme680_hid_init(void *userdata);
+static bool _dev_bme680_hid_init(hid_device_t *device, void *userdata);
 static bool _dev_bme680_hid_read(hid_device_t *device, void *userdata);
-static bool _dev_bme680_hid_deinit(void *userdata);
+static bool _dev_bme680_hid_deinit(hid_device_t *device, void *userdata);
 static hid_device_t *
 _dev_bme680_hid_register_device(hid_t *hid, dev_bme680_t *device,
                                 uint32_t polling_interval_ms);
@@ -41,8 +41,9 @@ static const hid_device_callbacks_t _dev_bme680_hid_callbacks = {
 /**
  * @brief Validate BME680 userdata during HID registration.
  */
-static bool _dev_bme680_hid_init(void *userdata) {
+static bool _dev_bme680_hid_init(hid_device_t *device, void *userdata) {
   dev_bme680_t *bme680 = (dev_bme680_t *)userdata;
+  (void)device;
   return bme680 != NULL;
 }
 
@@ -101,8 +102,10 @@ static bool _dev_bme680_hid_read(hid_device_t *device, void *userdata) {
 /**
  * @brief Deinitialize BME680 device state on HID deregistration.
  */
-static bool _dev_bme680_hid_deinit(void *userdata) {
+static bool _dev_bme680_hid_deinit(hid_device_t *device, void *userdata) {
   dev_bme680_t *bme680 = (dev_bme680_t *)userdata;
+
+  (void)device;
 
   if (bme680 == NULL) {
     return false;
@@ -130,8 +133,9 @@ _dev_bme680_hid_register_device(hid_t *hid, dev_bme680_t *device,
                                       : polling_interval_ms;
 
   hid_device = hid_register(hid, "bme680", (uint32_t)dev_bme680_chip_id(device),
-                            hid_type_other, effective_polling_interval_ms,
-                            device, _dev_bme680_hid_callbacks);
+                            hid_type_other, hid_class_sensor,
+                            effective_polling_interval_ms, device,
+                            _dev_bme680_hid_callbacks);
   if (hid_device == NULL) {
     dev_bme680_deinit(device);
     return NULL;

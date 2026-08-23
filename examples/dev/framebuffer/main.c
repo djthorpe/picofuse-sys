@@ -5,36 +5,35 @@
 
 #include <picofuse/dev.h>
 #include <picofuse/hw.h>
+#include <picofuse/pix.h>
 #include <picofuse/sys.h>
 
 const char *device = "/dev/fb0";
+
+static void show_color(pix_frame_t *frame, pix_color_t color) {
+  frame->lock(frame);
+  frame->clear(frame, color, PIX_SET);
+  frame->unlock(frame);
+  sys_sleep_ms(1000u);
+}
 
 int main(int argc, char **argv) {
   sys_init();
   hw_init();
 
-  dev_framebuffer_t *fb = dev_framebuffer_init(device);
+  pix_frame_t *frame = NULL;
+  dev_framebuffer_t *fb = dev_framebuffer_init(device, &frame);
   if (fb == NULL) {
     sys_debugf("[framebuffer] failed to init %s", device);
   } else {
-    pix_size_t size = dev_framebuffer_info(fb, NULL);
-    sys_debugf("[framebuffer] %s %ux%u", device, (unsigned int)size.w,
-               (unsigned int)size.h);
+    sys_debugf("[framebuffer] %s %ux%u", device, (unsigned int)frame->size.w,
+               (unsigned int)frame->size.h);
 
-    dev_framebuffer_clear(fb, 0xFF0000FFu); // Red
-    sys_sleep_ms(1000u);
-
-    dev_framebuffer_clear(fb, 0xFF00FF00u); // Green
-    sys_sleep_ms(1000u);
-
-    dev_framebuffer_clear(fb, 0xFFFF0000u); // Blue
-    sys_sleep_ms(1000u);
-
-    dev_framebuffer_clear(fb, 0xFFFFFFFFu); // White
-    sys_sleep_ms(1000u);
-
-    dev_framebuffer_clear(fb, 0xFF000000u); // Black
-    sys_sleep_ms(1000u);
+    show_color(frame, PIX_COLOR_RED);   // Red
+    show_color(frame, PIX_COLOR_GREEN); // Green
+    show_color(frame, PIX_COLOR_BLUE);  // Blue
+    show_color(frame, PIX_COLOR_WHITE); // White
+    show_color(frame, PIX_COLOR_BLACK); // Black
 
     dev_framebuffer_deinit(fb);
   }

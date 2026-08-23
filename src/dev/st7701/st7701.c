@@ -842,7 +842,7 @@ void dev_st7701_reset(dev_st7701_t *st7701) {
   sys_sleep_ms(120u);
 }
 
-bool dev_st7701_paint(dev_st7701_t *st7701, const pix_frame_t *frame) {
+bool dev_st7701_paint(dev_st7701_t *st7701, const pix_bitmap_t *bitmap) {
   if (!dev_st7701_valid(st7701)) {
     return false;
   }
@@ -878,8 +878,8 @@ bool dev_st7701_paint(dev_st7701_t *st7701, const pix_frame_t *frame) {
     return true;
   }
 
-  if (frame != NULL && frame->data != NULL && frame->fmt == PIX_FMT_RGBA32) {
-    uint32_t rgba = *((const uint32_t *)frame->data);
+  if (bitmap != NULL && bitmap->data != NULL && bitmap->fmt == PIX_FMT_RGBA32) {
+    uint32_t rgba = *((const uint32_t *)bitmap->data);
     uint8_t r = (uint8_t)((rgba >> 16) & 0xFFu);
     uint8_t g = (uint8_t)((rgba >> 8) & 0xFFu);
     uint8_t b = (uint8_t)(rgba & 0xFFu);
@@ -898,12 +898,12 @@ bool dev_st7701_paint(dev_st7701_t *st7701, const pix_frame_t *frame) {
 
   return _dev_st7701_run_pio_smoke(st7701, ST7701_PIO_SMOKE_ROWS);
 #else
-  (void)frame;
+  (void)bitmap;
   return false;
 #endif
 }
 
-bool dev_st7701_paint_rect(dev_st7701_t *st7701, const pix_frame_t *frame,
+bool dev_st7701_paint_rect(dev_st7701_t *st7701, const pix_bitmap_t *bitmap,
                            pix_point_t origin, pix_size_t region_size) {
   if (!dev_st7701_valid(st7701)) {
     return false;
@@ -911,5 +911,5 @@ bool dev_st7701_paint_rect(dev_st7701_t *st7701, const pix_frame_t *frame,
 
   (void)origin;
   (void)region_size;
-  return dev_st7701_paint(st7701, frame);
+  return dev_st7701_paint(st7701, bitmap);
 }

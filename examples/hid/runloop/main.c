@@ -110,7 +110,7 @@ static void on_init(uint8_t worker) {
     const char *name = NULL;
     uint32_t id = 0u;
     hid_type_t type = hid_type_none;
-    (void)hid_device_info(tca9555_hid, &name, &id, &type);
+    (void)hid_device_info(tca9555_hid, &name, &id, &type, NULL);
     sys_printf("tca9555 detected on default i2c bus (addr=0x%02X)\n",
                (unsigned int)id);
   }
@@ -121,7 +121,7 @@ static void on_init(uint8_t worker) {
     const char *name = NULL;
     uint32_t id = 0u;
     hid_type_t type = hid_type_none;
-    (void)hid_device_info(bme680_hid, &name, &id, &type);
+    (void)hid_device_info(bme680_hid, &name, &id, &type, NULL);
     sys_printf("bme680 detected on default i2c bus (chip=0x%02X, poll=%u ms)\n",
                (unsigned int)id, (unsigned int)BME680_POLL_INTERVAL_MS);
   }
@@ -133,7 +133,7 @@ static void on_init(uint8_t worker) {
       const char *name = NULL;
       uint32_t id = 0u;
       hid_type_t type = hid_type_none;
-      (void)hid_device_info(touch_hid, &name, &id, &type);
+      (void)hid_device_info(touch_hid, &name, &id, &type, NULL);
       sys_printf("ft6236 touch registered (addr=0x%02X)\n", (unsigned int)id);
     } else {
       sys_printf("ft6236 touch registration failed\n");
@@ -156,7 +156,7 @@ static void on_event(sys_event_t event) {
   hid_type_t device_type = hid_type_none;
   if (hid_event->device != NULL) {
     (void)hid_device_info(hid_event->device, &device_name, &device_id,
-                          &device_type);
+                          &device_type, NULL);
   }
 
   switch (hid_event->type) {

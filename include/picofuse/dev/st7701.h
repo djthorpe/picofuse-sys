@@ -190,26 +190,26 @@ bool dev_st7701_set_normal_mode(dev_st7701_t *st7701);
 void dev_st7701_reset(dev_st7701_t *st7701);
 
 /**
- * @brief Paint the full display from a framebuffer.
+ * @brief Paint the full display from a bitmap.
  * @ingroup ST7701
  * @param st7701 ST7701 handle.
- * @param frame Source frame descriptor.
+ * @param bitmap Source bitmap descriptor.
  * @retval true Paint/update was started successfully.
  * @retval false Paint/update failed.
  */
-bool dev_st7701_paint(dev_st7701_t *st7701, const pix_frame_t *frame);
+bool dev_st7701_paint(dev_st7701_t *st7701, const pix_bitmap_t *bitmap);
 
 /**
- * @brief Paint a partial display region from a framebuffer.
+ * @brief Paint a partial display region from a bitmap.
  * @ingroup ST7701
  * @param st7701 ST7701 handle.
- * @param frame Source frame descriptor.
+ * @param bitmap Source bitmap descriptor.
  * @param origin Region origin in panel pixel coordinates.
  * @param region_size Region size in pixels.
  * @retval true Paint/update was started successfully.
  * @retval false Paint/update failed.
  */
-bool dev_st7701_paint_rect(dev_st7701_t *st7701, const pix_frame_t *frame,
+bool dev_st7701_paint_rect(dev_st7701_t *st7701, const pix_bitmap_t *bitmap,
                            pix_point_t origin, pix_size_t region_size);
 
 /** @} */

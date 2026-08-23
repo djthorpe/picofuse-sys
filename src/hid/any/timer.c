@@ -5,8 +5,8 @@
 ///////////////////////////////////////////////////////////////////////////////
 // GLOBALS
 
-static bool _hid_timer_init(void *userdata);
-static bool _hid_timer_deinit(void *userdata);
+static bool _hid_timer_init(hid_device_t *device, void *userdata);
+static bool _hid_timer_deinit(hid_device_t *device, void *userdata);
 
 static const char *_hid_timer_name = "timer";
 
@@ -19,24 +19,23 @@ static const hid_device_callbacks_t _hid_timer_callbacks = {
 ///////////////////////////////////////////////////////////////////////////////
 // CALLBACKS
 
-static bool _hid_timer_init(void *userdata) {
+static bool _hid_timer_init(hid_device_t *device, void *userdata) {
   sys_timer_t *timer = (sys_timer_t *)userdata;
+  (void)device;
   if (timer == NULL) {
     return false;
   }
   return sys_timer_start(timer);
 }
 
-static bool _hid_timer_deinit(void *userdata) {
+static bool _hid_timer_deinit(hid_device_t *device, void *userdata) {
   sys_timer_t *timer = (sys_timer_t *)userdata;
-  hid_t *instance;
-  hid_device_t *device;
 
   if (timer == NULL) {
     return true;
   }
 
-  if (_hid_find_device_by_timer(timer, &instance, &device) && device != NULL) {
+  if (device != NULL) {
     device->userdata = NULL;
   }
 
@@ -102,8 +101,8 @@ hid_device_t *hid_register_timer(hid_t *instance, uint32_t id,
   }
 
   hid_device_t *device;
-  device = hid_register(instance, _hid_timer_name, id, hid_type_timer, 0u,
-                        timer, _hid_timer_callbacks);
+  device = hid_register(instance, _hid_timer_name, id, hid_type_timer,
+                        hid_class_unknown, 0u, timer, _hid_timer_callbacks);
   if (device == NULL) {
     sys_timer_deinit(timer);
     return NULL;

@@ -18,6 +18,13 @@ struct hid_device_t {
   void *userdata;
   bool timer_repeating;
   bool timer_remove_after_event;
+  int fd; // Backing file descriptor for hid_type_evdev devices.
+  int mt_slot; // Current ABS_MT_SLOT for hid_type_evdev devices; persists
+               // across hid_poll() calls since drivers often omit
+               // re-selecting slot 0 once it is already selected.
+  hid_class_t hid_class; // Defaults to hid_class_unknown (see the zeroing in
+                         // _hid_device_retain); only hid_type_evdev
+                         // currently sets anything more specific.
   hid_device_callbacks_t callbacks;
 };
 
