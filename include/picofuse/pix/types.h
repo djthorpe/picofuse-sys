@@ -50,9 +50,9 @@ typedef enum {
 /**
  * @brief Color value type for pixel operations.
  * @ingroup Pixel
- * @details Represents a color value, typically in RGBA format depending on the
- * pixel format.
- */
+ * @details Encoded as 0xRRGGBBAA (red in the most-significant byte, alpha in
+ * the least-significant byte). This is independent of pix_bitmap_t storage
+ * layout, which depends on pix_format_t.
 typedef uint32_t pix_color_t;
 
 /**
