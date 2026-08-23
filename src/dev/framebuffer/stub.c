@@ -1,8 +1,6 @@
 #include <picofuse/dev/framebuffer.h>
 #include <picofuse/sys.h>
 
-#if !defined(SYSTEM_NAME_LINUX)
-
 ///////////////////////////////////////////////////////////////////////////////
 // TYPES
 
@@ -24,5 +22,3 @@ dev_framebuffer_t *dev_framebuffer_init(const char *device,
 }
 
 void dev_framebuffer_deinit(dev_framebuffer_t *fb) { (void)fb; }
-
-#endif

@@ -3,8 +3,10 @@ set(NAME "picofuse-sys")
 add_subdirectory(fs/${SYSTEM_NAME_LOWER})
 add_subdirectory(hw/${SYSTEM_NAME_LOWER})
 add_subdirectory(sys/${SYSTEM_NAME_LOWER})
-add_subdirectory(dev)
+add_subdirectory(dev/${SYSTEM_NAME_LOWER})
 add_subdirectory(hid)
+add_subdirectory(pix)
+add_subdirectory(app)
 
 add_library(${NAME} STATIC)
 
@@ -18,6 +20,8 @@ target_sources(${NAME} PRIVATE
     $<TARGET_OBJECTS:picofuse-sys-obj>
     $<TARGET_OBJECTS:picofuse-dev-obj>
     $<TARGET_OBJECTS:picofuse-hid-obj>
+    $<TARGET_OBJECTS:picofuse-pix-obj>
+    $<TARGET_OBJECTS:picofuse-app-obj>
 )
 
 target_link_libraries(${NAME} PUBLIC
@@ -26,6 +30,8 @@ target_link_libraries(${NAME} PUBLIC
     picofuse-sys-obj
     picofuse-dev-obj
     picofuse-hid-obj
+    picofuse-pix-obj
+    picofuse-app-obj
 )
 
 target_include_directories(${NAME} PUBLIC

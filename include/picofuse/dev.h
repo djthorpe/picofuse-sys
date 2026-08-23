@@ -42,6 +42,7 @@
 #include "dev/bme680.h"
 #include "dev/framebuffer.h"
 #include "dev/ft6236.h"
+#include "dev/ftdi.h"
 #include "dev/st7701.h"
 #include "dev/tca9555.h"
 #include "dev/uc8151.h"

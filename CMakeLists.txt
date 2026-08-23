@@ -122,6 +122,10 @@ add_subdirectory(examples/dev/picoinky)
 add_subdirectory(examples/dev/tca9555)
 add_subdirectory(examples/dev/framebuffer)
 
+# Add app examples
+add_subdirectory(examples/app)
+
+# Add presto examples if building for the presto board
 if(DEFINED PICO_BOARD AND PICO_BOARD STREQUAL "presto")
     add_subdirectory(examples/dev/presto-touch)
     add_subdirectory(examples/dev/presto-display)

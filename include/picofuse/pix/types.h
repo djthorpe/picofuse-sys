@@ -53,6 +53,7 @@ typedef enum {
  * @details Encoded as 0xRRGGBBAA (red in the most-significant byte, alpha in
  * the least-significant byte). This is independent of pix_bitmap_t storage
  * layout, which depends on pix_format_t.
+ */
 typedef uint32_t pix_color_t;
 
 /**

@@ -15,6 +15,8 @@ void sys_init(void) {
   _sys_debugf_module_init();
 #endif
   sys_timestamp_ms();
+  sys_debugf("sys_init(sys=%s name=%s version=%s)", sys_env_system(),
+             sys_env_name(), sys_env_version());
 }
 
 /**
@@ -23,6 +25,7 @@ void sys_init(void) {
 void sys_exit(void) {
   _sys_timer_module_exit();
   _sys_mem_module_exit();
+  sys_debugf("sys_exit()");
 #ifndef NDEBUG
   _sys_debugf_module_exit();
 #endif

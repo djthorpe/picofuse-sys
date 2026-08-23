@@ -1,15 +1,11 @@
 #include <picofuse/dev/framebuffer.h>
 #include <picofuse/sys.h>
 
-#if defined(SYSTEM_NAME_LINUX)
 #include <fcntl.h>
 #include <linux/fb.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <unistd.h>
-#endif
-
-#if defined(SYSTEM_NAME_LINUX)
 
 ///////////////////////////////////////////////////////////////////////////////
 // TYPES
@@ -537,5 +533,3 @@ void dev_framebuffer_deinit(dev_framebuffer_t *fb) {
 
   sys_free(fb);
 }
-
-#endif // SYSTEM_NAME_LINUX

@@ -27,7 +27,7 @@ add_library(${NAME} OBJECT
     ../any/block.c
     ../stub/infrared.c
     ../stub/watchdog.c
-    ../stub/init.c
+    ../any/init.c
     ../stub/adc.c
     ../stub/flash.c
     ../stub/gpio.c
