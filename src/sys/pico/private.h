@@ -39,6 +39,11 @@ extern void _sys_waitgroup_module_init(void);
 extern void _sys_timer_module_init(void);
 
 /**
+ * @brief Initializes the event queue subsystem
+ */
+extern void _sys_event_queue_module_init(void);
+
+/**
  * @brief Deinitializes the timer subsystem
  */
 extern void _sys_timer_module_exit(void);

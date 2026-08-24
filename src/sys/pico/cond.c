@@ -9,13 +9,27 @@
 
 struct sys_cond_t {
   semaphore_t sem;
-  mutex_t waiters_lock;
   int waiters_count;
   int pending_signals;
   bool init;
 };
 
 static critical_section_t _sys_cond_pool_lock;
+// Shared by every sys_cond_t's waiters-bookkeeping (see sys_cond_signal(),
+// sys_cond_broadcast(), sys_cond_wait()/timedwait(), _sys_cond_finish_wait())
+// rather than a critical_section_t per cond instance: RP2350 has only 32
+// claimable spin locks total, shared with pico-sdk's own subsystems
+// (cyw43/lwIP/BTstack/mbedtls among them), and SYS_COND_CAPACITY conds each
+// claiming their own would burn through that budget fast. Each waiters_lock
+// section here is only a few instructions of bookkeeping, so sharing one
+// lock across all conds costs a little extra (harmless) contention, not
+// correctness. critical_section_t (not mutex_t) because sys_cond_signal()/
+// broadcast() must be safe to call from IRQ context (HID timer/gpio event
+// sources push from an alarm/gpio IRQ handler): it disables interrupts for
+// its short hold, which structurally rules out a same-core IRQ re-entering
+// a lock the interrupted code already holds; mutex_enter_blocking() offers
+// no such guarantee.
+static critical_section_t _sys_cond_waiters_lock;
 static sys_cond_t _sys_cond_pool[SYS_COND_CAPACITY];
 static size_t _sys_cond_pool_index = 0;
 
@@ -42,14 +56,9 @@ sys_cond_t *sys_cond_init(void) {
     }
 
     sem_init(&cond->sem, 0, INT16_MAX);
-    mutex_init(&cond->waiters_lock);
     cond->waiters_count = 0;
     cond->pending_signals = 0;
-    cond->init = mutex_is_initialized(&cond->waiters_lock);
-    if (!cond->init) {
-      critical_section_exit(&_sys_cond_pool_lock);
-      return NULL;
-    }
+    cond->init = true;
 
     _sys_cond_pool_index = (index + 1) % SYS_COND_CAPACITY;
     critical_section_exit(&_sys_cond_pool_lock);
@@ -82,9 +91,9 @@ bool sys_cond_wait(sys_cond_t *cond, sys_mutex_t *mutex) {
   sys_assert(_sys_cond_valid(cond));
   sys_assert(_sys_mutex_valid(mutex));
 
-  mutex_enter_blocking(&cond->waiters_lock);
+  critical_section_enter_blocking(&_sys_cond_waiters_lock);
   cond->waiters_count++;
-  mutex_exit(&cond->waiters_lock);
+  critical_section_exit(&_sys_cond_waiters_lock);
 
   mutex_exit(&mutex->pmutex);
   sem_acquire_blocking(&cond->sem);
@@ -105,9 +114,9 @@ bool sys_cond_timedwait(sys_cond_t *cond, sys_mutex_t *mutex,
     return sys_cond_wait(cond, mutex);
   }
 
-  mutex_enter_blocking(&cond->waiters_lock);
+  critical_section_enter_blocking(&_sys_cond_waiters_lock);
   cond->waiters_count++;
-  mutex_exit(&cond->waiters_lock);
+  critical_section_exit(&_sys_cond_waiters_lock);
 
   mutex_exit(&mutex->pmutex);
   bool signaled = sem_acquire_timeout_ms(&cond->sem, timeout_ms);
@@ -122,7 +131,7 @@ bool sys_cond_timedwait(sys_cond_t *cond, sys_mutex_t *mutex,
 bool sys_cond_signal(sys_cond_t *cond) {
   sys_assert(_sys_cond_valid(cond));
 
-  mutex_enter_blocking(&cond->waiters_lock);
+  critical_section_enter_blocking(&_sys_cond_waiters_lock);
   bool has_waiters = cond->waiters_count > cond->pending_signals;
 
   if (has_waiters) {
@@ -130,7 +139,7 @@ bool sys_cond_signal(sys_cond_t *cond) {
     sem_release(&cond->sem);
   }
 
-  mutex_exit(&cond->waiters_lock);
+  critical_section_exit(&_sys_cond_waiters_lock);
 
   return true;
 }
@@ -139,7 +148,7 @@ bool sys_cond_signal(sys_cond_t *cond) {
 bool sys_cond_broadcast(sys_cond_t *cond) {
   sys_assert(_sys_cond_valid(cond));
 
-  mutex_enter_blocking(&cond->waiters_lock);
+  critical_section_enter_blocking(&_sys_cond_waiters_lock);
   int waiters = cond->waiters_count - cond->pending_signals;
   cond->pending_signals += waiters;
 
@@ -147,7 +156,7 @@ bool sys_cond_broadcast(sys_cond_t *cond) {
     sem_release(&cond->sem);
   }
 
-  mutex_exit(&cond->waiters_lock);
+  critical_section_exit(&_sys_cond_waiters_lock);
 
   return true;
 }
@@ -157,18 +166,18 @@ bool sys_cond_broadcast(sys_cond_t *cond) {
 
 /** @brief Returns true when a condition variable handle is initialized. */
 static bool _sys_cond_valid(const sys_cond_t *cond) {
-  return cond != NULL && cond->init &&
-         mutex_is_initialized((mutex_t *)&cond->waiters_lock);
+  return cond != NULL && cond->init;
 }
 
 /** @brief Initializes the Pico condition-variable pool lock. */
 void _sys_cond_module_init(void) {
   critical_section_init(&_sys_cond_pool_lock);
+  critical_section_init(&_sys_cond_waiters_lock);
 }
 
 /** @brief Reconciles waiter and signal accounting after a wait returns. */
 static void _sys_cond_finish_wait(sys_cond_t *cond, bool signaled) {
-  mutex_enter_blocking(&cond->waiters_lock);
+  critical_section_enter_blocking(&_sys_cond_waiters_lock);
   cond->waiters_count--;
 
   if (signaled) {
@@ -180,5 +189,5 @@ static void _sys_cond_finish_wait(sys_cond_t *cond, bool signaled) {
     (void)sem_try_acquire(&cond->sem);
   }
 
-  mutex_exit(&cond->waiters_lock);
+  critical_section_exit(&_sys_cond_waiters_lock);
 }

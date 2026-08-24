@@ -39,11 +39,18 @@ void app_event(app_t *app, sys_event_t event, void *userdata) {
                sys_timestamp_ms(), sys_thread_core());
   }
 
-  if (hid_event->type == hid_event_type_keycode &&
-      hid_event->data.keycode.keycode == KEYCODE_BUTTON_USER) {
-    sys_debugf("[app] app_event: user button %s",
+  if (hid_event->type == hid_event_type_keycode) {
+    sys_debugf("[app] app_event: %s %s (core=%u)",
+               hid_keycode_to_string(hid_event->data.keycode.keycode),
                (hid_event->data.keycode.state & hid_state_on) ? "pressed"
-                                                               : "released");
+                                                               : "released",
+               sys_thread_core());
+  }
+
+  if (hid_event->type == hid_event_type_metric) {
+    sys_debugf("[app] app_event: %s=%f %s (core=%u)",
+               hid_event->data.metric.name, (double)hid_event->data.metric.value,
+               hid_event->data.metric.unit, sys_thread_core());
   }
 
   if (hid_event->type == hid_event_type_signal) {
@@ -51,20 +58,23 @@ void app_event(app_t *app, sys_event_t event, void *userdata) {
 
     switch (signal) {
     case SYS_ENV_SIGNAL_TERM:
-      sys_debugf("[app] app_event: received termination signal");
+      sys_debugf("[app] app_event: received termination signal (core=%u)",
+                 sys_thread_core());
       app_shutdown(0);
       break;
     case SYS_ENV_SIGNAL_INT:
-      sys_debugf("[app] app_event: received interrupt signal");
+      sys_debugf("[app] app_event: received interrupt signal (core=%u)",
+                 sys_thread_core());
       app_shutdown(0);
       break;
     case SYS_ENV_SIGNAL_QUIT:
-      sys_debugf("[app] app_event: received quit signal");
+      sys_debugf("[app] app_event: received quit signal (core=%u)",
+                 sys_thread_core());
       app_shutdown(0);
       break;
     default:
-      sys_debugf("[app] app_event: received unknown signal 0x%02X",
-                 (unsigned int)signal);
+      sys_debugf("[app] app_event: received unknown signal 0x%02X (core=%u)",
+                 (unsigned int)signal, sys_thread_core());
       break;
     }
   }
@@ -75,6 +85,6 @@ void app_event(app_t *app, sys_event_t event, void *userdata) {
 int main(int argc, char **argv) {
   return app_main(argc, argv,
                   APP_FLAG_MULTICORE | APP_FLAG_SIGNAL | APP_FLAG_WATCHDOG |
-                      APP_FLAG_USER_BUTTON,
+                      APP_FLAG_USER_BUTTON | APP_FLAG_TEMPERATURE,
                   app_init, app_event, NULL);
 }

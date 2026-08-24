@@ -65,6 +65,14 @@ typedef enum {
                                    ///< every board has a user button; has no
                                    ///< effect when HID is unavailable or the
                                    ///< board has none.
+  APP_FLAG_TEMPERATURE = (1 << 4), ///< Register the internal
+                                   ///< temperature-sensor channel as a
+                                   ///< polling HID metric source (see
+                                   ///< hid_register_temperature()), if HID
+                                   ///< is available (see @ref app_hid). Has
+                                   ///< no effect when HID is unavailable or
+                                   ///< the platform has no internal
+                                   ///< temperature sensor.
 } app_flag_t;
 
 /**
@@ -129,7 +137,9 @@ typedef void (*app_callback_event_t)(app_t *app, sys_event_t event,
  * @ref APP_FLAG_SIGNAL is set and HID is available, enables the hardware
  * watchdog (see @ref app_watchdog) if @ref APP_FLAG_WATCHDOG is set and a
  * watchdog is available, registers the board's user button as a HID event
- * if @ref APP_FLAG_USER_BUTTON is set and HID is available, then runs the
+ * if @ref APP_FLAG_USER_BUTTON is set and HID is available, registers the
+ * internal temperature sensor as a HID metric source if
+ * @ref APP_FLAG_TEMPERATURE is set and HID is available, then runs the
  * event loop across every available core if @ref APP_FLAG_MULTICORE is
  * set, or on the calling thread alone otherwise. Blocks until
  * @ref app_shutdown is called from within a callback (or from another

@@ -13,6 +13,12 @@ struct hid_device_t {
   uint16_t keycode;
   hid_state_t state;
   hid_type_t type;
+  bool gpio_invert; // When true, _hid_gpio_callback() reports a falling
+                    // edge as hid_state_on and a rising edge as
+                    // hid_state_off (see hid_register_user_button(), whose
+                    // pull-up-wired, active-low button is electrically
+                    // opposite the default rising=on/falling=off
+                    // convention used by hid_register_gpio_input() et al).
   uint32_t polling_interval_ms;
   uint64_t last_event_ms;
   void *userdata;

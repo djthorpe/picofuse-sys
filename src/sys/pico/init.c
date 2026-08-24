@@ -22,6 +22,7 @@ void sys_init(void) {
   sys_assert(_sys_mem_init(SYS_MEM_CAPACITY, malloc, free));
   _sys_date_init();
   _sys_cond_module_init();
+  _sys_event_queue_module_init();
   _sys_hash_module_init();
   _sys_waitgroup_module_init();
   _sys_timer_module_init();

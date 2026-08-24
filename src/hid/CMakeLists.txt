@@ -7,6 +7,7 @@ else()
 endif()
 
 add_library(${NAME} STATIC
+    any/adc.c
     any/device.c
     any/event.c
     any/gpio.c

@@ -197,6 +197,50 @@ hid_device_t *hid_register_gpio_pulldown(hid_t *instance, uint8_t bank,
                                          uint8_t pin, uint16_t keycode);
 
 /**
+ * @brief Register an ADC channel as a polling HID metric source.
+ * @ingroup HID
+ * @param instance HID instance that owns the registration.
+ * @param channel ADC channel number (see `hw_adc_gpio_pin()`/
+ * `hw_adc_gpio_channel()`). Must be backed by a GPIO pin on the current
+ * platform; use @ref hid_register_temperature for the internal
+ * temperature-sensor channel instead.
+ * @param polling_interval_ms Polling interval in milliseconds.
+ * @details Passing 0 uses a default interval of 1000 ms.
+ * @return Registered HID device descriptor, or NULL on failure (for
+ * example, if the channel has no GPIO pin).
+ *
+ * Resolves the channel to its GPIO pin (`hw_adc_gpio_pin()`), reads it on
+ * every poll, and publishes a `hid_event_type_metric` event for each of
+ * `"voltage"` (volts), `"raw_12"` (0-4095), and `"raw_16"` (0-65535)
+ * whenever that particular value has changed since the last poll,
+ * mirroring the change-detection behavior of
+ * @ref dev_bme680_hid_register_i2c. No temperature metric is reported here;
+ * see @ref hid_register_temperature for the internal temperature-sensor
+ * channel.
+ */
+hid_device_t *hid_register_adc(hid_t *instance, uint8_t channel,
+                               uint32_t polling_interval_ms);
+
+/**
+ * @brief Register the internal temperature-sensor channel as a polling HID
+ * metric source.
+ * @ingroup HID
+ * @param instance HID instance that owns the registration.
+ * @param polling_interval_ms Polling interval in milliseconds.
+ * @details Passing 0 uses a default interval of 1000 ms.
+ * @return Registered HID device descriptor, or NULL on failure (for
+ * example, if the platform has no internal temperature sensor).
+ *
+ * Reads the internal temperature-sensor ADC channel (see
+ * `hw_adc_init_temperature()`) on every poll and publishes a
+ * `hid_event_type_metric` `"temperature"` (degrees Celsius) event whenever
+ * the value has changed since the last poll. See @ref hid_register_adc for
+ * a GPIO-pin ADC source.
+ */
+hid_device_t *hid_register_temperature(hid_t *instance,
+                                       uint32_t polling_interval_ms);
+
+/**
  * @brief Register a user button as a HID input source.
  * @ingroup HID
  * @param instance HID instance that owns the user-button registration.

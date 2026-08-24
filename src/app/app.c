@@ -58,6 +58,12 @@ static void _app_on_init(uint8_t worker) {
     (void)hid_register_user_button(_app->hid, KEYCODE_BUTTON_USER);
   }
 
+  // hid_register_temperature() returns NULL when the platform has no
+  // internal temperature sensor, which is expected, not an error.
+  if (_app->hid != NULL && (_app->flags & APP_FLAG_TEMPERATURE)) {
+    (void)hid_register_temperature(_app->hid, 0u);
+  }
+
   // hw_watchdog_init() is weakly linked (see hw.c), so a NULL
   // app_watchdog() is expected, not an error, when picofuse-hw is absent
   // or the platform has no watchdog backend.

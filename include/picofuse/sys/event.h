@@ -192,6 +192,12 @@ void sys_event_queue_shutdown(sys_event_queue_t *queue);
  * @ingroup SystemEventQueue
  * @param queue Queue to lock.
  * @return `true` on success, `false` on error.
+ *
+ * Thread-context use only (this may block); never call from an IRQ handler.
+ * On backends where pushes are IRQ-safe, this does not exclude a concurrent
+ * push/pop, only other sys_event_queue_lock() callers - it coordinates
+ * callers of this function with each other, not with the queue's own
+ * internal operations.
  */
 bool sys_event_queue_lock(sys_event_queue_t *queue);
 

@@ -12,7 +12,7 @@ static bool _hid_gpio_device_init(hid_device_t *device, void *userdata);
 static bool _hid_gpio_device_deinit(hid_device_t *device, void *userdata);
 static hid_device_t *_hid_register_gpio_mode(hid_t *instance, uint8_t bank,
                                              uint8_t pin, uint16_t keycode,
-                                             hw_gpio_mode_t mode);
+                                             hw_gpio_mode_t mode, bool invert);
 
 ///////////////////////////////////////////////////////////////////////////////
 // GLOBALS
@@ -105,14 +105,17 @@ static void _hid_gpio_callback(uint8_t bank, uint8_t pin, hw_gpio_event_t event,
     return;
   }
 
+  hid_state_t rising_state = device->gpio_invert ? hid_state_off : hid_state_on;
+  hid_state_t falling_state = device->gpio_invert ? hid_state_on : hid_state_off;
+
   if ((event & HW_GPIO_RISING) != 0) {
-    if (hid_event_queue_keycode(device, hid_state_on, device->keycode)) {
+    if (hid_event_queue_keycode(device, rising_state, device->keycode)) {
       device->last_event_ms = sys_timestamp_ms();
     }
   }
 
   if ((event & HW_GPIO_FALLING) != 0) {
-    if (hid_event_queue_keycode(device, hid_state_off, device->keycode)) {
+    if (hid_event_queue_keycode(device, falling_state, device->keycode)) {
       device->last_event_ms = sys_timestamp_ms();
     }
   }
@@ -139,10 +142,14 @@ static bool _hid_gpio_device_deinit(hid_device_t *device, void *userdata) {
 
 /**
  * @brief Register a GPIO-backed HID device using the requested GPIO mode.
+ * @param invert When true, a falling edge is reported as hid_state_on and a
+ * rising edge as hid_state_off (see hid_device_t.gpio_invert); use for
+ * pull-up-wired, active-low inputs such as a typical board user button.
  */
 static hid_device_t *_hid_register_gpio_mode(hid_t *instance, uint8_t bank,
                                              uint8_t pin, uint16_t keycode,
-                                             hw_gpio_mode_t mode) {
+                                             hw_gpio_mode_t mode,
+                                             bool invert) {
   if (instance == NULL) {
     sys_debugf("[hid] gpio register failed: instance is NULL");
     return NULL;
@@ -168,6 +175,7 @@ static hid_device_t *_hid_register_gpio_mode(hid_t *instance, uint8_t bank,
   }
 
   device->keycode = keycode;
+  device->gpio_invert = invert;
   return device;
 }
 
@@ -210,7 +218,8 @@ void _hid_gpio_callback_deinit(void) {
  */
 hid_device_t *hid_register_gpio_input(hid_t *instance, uint8_t bank,
                                       uint8_t pin, uint16_t keycode) {
-  return _hid_register_gpio_mode(instance, bank, pin, keycode, HW_GPIO_INPUT);
+  return _hid_register_gpio_mode(instance, bank, pin, keycode, HW_GPIO_INPUT,
+                                 false);
 }
 
 /**
@@ -218,7 +227,8 @@ hid_device_t *hid_register_gpio_input(hid_t *instance, uint8_t bank,
  */
 hid_device_t *hid_register_gpio_pullup(hid_t *instance, uint8_t bank,
                                        uint8_t pin, uint16_t keycode) {
-  return _hid_register_gpio_mode(instance, bank, pin, keycode, HW_GPIO_PULLUP);
+  return _hid_register_gpio_mode(instance, bank, pin, keycode, HW_GPIO_PULLUP,
+                                 false);
 }
 
 /**
@@ -227,18 +237,25 @@ hid_device_t *hid_register_gpio_pullup(hid_t *instance, uint8_t bank,
 hid_device_t *hid_register_gpio_pulldown(hid_t *instance, uint8_t bank,
                                          uint8_t pin, uint16_t keycode) {
   return _hid_register_gpio_mode(instance, bank, pin, keycode,
-                                 HW_GPIO_PULLDOWN);
+                                 HW_GPIO_PULLDOWN, false);
 }
 
 /**
- * @brief Register the board user button when a known button pin macro exists.
+ * @brief Register the board user button when a known button pin macro
+ * exists.
+ *
+ * Board user buttons are wired active-low (pressing connects the pin to
+ * GND), so this uses a pull-up input and reports hid_state_on for a press
+ * (falling edge) and hid_state_off for a release (rising edge) - the
+ * inverse of hid_register_gpio_input()'s raw rising=on/falling=off
+ * convention, but the sensible one for a "pressed"/"released" button API.
  */
 hid_device_t *hid_register_user_button(hid_t *instance, uint16_t keycode) {
 #if defined(HID_USER_BUTTON_PIN)
   sys_debugf("[hid] user button pin selected: %u",
              (unsigned int)HID_USER_BUTTON_PIN);
-  return hid_register_gpio_input(instance, 0u, (uint8_t)HID_USER_BUTTON_PIN,
-                                 keycode);
+  return _hid_register_gpio_mode(instance, 0u, (uint8_t)HID_USER_BUTTON_PIN,
+                                 keycode, HW_GPIO_PULLUP, true);
 #else
   sys_debugf("[hid] user button unavailable: no known board user-button macro");
   (void)instance;
