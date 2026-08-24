@@ -64,14 +64,14 @@ static hw_i2c_t *_hw_i2c_alloc_slot(void) {
 uint8_t hw_i2c_count(void) { return 0; }
 
 hw_i2c_t *hw_i2c_init_default(uint32_t baud_rate) {
-  sys_debugf("i2c_init_default: baud=%u", baud_rate);
+  sys_debugf("[hw] i2c_init_default: baud=%u", baud_rate);
   (void)baud_rate;
   return NULL;
 }
 
 hw_i2c_t *hw_i2c_init(uint8_t index, hw_gpio_t *sda_pin, hw_gpio_t *scl_pin,
                       uint32_t baud_rate) {
-  sys_debugf("i2c_init: index=%u sda=%p scl=%p baud=%u", index, sda_pin,
+  sys_debugf("[hw] i2c_init: index=%u sda=%p scl=%p baud=%u", index, sda_pin,
              scl_pin, baud_rate);
   (void)index;
   (void)sda_pin;
@@ -81,7 +81,7 @@ hw_i2c_t *hw_i2c_init(uint8_t index, hw_gpio_t *sda_pin, hw_gpio_t *scl_pin,
 }
 
 hw_i2c_t *hw_i2c_init_device(const char *device, uint32_t baud_rate) {
-  sys_debugf("i2c_init_device: device=%s baud=%u",
+  sys_debugf("[hw] i2c_init_device: device=%s baud=%u",
              device != NULL ? device : "(null)", baud_rate);
   if (device == NULL || device[0] == '\0' || baud_rate == 0) {
     return NULL;
@@ -104,7 +104,7 @@ hw_i2c_t *hw_i2c_init_device(const char *device, uint32_t baud_rate) {
 }
 
 void hw_i2c_deinit(hw_i2c_t *i2c) {
-  sys_debugf("i2c_deinit: i2c=%p", i2c);
+  sys_debugf("[hw] i2c_deinit: i2c=%p", i2c);
   if (!hw_i2c_valid(i2c)) {
     return;
   }

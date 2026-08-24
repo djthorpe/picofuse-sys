@@ -1,8 +1,8 @@
-set(NAME "picofuse-sys-obj")
+set(NAME "picofuse-sys")
 
 find_package(OpenSSL REQUIRED)
 
-add_library(${NAME} OBJECT
+add_library(${NAME} STATIC
     ../any/arena.c
     ../any/runloop.c
     ../any/debugf.c
@@ -43,3 +43,5 @@ target_link_libraries(${NAME} PUBLIC
     "-framework IOKit"
     "-framework CoreFoundation"
 )
+
+picofuse_add_module(${NAME})

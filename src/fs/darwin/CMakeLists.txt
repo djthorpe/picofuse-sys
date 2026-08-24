@@ -1,6 +1,6 @@
-set(NAME "picofuse-fs-obj")
+set(NAME "picofuse-fs")
 
-add_library(${NAME} OBJECT
+add_library(${NAME} STATIC
     ../any/pool.c
     ../any/volume.c
     ../any/file.c
@@ -21,3 +21,9 @@ target_include_directories(${NAME} PUBLIC
 target_include_directories(${NAME} PRIVATE
     ${PROJECT_SOURCE_DIR}/third_party/littlefs
 )
+
+target_link_libraries(${NAME} PUBLIC
+    picofuse-sys
+)
+
+picofuse_add_module(${NAME} REQUIRES picofuse-sys)

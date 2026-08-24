@@ -11,9 +11,9 @@
  * `hw_exit()` and `hid_init()`/`hid_poll()`/`hid_deinit()`; these are weak
  * references (see `src/app/hw.c` and `src/app/hid.c`), so they are
  * harmless no-ops (`hid_init()` returning NULL) unless the
- * `picofuse-hw-obj` / `picofuse-hid-obj` modules happen to also be linked
- * into the binary, in which case that subsystem is fully initialized and
- * polled automatically.
+ * `picofuse-hw` / `picofuse-hid` libraries happen to also be linked into
+ * the binary, in which case that subsystem is fully initialized and polled
+ * automatically.
  *
  * @code
  * static void on_start(app_t *app, void *userdata) {
@@ -54,6 +54,17 @@ typedef enum {
                                  ///< INT, QUIT) as HID events, if HID is
                                  ///< available (see @ref app_hid). Has no
                                  ///< effect otherwise.
+  APP_FLAG_WATCHDOG = (1 << 2), ///< Enable the hardware watchdog
+                                ///< automatically, if available (see
+                                ///< @ref app_watchdog). Has no effect
+                                ///< otherwise.
+  APP_FLAG_USER_BUTTON = (1 << 3), ///< Register the board's user button (if
+                                   ///< any) as a HID event with keycode
+                                   ///< KEYCODE_BUTTON_USER, if HID is
+                                   ///< available (see @ref app_hid). Not
+                                   ///< every board has a user button; has no
+                                   ///< effect when HID is unavailable or the
+                                   ///< board has none.
 } app_flag_t;
 
 /**
@@ -61,6 +72,12 @@ typedef enum {
  * @ingroup App
  */
 typedef struct app_t app_t;
+
+/**
+ * @brief Opaque hardware watchdog handle (see picofuse/hw/watchdog.h).
+ * @ingroup App
+ */
+typedef struct hw_watchdog_t hw_watchdog_t;
 
 /**
  * @brief Called once, on the main worker, before the run loop starts
@@ -109,15 +126,19 @@ typedef void (*app_callback_event_t)(app_t *app, sys_event_t event,
  *
  * Calls `sys_init()`, attempts `hw_init()` and `hid_init()` (see
  * @ref app_hid), registers environment signals as HID events if
- * @ref APP_FLAG_SIGNAL is set and HID is available, then runs the event
- * loop across every available core if @ref APP_FLAG_MULTICORE is set, or
- * on the calling thread alone otherwise. Blocks until @ref app_shutdown is
- * called from within a callback (or from another thread), then tears down
+ * @ref APP_FLAG_SIGNAL is set and HID is available, enables the hardware
+ * watchdog (see @ref app_watchdog) if @ref APP_FLAG_WATCHDOG is set and a
+ * watchdog is available, registers the board's user button as a HID event
+ * if @ref APP_FLAG_USER_BUTTON is set and HID is available, then runs the
+ * event loop across every available core if @ref APP_FLAG_MULTICORE is
+ * set, or on the calling thread alone otherwise. Blocks until
+ * @ref app_shutdown is called from within a callback (or from another
+ * thread), then tears down
  * (`hid_deinit()`, `hw_exit()`, `sys_exit()`).
  */
 int app_main(int argc, char *argv[], app_flag_t flags,
-            app_callback_start_t on_start, app_callback_event_t on_event,
-            void *userdata);
+             app_callback_start_t on_start, app_callback_event_t on_event,
+             void *userdata);
 
 /** @} */
 
@@ -131,10 +152,19 @@ int app_main(int argc, char *argv[], app_flag_t flags,
  * @brief Get the HID instance initialized for this app.
  * @ingroup App
  * @param app Application instance.
- * @return HID instance, or NULL if the `picofuse-hid-obj` module is not
+ * @return HID instance, or NULL if the `picofuse-hid` library is not
  * linked into this binary (see @ref app_main).
  */
 hid_t *app_hid(const app_t *app);
+
+/**
+ * @brief Get the watchdog handle enabled for this app.
+ * @ingroup App
+ * @param app Application instance.
+ * @return Watchdog handle, or NULL if @ref APP_FLAG_WATCHDOG was not passed
+ * to app_main(), or the watchdog is unavailable on this platform.
+ */
+hw_watchdog_t *app_watchdog(const app_t *app);
 
 /** @} */
 

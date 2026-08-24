@@ -13,7 +13,11 @@ macro(picofuse_add_sys_test NAME)
         ${PROJECT_SOURCE_DIR}/test/include
     )
 
+    # test/include/test.h's TestMain() calls hw_init()/hw_exit()
+    # unconditionally, so every test target needs picofuse-hw regardless of
+    # category.
     target_link_libraries(${NAME} PRIVATE
+        picofuse-hw
         picofuse-sys
     )
 
@@ -42,7 +46,12 @@ macro(picofuse_add_fs_test NAME)
         ${PROJECT_SOURCE_DIR}/test/include
     )
 
+    # test/include/test.h's TestMain() calls hw_init()/hw_exit()
+    # unconditionally; picofuse-fs only pulls in picofuse-hw itself on the
+    # pico platform variant, so add it explicitly here too.
     target_link_libraries(${NAME} PRIVATE
+        picofuse-fs
+        picofuse-hw
         picofuse-sys
     )
 
@@ -72,6 +81,7 @@ macro(picofuse_add_hw_test NAME)
     )
 
     target_link_libraries(${NAME} PRIVATE
+        picofuse-hw
         picofuse-sys
     )
 
@@ -101,6 +111,7 @@ macro(picofuse_add_hid_test NAME)
     )
 
     target_link_libraries(${NAME} PRIVATE
+        picofuse-hid
         picofuse-sys
     )
 

@@ -289,6 +289,7 @@ typedef enum {
 #define KEYCODE_SHUFFLE 0x0241
 #define KEYCODE_REPEAT 0x0242
 #define KEYCODE_KEYPAD_10PLUS 0x0243
+#define KEYCODE_BUTTON_USER 0x0244
 
 ///////////////////////////////////////////////////////////////////////////////
 // FUNCTION DECLARATIONS

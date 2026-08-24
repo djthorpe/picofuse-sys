@@ -35,11 +35,14 @@ static void _worker(void *arg) {
     _init(idx);
   }
 
+  sys_debugf("[sys] runloop: worker %u started", idx);
+
   sys_event_t event;
   while ((event = sys_event_queue_pop(_queue)) != NULL) {
     _callback(event);
   }
 
+  sys_debugf("[sys] runloop: worker %u exiting", idx);
   if (_exit != NULL) {
     _exit(idx);
   }
@@ -123,6 +126,7 @@ uint32_t sys_runloop_run_with_queue(uint8_t num_workers,
     _init(0);
   }
 
+  sys_debugf("[sys] runloop: main thread starting");
   while (true) {
     sys_event_t event = sys_event_queue_timed_pop(_queue, _POLL_INTERVAL_MS);
     if (_poll != NULL) {
@@ -134,6 +138,7 @@ uint32_t sys_runloop_run_with_queue(uint8_t num_workers,
       break;
     }
   }
+  sys_debugf("[sys] runloop: main thread exiting");
 
   if (_exit != NULL) {
     _exit(0);

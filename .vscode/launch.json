@@ -1,0 +1,49 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug helloworld (RP2350 / Pico LiPo 2 XL)",
+            "cwd": "${workspaceFolder}",
+            "executable": "${workspaceFolder}/build-pico-lipo-2xl/examples/sys/helloworld/helloworld.elf",
+            "request": "launch",
+            "type": "cortex-debug",
+            "servertype": "openocd",
+            "serverpath": "/opt/openocd/openocd",
+            "searchDir": [
+                "/opt/openocd/scripts"
+            ],
+            "configFiles": [
+                "interface/cmsis-dap.cfg",
+                "target/rp2350.cfg"
+            ],
+            "openOCDLaunchCommands": [
+                "adapter speed 5000"
+            ],
+            "gdbPath": "/opt/homebrew/bin/arm-none-eabi-gdb",
+            "runToEntryPoint": "main",
+            "showDevDebugOutput": "raw"
+        },
+        {
+            "name": "Debug app (RP2350 / Pico LiPo 2 XL)",
+            "cwd": "${workspaceFolder}",
+            "executable": "${workspaceFolder}/build-pico-lipo-2xl/examples/app/picofuse-example-app.elf",
+            "request": "launch",
+            "type": "cortex-debug",
+            "servertype": "openocd",
+            "serverpath": "/opt/openocd/openocd",
+            "searchDir": [
+                "/opt/openocd/scripts"
+            ],
+            "configFiles": [
+                "interface/cmsis-dap.cfg",
+                "target/rp2350.cfg"
+            ],
+            "openOCDLaunchCommands": [
+                "adapter speed 5000"
+            ],
+            "gdbPath": "/opt/homebrew/bin/arm-none-eabi-gdb",
+            "runToEntryPoint": "main",
+            "showDevDebugOutput": "raw"
+        }
+    ]
+}

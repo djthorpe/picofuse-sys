@@ -43,7 +43,7 @@ static hw_adc_t _hw_adc_channels[NUM_ADC_CHANNELS] = {0};
 uint8_t hw_adc_count(void) { return NUM_ADC_CHANNELS; }
 
 hw_adc_t *hw_adc_init_pin(hw_gpio_t *gpio) {
-  sys_debugf("adc_init_pin: gpio=%p", gpio);
+  sys_debugf("[hw] adc_init_pin: gpio=%p", gpio);
   if (!hw_gpio_valid(gpio)) {
     return NULL;
   }
@@ -65,7 +65,7 @@ hw_adc_t *hw_adc_init_pin(hw_gpio_t *gpio) {
 }
 
 hw_adc_t *hw_adc_init_temperature(void) {
-  sys_debugf("adc_init_temperature");
+  sys_debugf("[hw] adc_init_temperature");
   adc_set_temp_sensor_enabled(true);
 
   hw_adc_t *adc = &_hw_adc_channels[ADC_TEMPERATURE_CHANNEL_NUM];
@@ -77,7 +77,7 @@ hw_adc_t *hw_adc_init_temperature(void) {
 }
 
 void hw_adc_deinit(hw_adc_t *adc) {
-  sys_debugf("adc_deinit: adc=%p", adc);
+  sys_debugf("[hw] adc_deinit: adc=%p", adc);
   if (!hw_adc_valid(adc)) {
     return;
   }

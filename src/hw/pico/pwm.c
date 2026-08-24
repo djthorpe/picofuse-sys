@@ -125,7 +125,7 @@ static inline uint64_t _hw_pwm_divider_wrap_to_period_ns(float divider,
 
 hw_pwm_t *hw_pwm_init(hw_gpio_t *gpio, hw_pwm_callback_t callback,
                       void *userdata, const hw_pwm_config_t *config) {
-  sys_debugf("pwm_init: gpio_valid=%u callback=%u config=%u",
+  sys_debugf("[hw] pwm_init: gpio_valid=%u callback=%u config=%u",
              hw_gpio_valid(gpio), callback != NULL, config != NULL);
 
   if (callback != NULL && !hw_pwm_irq_supported()) {
@@ -203,11 +203,11 @@ hw_pwm_t *hw_pwm_init(hw_gpio_t *gpio, hw_pwm_callback_t callback,
                            ? config->period_ns
                            : _hw_pwm_divider_wrap_to_period_ns(1.0f, 0xFFFF);
   uint16_t div_raw = _hw_pwm_get_divider_raw(slice);
-  sys_debugf("pwm_init: pin=%u slice=%u channel=%u callback=%u", gpio_pin,
+  sys_debugf("[hw] pwm_init: pin=%u slice=%u channel=%u callback=%u", gpio_pin,
              slice, channel, callback != NULL);
-  sys_debugf("pwm_init: period_ns=%u wrap=%u div=%u.%u level=%u enabled=%u",
-             (uint32_t)period_ns, wrap, div_raw >> 4, div_raw & 0x0F, level,
-             enabled);
+  sys_debugf(
+      "[hw] pwm_init: period_ns=%u wrap=%u div=%u.%u level=%u enabled=%u",
+      (uint32_t)period_ns, wrap, div_raw >> 4, div_raw & 0x0F, level, enabled);
 #endif
 
   spin_unlock(_hw_pwm_pool_lock, save);
@@ -221,14 +221,14 @@ void hw_pwm_deinit(hw_pwm_t *pwm) {
 #ifdef DEBUG
   if (pwm != NULL && hw_pwm_valid(pwm)) {
     uint16_t div_raw = _hw_pwm_get_divider_raw(pwm->slice);
-    sys_debugf("pwm_deinit: slice=%u channel=%u callback=%u", pwm->slice,
+    sys_debugf("[hw] pwm_deinit: slice=%u channel=%u callback=%u", pwm->slice,
                pwm->channel, pwm->callback != NULL);
-    sys_debugf("pwm_deinit: wrap=%u div=%u.%u level=%u enabled=%u",
+    sys_debugf("[hw] pwm_deinit: wrap=%u div=%u.%u level=%u enabled=%u",
                _hw_pwm_get_wrap(pwm->slice), div_raw >> 4, div_raw & 0x0F,
                _hw_pwm_get_level(pwm->slice, pwm->channel),
                _hw_pwm_get_enabled(pwm->slice));
   } else {
-    sys_debugf("pwm_deinit: invalid");
+    sys_debugf("[hw] pwm_deinit: invalid");
   }
 #endif
 

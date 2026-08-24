@@ -118,8 +118,14 @@ bool sys_event_queue_push(sys_event_queue_t *queue, sys_event_t event) {
 }
 
 bool sys_event_queue_try_push(sys_event_queue_t *queue, sys_event_t event) {
+  // Non-blocking lock: this is the push path used by IRQ-context HID
+  // sources (timer, gpio), so it must never block. Blocking here can
+  // self-deadlock a core against itself if the interrupted code already
+  // holds queue->mutex (e.g. a consumer inside sys_event_queue_timed_pop's
+  // wait), since that consumer can never resume to release it while this
+  // IRQ handler is still spinning on it.
   if (event == NULL || !_sys_event_queue_valid_unlocked(queue) ||
-      !sys_mutex_lock(queue->mutex)) {
+      !sys_mutex_trylock(queue->mutex)) {
     return false;
   }
 

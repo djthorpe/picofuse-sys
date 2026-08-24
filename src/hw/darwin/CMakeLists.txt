@@ -1,4 +1,4 @@
-set(NAME "picofuse-hw-obj")
+set(NAME "picofuse-hw")
 
 find_package(PkgConfig QUIET)
 if (PkgConfig_FOUND)
@@ -23,7 +23,7 @@ else()
     endif()
 endif()
 
-add_library(${NAME} OBJECT
+add_library(${NAME} STATIC
     ../any/block.c
     ../stub/infrared.c
     ../stub/watchdog.c
@@ -41,6 +41,10 @@ add_library(${NAME} OBJECT
 )
 target_include_directories(${NAME} PUBLIC
     ${PROJECT_SOURCE_DIR}/include
+)
+
+target_link_libraries(${NAME} PUBLIC
+    picofuse-sys
 )
 
 if (PICOFUSE_USB AND HAVE_LIBUSB)
@@ -66,3 +70,5 @@ if (PICOFUSE_USB AND HAVE_LIBUSB)
         target_link_libraries(${NAME} PUBLIC Threads::Threads)
     endif()
 endif()
+
+picofuse_add_module(${NAME} REQUIRES picofuse-sys)

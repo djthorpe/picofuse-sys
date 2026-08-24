@@ -24,6 +24,20 @@ void _hw_lock_module_exit(void);
 // LIFECYCLE
 
 /**
+ * @brief Link-time anchor forcing this translation unit's hw_init()/
+ * hw_exit()/hw_poll() to be extracted whenever picofuse-hw is linked.
+ * Nothing else in this file is referenced by any other translation unit, so
+ * without this, a consumer that also links picofuse-app (which provides its
+ * own weak hw_init()/hw_exit()/hw_poll() fallbacks in src/app/hw.c, bundled
+ * in the SAME archive as the code that calls them) would resolve those
+ * calls from picofuse-app's own archive before ever reaching
+ * picofuse-hw.a on the link line, regardless of link order. Referenced via
+ * a forced undefined symbol (`-u`) added in src/hw/pico/CMakeLists.txt;
+ * never called directly.
+ */
+void _hw_pico_init_anchor(void) {}
+
+/**
  * @brief Initializes the hardware system on startup.
  */
 void hw_init(void) {

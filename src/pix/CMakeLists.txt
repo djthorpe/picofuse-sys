@@ -1,6 +1,6 @@
-set(NAME "picofuse-pix-obj")
+set(NAME "picofuse-pix")
 
-add_library(${NAME} OBJECT
+add_library(${NAME} STATIC
     jpeg.c
     pix.c
 )
@@ -14,5 +14,7 @@ target_include_directories(${NAME} PRIVATE
 )
 
 target_link_libraries(${NAME} PUBLIC
-    picofuse-sys-obj
+    picofuse-sys
 )
+
+picofuse_add_module(${NAME} REQUIRES picofuse-sys)

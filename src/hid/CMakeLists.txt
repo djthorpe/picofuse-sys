@@ -1,4 +1,4 @@
-set(NAME "picofuse-hid-obj")
+set(NAME "picofuse-hid")
 
 if(SYSTEM_NAME_LOWER STREQUAL "linux")
     set(EVDEV_SOURCE linux/evdev.c)
@@ -6,7 +6,7 @@ else()
     set(EVDEV_SOURCE stub/evdev.c)
 endif()
 
-add_library(${NAME} OBJECT
+add_library(${NAME} STATIC
     any/device.c
     any/event.c
     any/gpio.c
@@ -21,5 +21,8 @@ target_include_directories(${NAME} PUBLIC
 )
 
 target_link_libraries(${NAME} PUBLIC
-    picofuse-sys-obj
+    picofuse-hw
+    picofuse-sys
 )
+
+picofuse_add_module(${NAME} REQUIRES picofuse-hw)

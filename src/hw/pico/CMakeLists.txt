@@ -1,11 +1,11 @@
-set(NAME "picofuse-hw-obj")
+set(NAME "picofuse-hw")
 
 set(PICOFUSE_PICO_USB_SOURCE ../stub/usb.c)
 if(PICOFUSE_USB)
     set(PICOFUSE_PICO_USB_SOURCE usb.c)
 endif()
 
-add_library(${NAME} OBJECT
+add_library(${NAME} STATIC
     ../any/block.c
     infrared_rx.c
     adc.c
@@ -30,6 +30,7 @@ target_include_directories(${NAME} PUBLIC
 )
 
 target_link_libraries(${NAME} PUBLIC
+    picofuse-sys
     pico_stdlib
     pico_flash
     hardware_flash
@@ -65,7 +66,17 @@ endif()
 if (PICO_CYW43_SUPPORTED)
     message(STATUS "Board has CYW43 support - enabling CYW43 library")
     target_compile_definitions(${NAME} PRIVATE PICO_CYW43_SUPPORTED=1)
-    target_link_libraries(${NAME} PUBLIC
+    target_link_libraries(${NAME} PRIVATE
         pico_cyw43_arch_lwip_poll
     )
 endif()
+
+# See _hw_pico_init_anchor() in init.c: forces this module's real
+# hw_init()/hw_exit()/hw_poll() to always be part of the link, so they
+# correctly override picofuse-app's weak fallbacks of the same names
+# regardless of link order.
+target_link_options(${NAME} INTERFACE
+    "LINKER:-u,_hw_pico_init_anchor"
+)
+
+picofuse_add_module(${NAME} REQUIRES picofuse-sys)

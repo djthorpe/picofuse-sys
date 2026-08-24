@@ -231,6 +231,7 @@ static const char *_hid_keycode_name(uint16_t keycode) {
     HID_KEYCODE_CASE(KEYCODE_SHUFFLE)
     HID_KEYCODE_CASE(KEYCODE_REPEAT)
     HID_KEYCODE_CASE(KEYCODE_KEYPAD_10PLUS)
+    HID_KEYCODE_CASE(KEYCODE_BUTTON_USER)
   default:
     return NULL;
   }

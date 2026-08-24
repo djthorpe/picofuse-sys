@@ -7,6 +7,7 @@ add_executable(${NAME}
 )
 
 target_link_libraries(${NAME} PRIVATE
+    picofuse-hw
     picofuse-sys
 )
 

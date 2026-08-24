@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.20)
 
 # Logic if building for a Pico board
 if(DEFINED PICO_BOARD)
+    set(PICO_MBEDTLS_CONFIG_FILE "${CMAKE_CURRENT_LIST_DIR}/src/sys/pico/mbedtls_config.h")
+
     # Test programs should make a static library, not an executable
     set(CMAKE_TRY_COMPILE_TARGET_TYPE "STATIC_LIBRARY")
 
@@ -40,11 +42,13 @@ string(TOLOWER ${CMAKE_SYSTEM_NAME} SYSTEM_NAME_LOWER)
 string(TOUPPER ${CMAKE_SYSTEM_NAME} SYSTEM_NAME_UPPER)
 string(TOLOWER ${CMAKE_SYSTEM_PROCESSOR} PROCESSOR_NAME_LOWER)
 
+# PICOFUSE_LIBRARY_SUFFIX identifies this particular build (board, or
+# system/processor/board for native builds), shared by every module's
+# library OUTPUT_NAME and .pc filename: picofuse-<module>-${SUFFIX}[.pc].
 if(DEFINED PICO_BOARD)
     string(TOLOWER "${PICO_BOARD}" PICOFUSE_BOARD_LOWER)
     string(REGEX REPLACE "[^a-z0-9_]+" "-" PICOFUSE_BOARD_LOWER "${PICOFUSE_BOARD_LOWER}")
-    set(PICOFUSE_LIBRARY_BASENAME "picofuse-${PICOFUSE_BOARD_LOWER}")
-    set(PICOFUSE_PC_FILE_BASENAME "picofuse-${PICOFUSE_BOARD_LOWER}")
+    set(PICOFUSE_LIBRARY_SUFFIX "${PICOFUSE_BOARD_LOWER}")
 else()
     if(DEFINED PICOFUSE_BOARD)
         set(PICOFUSE_BOARD_VALUE "${PICOFUSE_BOARD}")
@@ -54,16 +58,77 @@ else()
 
     string(TOLOWER "${PICOFUSE_BOARD_VALUE}" PICOFUSE_BOARD_LOWER)
     string(REGEX REPLACE "[^a-z0-9_]+" "-" PICOFUSE_BOARD_LOWER "${PICOFUSE_BOARD_LOWER}")
-    set(PICOFUSE_LIBRARY_BASENAME "picofuse-${SYSTEM_NAME_LOWER}-${PROCESSOR_NAME_LOWER}-${PICOFUSE_BOARD_LOWER}")
-    set(PICOFUSE_PC_FILE_BASENAME "picofuse")
+    set(PICOFUSE_LIBRARY_SUFFIX "${SYSTEM_NAME_LOWER}-${PROCESSOR_NAME_LOWER}-${PICOFUSE_BOARD_LOWER}")
 endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(PICOFUSE_LIBRARY_BASENAME "${PICOFUSE_LIBRARY_BASENAME}-debug")
-    set(PICOFUSE_PC_FILE_BASENAME "${PICOFUSE_PC_FILE_BASENAME}-debug")
+    set(PICOFUSE_LIBRARY_SUFFIX "${PICOFUSE_LIBRARY_SUFFIX}-debug")
 endif()
 
-set(PICOFUSE_PC_FILE_NAME "${PICOFUSE_PC_FILE_BASENAME}.pc")
+if(DEFINED PROGRAM_VERSION)
+    set(PICOFUSE_PC_VERSION "${PROGRAM_VERSION}")
+else()
+    set(PICOFUSE_PC_VERSION "0.0.0")
+endif()
+
+# Default pkg-config board metadata fields to empty for non-Pico builds.
+set(PICOFUSE_ARMGNU "")
+set(PICOFUSE_CPU "")
+set(PICOFUSE_CHIP_DIR "")
+set(PICOFUSE_FAMILY "")
+set(PICOFUSE_SRAM_ENTRY "")
+set(PICOFUSE_SRAM_LOAD "")
+set(PICOFUSE_FLASH_ENTRY "")
+set(PICOFUSE_FLASH_LOAD "")
+
+if(DEFINED PICO_BOARD)
+    # Toolchain prefix: prefer Pico SDK triple, then derive from compiler name.
+    if(DEFINED PICO_DEFAULT_GCC_TRIPLE)
+        set(PICOFUSE_ARMGNU "${PICO_DEFAULT_GCC_TRIPLE}")
+    elseif(DEFINED CMAKE_C_COMPILER)
+        get_filename_component(PICOFUSE_C_COMPILER_NAME "${CMAKE_C_COMPILER}" NAME)
+        if(PICOFUSE_C_COMPILER_NAME MATCHES "^([A-Za-z0-9_+.-]+)-gcc$")
+            set(PICOFUSE_ARMGNU "${CMAKE_MATCH_1}")
+        endif()
+    endif()
+
+    if(DEFINED CMAKE_SYSTEM_PROCESSOR)
+        set(PICOFUSE_CPU "${CMAKE_SYSTEM_PROCESSOR}")
+    endif()
+
+    if(DEFINED PICO_CHIP)
+        set(PICOFUSE_CHIP_DIR "${PICO_CHIP}")
+        set(PICOFUSE_FAMILY "${PICO_CHIP}")
+    endif()
+
+    # Address defaults for post-build tooling; overridable from cache/CLI.
+    if(PICOFUSE_SRAM_ENTRY STREQUAL "")
+        set(PICOFUSE_SRAM_ENTRY "0x20000000")
+    endif()
+    if(PICOFUSE_SRAM_LOAD STREQUAL "")
+        set(PICOFUSE_SRAM_LOAD "0x20000000")
+    endif()
+    if(PICOFUSE_FLASH_LOAD STREQUAL "")
+        set(PICOFUSE_FLASH_LOAD "0x10000000")
+    endif()
+    if(PICOFUSE_FLASH_ENTRY STREQUAL "")
+        if(DEFINED PICO_CHIP AND PICO_CHIP STREQUAL "rp2040")
+            set(PICOFUSE_FLASH_ENTRY "0x10000100")
+        else()
+            set(PICOFUSE_FLASH_ENTRY "0x10000000")
+        endif()
+    endif()
+endif()
+
+# Resolve prefix relative to ${pcfiledir} for relocatable pkg-config files,
+# including multi-component libdirs (e.g. lib/x86_64-linux-gnu).
+set(PICOFUSE_PC_PREFIX_REL "..")
+string(REPLACE "/" ";" PICOFUSE_INSTALL_LIBDIR_PARTS "${CMAKE_INSTALL_LIBDIR}")
+foreach(PICOFUSE_LIBDIR_PART IN LISTS PICOFUSE_INSTALL_LIBDIR_PARTS)
+    if(NOT PICOFUSE_LIBDIR_PART STREQUAL "")
+        string(APPEND PICOFUSE_PC_PREFIX_REL "/..")
+    endif()
+endforeach()
 
 if(SYSTEM_NAME_LOWER STREQUAL "darwin")
     enable_language(OBJC)
@@ -93,12 +158,10 @@ endif()
 add_subdirectory(src)
 
 # Add sys examples
+add_subdirectory(examples/sys/helloworld)
 add_subdirectory(examples/sys/multicore)
 add_subdirectory(examples/sys/queue)
 add_subdirectory(examples/sys/runloop)
-
-# Add Pico SDK-only repro examples
-add_subdirectory(examples/picosdk)
 
 # Add hid examples
 add_subdirectory(examples/hid/runloop)

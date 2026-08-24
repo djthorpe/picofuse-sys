@@ -17,6 +17,7 @@
 struct app_t {
   sys_event_queue_t *queue;
   hid_t *hid;
+  hw_watchdog_t *watchdog;
   app_flag_t flags;
   app_callback_start_t on_start;
   app_callback_event_t on_event;
@@ -41,14 +42,30 @@ static void _app_on_init(uint8_t worker) {
 
   // hw_init() and hid_init() are weakly linked (see hw.c and hid.c): they
   // are harmless no-ops (hid_init() returning NULL) unless the
-  // picofuse-hw-obj / picofuse-hid-obj modules are also linked into this
-  // binary, so a NULL app_hid() is expected, not an error, when that
-  // module is absent.
+  // picofuse-hw / picofuse-hid libraries are also linked into this binary,
+  // so a NULL app_hid() is expected, not an error, when that library is
+  // absent.
   hw_init();
   _app->hid = hid_init(sys_runloop_queue());
 
   if (_app->hid != NULL && (_app->flags & APP_FLAG_SIGNAL)) {
     (void)hid_register_signal(_app->hid);
+  }
+
+  // hid_register_user_button() returns NULL when the board has no user
+  // button, which is expected, not an error.
+  if (_app->hid != NULL && (_app->flags & APP_FLAG_USER_BUTTON)) {
+    (void)hid_register_user_button(_app->hid, KEYCODE_BUTTON_USER);
+  }
+
+  // hw_watchdog_init() is weakly linked (see hw.c), so a NULL
+  // app_watchdog() is expected, not an error, when picofuse-hw is absent
+  // or the platform has no watchdog backend.
+  if (_app->flags & APP_FLAG_WATCHDOG) {
+    _app->watchdog = hw_watchdog_init();
+    if (_app->watchdog != NULL) {
+      hw_watchdog_enable(_app->watchdog, true);
+    }
   }
 
   if (_app->on_start != NULL) {
@@ -74,6 +91,13 @@ static void _app_on_exit(uint8_t worker) {
     return;
   }
 
+  // Disable the watchdog before other teardown steps run, so shutdown work
+  // cannot itself be interrupted by a watchdog-triggered reset.
+  if (_app->watchdog != NULL) {
+    hw_watchdog_deinit(_app->watchdog);
+    _app->watchdog = NULL;
+  }
+
   hid_deinit(_app->hid);
   _app->hid = NULL;
   hw_exit();
@@ -93,6 +117,7 @@ int app_main(int argc, char *argv[], app_flag_t flags,
   app_t app = {
       .queue = NULL,
       .hid = NULL,
+      .watchdog = NULL,
       .flags = flags,
       .on_start = on_start,
       .on_event = on_event,
@@ -120,10 +145,20 @@ int app_main(int argc, char *argv[], app_flag_t flags,
 
 /**
  * @brief Get the HID instance initialized for this app.
- * @return HID instance, or NULL if the picofuse-hid-obj module is not
- * linked into this binary.
+ * @return HID instance, or NULL if the picofuse-hid library is not linked
+ * into this binary.
  */
 hid_t *app_hid(const app_t *app) { return (app != NULL) ? app->hid : NULL; }
+
+/**
+ * @brief Get the watchdog handle enabled for this app.
+ * @param app Application instance.
+ * @return Watchdog handle, or NULL if APP_FLAG_WATCHDOG was not passed to
+ * app_main(), or the watchdog is unavailable on this platform.
+ */
+hw_watchdog_t *app_watchdog(const app_t *app) {
+  return (app != NULL) ? app->watchdog : NULL;
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 // METHODS

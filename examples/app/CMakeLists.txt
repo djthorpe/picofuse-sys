@@ -5,15 +5,15 @@ add_executable(${NAME}
 )
 
 target_link_libraries(${NAME} PRIVATE
-    picofuse-sys-obj
-    picofuse-app-obj
-    picofuse-hid-obj
-    picofuse-hw-obj
+    picofuse-app
+    picofuse-hid
+    picofuse-hw
+    picofuse-sys
 )
 
 if(DEFINED PICO_BOARD)
     pico_set_printf_implementation(${NAME} none)
-    pico_enable_stdio_uart(${NAME} FALSE)
-    pico_enable_stdio_usb(${NAME} TRUE)
+    pico_enable_stdio_uart(${NAME} TRUE)
+    pico_enable_stdio_usb(${NAME} FALSE)
     pico_add_extra_outputs(${NAME})
 endif()

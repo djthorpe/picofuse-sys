@@ -1,6 +1,6 @@
-set(NAME "picofuse-sys-obj")
+set(NAME "picofuse-sys")
 
-add_library(${NAME} OBJECT
+add_library(${NAME} STATIC
     ../any/arena.c
     ../any/runloop.c
     ../any/debugf.c
@@ -40,5 +40,10 @@ target_link_libraries(${NAME} PUBLIC
     pico_mbedtls
     pico_multicore
     pico_rand
+    pico_sync
     pico_stdlib
+    pico_standard_link
+    hardware_sync
 )
+
+picofuse_add_module(${NAME})

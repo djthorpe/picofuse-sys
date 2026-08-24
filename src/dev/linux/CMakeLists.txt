@@ -1,4 +1,4 @@
-set(NAME "picofuse-dev-obj")
+set(NAME "picofuse-dev")
 
 find_package(PkgConfig QUIET)
 if (PkgConfig_FOUND)
@@ -24,7 +24,7 @@ elseif (PICOFUSE_USB AND HAVE_LIBUSB)
     message(STATUS "libftdi1 not found: FT232H support disabled")
 endif()
 
-add_library(${NAME} OBJECT
+add_library(${NAME} STATIC
     ../bme680/bme680.c
     ../bme680/hid.c
     ../bme280/bme280.c
@@ -43,8 +43,8 @@ target_include_directories(${NAME} PUBLIC
 )
 
 target_link_libraries(${NAME} PUBLIC
-    picofuse-hw-obj
-    picofuse-sys-obj
+    picofuse-hw
+    picofuse-sys
 )
 
 if (HAVE_LIBFTDI)
@@ -69,3 +69,5 @@ if (HAVE_LIBFTDI)
         ${LIBUSB_LDFLAGS_OTHER}
     )
 endif()
+
+picofuse_add_module(${NAME} REQUIRES picofuse-hw)

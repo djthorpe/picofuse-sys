@@ -49,8 +49,8 @@ static uint32_t _picoinky_flush_gpio_events(void) {
       continue;
     }
 
-    sys_debugf("[picoinky] gpio-event bank=0 pin=%u rise=%u fall=%u", pins[i],
-               (unsigned int)rising, (unsigned int)falling);
+    sys_debugf("[dev/picoinky] gpio-event bank=0 pin=%u rise=%u fall=%u",
+               pins[i], (unsigned int)rising, (unsigned int)falling);
   }
 
   return fall;
@@ -100,7 +100,7 @@ static void _picoinky_gpio_event_cb(uint8_t bank, uint8_t pin,
 int main(void) {
   sys_init();
   hw_init();
-  sys_debugf("[picoinky] boot");
+  sys_debugf("[dev/picoinky] boot");
 
   hw_gpio_t *swa = hw_gpio_init(0u, SWA_PIN, HW_GPIO_PULLUP);
   hw_gpio_t *swb = hw_gpio_init(0u, SWB_PIN, HW_GPIO_PULLUP);
@@ -118,7 +118,7 @@ int main(void) {
       !hw_gpio_valid(spi_sclk) || !hw_gpio_valid(spi_mosi) ||
       !hw_gpio_valid(inky_dc) || !hw_gpio_valid(inky_reset) ||
       !hw_gpio_valid(inky_busy)) {
-    sys_debugf("[picoinky] GPIO init failed");
+    sys_debugf("[dev/picoinky] GPIO init failed");
     hw_exit();
     sys_exit();
     return 1;

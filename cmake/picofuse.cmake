@@ -1,3 +1,53 @@
+# Finish configuring a picofuse module static library target: sets its
+# OUTPUT_NAME, generates + installs its pkg-config file, and installs the
+# library itself. Call once per module (picofuse-sys, picofuse-hw, ...)
+# after add_library(<NAME> STATIC ...) and its own target_link_libraries
+# calls.
+#
+#   picofuse_add_module(<NAME> [REQUIRES <picofuse-module>...])
+#
+# REQUIRES lists this module's own picofuse-* PUBLIC dependencies (e.g.
+# picofuse-hid REQUIRES picofuse-hw), used for the pkg-config Requires:
+# field. Expects PICOFUSE_LIBRARY_SUFFIX and the pkg-config template
+# variables (PICOFUSE_PC_VERSION, PICOFUSE_PC_PREFIX_REL, ...) to already be
+# set by the top-level CMakeLists.txt before any module subdirectory calling
+# this is added.
+function(picofuse_add_module NAME)
+    cmake_parse_arguments(_ARG "" "" "REQUIRES" ${ARGN})
+
+    string(REPLACE "picofuse-" "" _MODULE "${NAME}")
+    set(_LIBNAME "picofuse-${_MODULE}-${PICOFUSE_LIBRARY_SUFFIX}")
+
+    set_target_properties(${NAME} PROPERTIES
+        OUTPUT_NAME "${_LIBNAME}"
+    )
+
+    set(PICOFUSE_PC_NAME "picofuse-${_MODULE}-${PICOFUSE_LIBRARY_SUFFIX}")
+    set(PICOFUSE_PC_LIB_NAME "${_LIBNAME}")
+    set(PICOFUSE_PC_REQUIRES "")
+    foreach(_REQ ${_ARG_REQUIRES})
+        string(REPLACE "picofuse-" "" _REQ_MODULE "${_REQ}")
+        string(APPEND PICOFUSE_PC_REQUIRES " picofuse-${_REQ_MODULE}-${PICOFUSE_LIBRARY_SUFFIX}")
+    endforeach()
+
+    set(_PC_FILE_NAME "picofuse-${_MODULE}-${PICOFUSE_LIBRARY_SUFFIX}.pc")
+    configure_file(
+        ${PROJECT_SOURCE_DIR}/cmake/picofuse-module.pc.in
+        ${CMAKE_CURRENT_BINARY_DIR}/${_PC_FILE_NAME}
+        @ONLY
+    )
+
+    install(TARGETS ${NAME}
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    )
+
+    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${_PC_FILE_NAME}
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig
+    )
+endfunction()
+
 # Shared build logic for Raspberry Pi microcontrollers without Pico SDK path
 # dependencies.
 #

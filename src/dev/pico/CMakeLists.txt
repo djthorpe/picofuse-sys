@@ -1,6 +1,6 @@
-set(NAME "picofuse-dev-obj")
+set(NAME "picofuse-dev")
 
-add_library(${NAME} OBJECT
+add_library(${NAME} STATIC
     ../bme680/bme680.c
     ../bme680/hid.c
     ../bme280/bme280.c
@@ -19,10 +19,12 @@ target_include_directories(${NAME} PUBLIC
 )
 
 target_link_libraries(${NAME} PUBLIC
-    picofuse-hw-obj
-    picofuse-sys-obj
+    picofuse-hw
+    picofuse-sys
 )
 
 pico_generate_pio_header(${NAME}
     ${CMAKE_CURRENT_LIST_DIR}/../st7701/st7701.pio
 )
+
+picofuse_add_module(${NAME} REQUIRES picofuse-hw)
