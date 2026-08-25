@@ -8,6 +8,7 @@ target_link_libraries(${NAME} PRIVATE
     picofuse-app
     picofuse-hid
     picofuse-hw
+    picofuse-net
     picofuse-sys
 )
 

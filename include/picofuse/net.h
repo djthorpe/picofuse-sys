@@ -6,3 +6,4 @@
  */
 #pragma once
 #include "net/mqtt.h"
+#include "net/ntp.h"

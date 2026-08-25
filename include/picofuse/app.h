@@ -96,6 +96,13 @@ typedef enum {
                                    ///< effect when HID is unavailable or the
                                    ///< platform has no Wi-Fi hardware
                                    ///< support built in.
+  APP_FLAG_NTP = (1 << 8),        ///< Initialize the NTP manager (see
+                                   ///< net_ntp_init()), exposed via
+                                   ///< @ref app_ntp(). Does not sync
+                                   ///< automatically; call net_ntp_sync()
+                                   ///< yourself (e.g. once Wi-Fi is
+                                   ///< connected). Has no effect when the
+                                   ///< picofuse-net library is not linked.
 } app_flag_t;
 
 /**
@@ -115,6 +122,12 @@ typedef struct hw_watchdog_t hw_watchdog_t;
  * @ingroup App
  */
 typedef struct hw_wifi_t hw_wifi_t;
+
+/**
+ * @brief Opaque NTP manager handle (see picofuse/net/ntp.h).
+ * @ingroup App
+ */
+typedef struct net_ntp_t net_ntp_t;
 
 /**
  * @brief Called once, on the main worker, before the run loop starts
@@ -173,12 +186,14 @@ typedef void (*app_callback_event_t)(app_t *app, sys_event_t event,
  * HID is available, registers a USB host hotplug observer if
  * @ref APP_FLAG_USB is set and HID is available, registers a Wi-Fi
  * connection-state observer if @ref APP_FLAG_WIFI is set and HID is
- * available, then runs the event loop across every available core if
+ * available, initializes the NTP manager (see @ref app_ntp) if
+ * @ref APP_FLAG_NTP is set, then runs the event loop across every available
+ * core if
  * @ref APP_FLAG_MULTICORE is
  * set, or on the calling thread alone otherwise. Blocks until
  * @ref app_shutdown is called from within a callback (or from another
  * thread), then tears down
- * (`hid_deinit()`, `hw_exit()`, `sys_exit()`).
+ * (`net_ntp_deinit()`, `hid_deinit()`, `hw_exit()`, `sys_exit()`).
  */
 int app_main(int argc, char *argv[], app_flag_t flags,
              app_callback_start_t on_start, app_callback_event_t on_event,
@@ -222,6 +237,18 @@ hw_watchdog_t *app_watchdog(const app_t *app);
  * `hw_wifi_disconnect()` on it directly to drive the connection.
  */
 hw_wifi_t *app_wifi(const app_t *app);
+
+/**
+ * @brief Get the NTP manager handle initialized for this app.
+ * @ingroup App
+ * @param app Application instance.
+ * @return NTP handle, or NULL if @ref APP_FLAG_NTP was not passed to
+ * app_main(), or the picofuse-net library is not linked into this binary.
+ *
+ * Call net_ntp_sync() on it directly to drive a synchronization attempt;
+ * app_main() does not sync automatically.
+ */
+net_ntp_t *app_ntp(const app_t *app);
 
 /** @} */
 

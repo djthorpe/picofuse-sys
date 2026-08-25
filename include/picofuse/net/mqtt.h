@@ -18,6 +18,13 @@
 // TYPES
 
 /**
+ * @brief Opaque MQTT client handle.
+ * @ingroup MQTT
+ * @headerfile mqtt.h picofuse/net.h
+ */
+typedef struct net_mqtt_t net_mqtt_t;
+
+/**
  * @brief Connection/event status flags for MQTT operations.
  * @ingroup MQTT
  */
@@ -56,12 +63,6 @@ typedef enum {
 typedef void (*net_mqtt_connect_callback_t)(net_mqtt_t *mqtt,
                                             net_mqtt_status_t status,
                                             void *user_data);
-
-/**
- * @brief Create and initialize an MQTT handle.
- * @ingroup MQTT
- */
-typedef struct net_mqtt_t net_mqtt_t;
 
 ///////////////////////////////////////////////////////////////////////////////
 // LIFECYCLE

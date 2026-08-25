@@ -1,5 +1,6 @@
 #include <picofuse/app.h>
 #include <picofuse/hw.h>
+#include <picofuse/net.h>
 #include <picofuse/sys.h>
 #include <string.h>
 
@@ -52,7 +53,6 @@ void app_init(app_t *app, void *userdata) {
 }
 
 void app_event(app_t *app, sys_event_t event, void *userdata) {
-  (void)app;
   (void)userdata;
 
   hid_event_t *hid_event = (hid_event_t *)event;
@@ -61,10 +61,20 @@ void app_event(app_t *app, sys_event_t event, void *userdata) {
   }
 
   switch (hid_event->type) {
-  case hid_event_type_timer:
-    sys_debugf("app", "app_event: hello from the timer (t=%lu ms core=%u)",
-               sys_timestamp_ms(), sys_thread_core());
+  case hid_event_type_timer: {
+    sys_date_t now;
+    if (sys_date_get_now(&now)) {
+      uint16_t year;
+      uint8_t month, day, hours, minutes, seconds;
+      sys_date_get_date_utc(&now, &year, &month, &day, NULL);
+      sys_date_get_time_utc(&now, &hours, &minutes, &seconds);
+      sys_debugf("app", "app_event: %04u-%02u-%02u %02u:%02u:%02u UTC",
+                 (unsigned int)year, (unsigned int)month, (unsigned int)day,
+                 (unsigned int)hours, (unsigned int)minutes,
+                 (unsigned int)seconds);
+    }
     break;
+  }
   case hid_event_type_keycode:
     sys_debugf("app", "app_event: %s %s (core=%u)",
                hid_keycode_to_string(hid_event->data.keycode.keycode),
@@ -121,6 +131,12 @@ void app_event(app_t *app, sys_event_t event, void *userdata) {
       label = "joining";
     } else if (wifi_event & hw_wifi_event_connected) {
       label = "connected";
+      net_ntp_t *ntp = app_ntp(app);
+      if (ntp != NULL) {
+        sys_debugf("app", "app_event: syncing NTP (core=%u)",
+                   sys_thread_core());
+        (void)net_ntp_sync(ntp, NULL, 0);
+      }
     } else if (wifi_event & hw_wifi_event_disconnected) {
       label = "disconnected";
     } else if (wifi_event & hw_wifi_event_badauth) {
@@ -153,6 +169,7 @@ int main(int argc, char **argv) {
   return app_main(argc, argv,
                   APP_FLAG_SIGNAL | APP_FLAG_WATCHDOG | APP_FLAG_MULTICORE |
                       APP_FLAG_USER_BUTTON | APP_FLAG_TEMPERATURE |
-                      APP_FLAG_VSYS | APP_FLAG_USB | APP_FLAG_WIFI,
+                      APP_FLAG_VSYS | APP_FLAG_USB | APP_FLAG_WIFI |
+                      APP_FLAG_NTP,
                   app_init, app_event, NULL);
 }

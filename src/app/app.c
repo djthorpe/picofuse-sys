@@ -1,6 +1,7 @@
 #include <picofuse/app.h>
 #include <picofuse/hid.h>
 #include <picofuse/hw.h>
+#include <picofuse/net.h>
 #include <picofuse/sys.h>
 
 /**
@@ -19,6 +20,7 @@ struct app_t {
   hid_t *hid;
   hw_watchdog_t *watchdog;
   hw_wifi_t *wifi;
+  net_ntp_t *ntp;
   app_flag_t flags;
   app_callback_start_t on_start;
   app_callback_event_t on_event;
@@ -32,6 +34,28 @@ struct app_t {
 // instance mirrors that rather than adding lifetime management app_main
 // does not need.
 static app_t *_app = NULL;
+
+static void _app_on_ntp(net_ntp_t *ntp, net_ntp_status_t status,
+                        const sys_date_t *date, void *user_data) {
+  (void)ntp;
+  (void)user_data;
+
+  if (status != net_ntp_status_success_t || date == NULL) {
+    sys_debugf("app", "app_on_ntp: timeout");
+    return;
+  }
+
+  sys_date_t local_date = *date;
+  uint16_t year;
+  uint8_t month, day, hours, minutes, seconds;
+  sys_date_get_date_utc(&local_date, &year, &month, &day, NULL);
+  sys_date_get_time_utc(&local_date, &hours, &minutes, &seconds);
+
+  sys_debugf("app", "app_on_ntp: %04u-%02u-%02u %02u:%02u:%02u UTC",
+             (unsigned int)year, (unsigned int)month, (unsigned int)day,
+             (unsigned int)hours, (unsigned int)minutes,
+             (unsigned int)seconds);
+}
 
 static void _app_on_init(uint8_t worker) {
   if (worker != 0u) {
@@ -88,6 +112,12 @@ static void _app_on_init(uint8_t worker) {
     }
   }
 
+  // net_ntp_init() is weakly linked (see net.c), so a NULL app_ntp() is
+  // expected, not an error, when picofuse-net is absent.
+  if (_app->flags & APP_FLAG_NTP) {
+    _app->ntp = net_ntp_init(_app_on_ntp, _app);
+  }
+
   // hw_watchdog_init() is weakly linked (see hw.c), so a NULL
   // app_watchdog() is expected, not an error, when picofuse-hw is absent
   // or the platform has no watchdog backend.
@@ -135,6 +165,12 @@ static void _app_on_exit(uint8_t worker) {
   hid_deinit(_app->hid);
   _app->hid = NULL;
   _app->wifi = NULL;
+
+  // Tear down NTP before hw_exit() (which deinits cyw43 on Pico), since the
+  // NTP backend may still be using the same lwIP/cyw43 stack.
+  net_ntp_deinit(_app->ntp);
+  _app->ntp = NULL;
+
   hw_exit();
   sys_event_queue_deinit(_app->queue);
   _app->queue = NULL;
@@ -154,6 +190,7 @@ int app_main(int argc, char *argv[], app_flag_t flags,
       .hid = NULL,
       .watchdog = NULL,
       .wifi = NULL,
+      .ntp = NULL,
       .flags = flags,
       .on_start = on_start,
       .on_event = on_event,
@@ -205,6 +242,14 @@ hw_watchdog_t *app_watchdog(const app_t *app) {
 hw_wifi_t *app_wifi(const app_t *app) {
   return (app != NULL) ? app->wifi : NULL;
 }
+
+/**
+ * @brief Get the NTP manager handle initialized for this app.
+ * @param app Application instance.
+ * @return NTP handle, or NULL if APP_FLAG_NTP was not passed to app_main(),
+ * or the picofuse-net library is not linked into this binary.
+ */
+net_ntp_t *app_ntp(const app_t *app) { return (app != NULL) ? app->ntp : NULL; }
 
 ///////////////////////////////////////////////////////////////////////////////
 // METHODS

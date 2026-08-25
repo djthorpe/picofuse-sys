@@ -73,12 +73,6 @@ function(_picofuse_init_defaults)
         return()
     endif()
 
-    # Installed layout is expected as:
-    #   <prefix>/share/picofuse/cmake/picofuse.cmake
-    #   <prefix>/share/picofuse/<board>/flash.ld
-    #   <prefix>/share/picofuse/<board>/start.s
-    get_filename_component(_PICOFUSE_MODULE_ROOT "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
-
     if(NOT DEFINED PICOFUSE_BOARD AND DEFINED PICOFUSE_BOARD_LOWER)
         set(PICOFUSE_BOARD "${PICOFUSE_BOARD_LOWER}" PARENT_SCOPE)
         set(PICOFUSE_BOARD "${PICOFUSE_BOARD_LOWER}")
@@ -139,25 +133,6 @@ function(_picofuse_init_defaults)
         else()
             set(PICOFUSE_FLASH_ENTRY "0x10000000" PARENT_SCOPE)
             set(PICOFUSE_FLASH_ENTRY "0x10000000")
-        endif()
-    endif()
-
-    if(DEFINED PICOFUSE_BOARD)
-        set(_PICOFUSE_BOARD_DIR "${_PICOFUSE_MODULE_ROOT}/${PICOFUSE_BOARD}")
-
-        if(NOT DEFINED PICOFUSE_LDSCRIPT AND EXISTS "${_PICOFUSE_BOARD_DIR}/flash.ld")
-            set(PICOFUSE_LDSCRIPT "${_PICOFUSE_BOARD_DIR}/flash.ld" PARENT_SCOPE)
-            set(PICOFUSE_LDSCRIPT "${_PICOFUSE_BOARD_DIR}/flash.ld")
-        endif()
-
-        if(NOT DEFINED PICOFUSE_STARTUP AND EXISTS "${_PICOFUSE_BOARD_DIR}/start.s")
-            set(PICOFUSE_STARTUP "${_PICOFUSE_BOARD_DIR}/start.s" PARENT_SCOPE)
-            set(PICOFUSE_STARTUP "${_PICOFUSE_BOARD_DIR}/start.s")
-        endif()
-
-        if(NOT DEFINED PICOFUSE_BOOT2_OBJECT AND EXISTS "${_PICOFUSE_BOARD_DIR}/boot2.o")
-            set(PICOFUSE_BOOT2_OBJECT "${_PICOFUSE_BOARD_DIR}/boot2.o" PARENT_SCOPE)
-            set(PICOFUSE_BOOT2_OBJECT "${_PICOFUSE_BOARD_DIR}/boot2.o")
         endif()
     endif()
 
