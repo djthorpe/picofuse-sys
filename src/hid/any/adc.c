@@ -8,15 +8,25 @@
  * @brief Per-device state shared by hid_register_adc(), hid_register_vsys(),
  * and hid_register_temperature(): the ADC handle plus last-reported values
  * for change detection. gpio is NULL for the internal temperature and VSYS
- * channels, which have no caller-owned backing GPIO pin.
+ * channels, which have no caller-owned backing GPIO pin. vbus_gpio is only
+ * ever set for hid_register_vsys(), when the platform has a GPIO-backed VBUS
+ * detect pin (see hw_adc_init_vsys()); the vsys device is then registered
+ * with that pin's id so _hid_gpio_callback() forces an early re-poll of the
+ * vsys voltage whenever VBUS changes. vbus_supported covers both this
+ * GPIO-backed case and platforms where VBUS is owned by a wifi module
+ * instead (read via hw_adc_vbus_present(), which abstracts over both).
  */
 typedef struct {
   hw_adc_t *adc;
   hw_gpio_t *gpio;
+  hw_gpio_t *vbus_gpio;
+  bool vbus_supported;
   const char *metric_name;
   uint16_t num_samples;
   float cached_voltage;
   bool cached_voltage_valid;
+  bool cached_vbus_present;
+  bool cached_vbus_valid;
   uint16_t cached_raw_16;
   bool cached_raw_16_valid;
   float cached_temperature_c;
@@ -31,6 +41,7 @@ static const char *_hid_vsys_name = "vsys";
 static const char *_hid_temperature_name = "temperature";
 static const char *_hid_metric_raw_16_default = "raw_16";
 static const char *_hid_metric_vsys = "vsys";
+static const char *_hid_metric_vbus = "vbus";
 static const char *_hid_metric_temperature = "temp";
 static const char *_hid_unit_volt = "V";
 static const char *_hid_unit_raw = "";
@@ -116,8 +127,8 @@ static bool _hid_adc_device_read(hid_device_t *device, void *userdata) {
 }
 
 /**
- * @brief Poll the VSYS voltage channel and publish a changed voltage
- * metric.
+ * @brief Poll the VSYS voltage channel and (when available) the VBUS detect
+ * pin, publishing a changed voltage and/or vbus-present metric.
  */
 static bool _hid_vsys_device_read(hid_device_t *device, void *userdata) {
   _hid_adc_state_t *state = (_hid_adc_state_t *)userdata;
@@ -126,16 +137,32 @@ static bool _hid_vsys_device_read(hid_device_t *device, void *userdata) {
     return false;
   }
 
+  bool ok = true;
+
   float voltage = _hid_adc_round(
       hw_adc_read_voltage(state->adc, _hid_adc_sensor_sample_count), 100.0f);
   if (!state->cached_voltage_valid || state->cached_voltage != voltage) {
     state->cached_voltage = voltage;
     state->cached_voltage_valid = true;
-    return hid_event_queue_metric_float(device, _hid_metric_vsys,
-                                        _hid_unit_volt, voltage);
+    ok = hid_event_queue_metric_float(device, _hid_metric_vsys,
+                                      _hid_unit_volt, voltage) &&
+        ok;
   }
 
-  return true;
+  if (state->vbus_supported) {
+    bool vbus_present = hw_adc_vbus_present();
+    if (!state->cached_vbus_valid ||
+        state->cached_vbus_present != vbus_present) {
+      state->cached_vbus_present = vbus_present;
+      state->cached_vbus_valid = true;
+      ok = hid_event_queue_metric_float(device, _hid_metric_vbus,
+                                        _hid_unit_raw,
+                                        vbus_present ? 1.0f : 0.0f) &&
+          ok;
+    }
+  }
+
+  return ok;
 }
 
 /**
@@ -178,6 +205,9 @@ static bool _hid_adc_device_deinit(hid_device_t *device, void *userdata) {
   hw_adc_deinit(state->adc);
   if (state->gpio != NULL) {
     hw_gpio_deinit(state->gpio);
+  }
+  if (state->vbus_gpio != NULL) {
+    hw_gpio_deinit(state->vbus_gpio);
   }
   sys_free(state);
   return true;
@@ -293,7 +323,8 @@ hid_device_t *hid_register_vsys(hid_t *instance,
     return NULL;
   }
 
-  hw_adc_t *adc = hw_adc_init_vsys();
+  hw_gpio_t *vbus_gpio = NULL;
+  hw_adc_t *adc = hw_adc_init_vsys(&vbus_gpio);
   if (adc == NULL) {
     sys_debugf("hid", "vsys register failed: hw_adc_init_vsys");
     return NULL;
@@ -303,22 +334,36 @@ hid_device_t *hid_register_vsys(hid_t *instance,
       (_hid_adc_state_t *)sys_calloc(1, sizeof(_hid_adc_state_t));
   if (state == NULL) {
     hw_adc_deinit(adc);
+    if (vbus_gpio != NULL) {
+      hw_gpio_deinit(vbus_gpio);
+    }
     return NULL;
   }
   state->adc = adc;
   state->gpio = NULL;
+  state->vbus_gpio = vbus_gpio;
+  state->vbus_supported = hw_adc_vbus_supported();
 
   uint32_t effective_interval_ms = (polling_interval_ms == 0u)
                                        ? _hid_adc_default_poll_interval_ms
                                        : polling_interval_ms;
 
+  // Key the device off the VBUS pin's id (when there is one) so
+  // _hid_gpio_callback() can force an early re-poll when VBUS changes.
+  uint32_t id = (vbus_gpio != NULL)
+                    ? (uint32_t)hw_gpio_get_pin_num(vbus_gpio)
+                    : 0u;
+
   hid_device_t *device =
-      hid_register(instance, _hid_vsys_name, 0u, hid_type_other,
+      hid_register(instance, _hid_vsys_name, id, hid_type_other,
                   hid_class_sensor, effective_interval_ms, state,
                   _hid_vsys_callbacks);
   if (device == NULL) {
     sys_debugf("hid", "vsys register failed: hid_register");
     hw_adc_deinit(adc);
+    if (vbus_gpio != NULL) {
+      hw_gpio_deinit(vbus_gpio);
+    }
     sys_free(state);
     return NULL;
   }

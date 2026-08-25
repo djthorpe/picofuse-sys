@@ -22,8 +22,11 @@ hw_adc_t *hw_adc_init_temperature(void) {
   return NULL;
 }
 
-hw_adc_t *hw_adc_init_vsys(void) {
+hw_adc_t *hw_adc_init_vsys(hw_gpio_t **vbus_gpio) {
   sys_debugf("hw", "adc_init_vsys: unsupported on this platform");
+  if (vbus_gpio != NULL) {
+    *vbus_gpio = NULL;
+  }
   return NULL;
 }
 
@@ -73,3 +76,7 @@ float hw_adc_read_temperature(hw_adc_t *adc, uint16_t num_samples) {
   (void)num_samples;
   return 0.0f;
 }
+
+bool hw_adc_vbus_supported(void) { return false; }
+
+bool hw_adc_vbus_present(void) { return false; }

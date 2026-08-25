@@ -105,6 +105,15 @@ static void _hid_gpio_callback(uint8_t bank, uint8_t pin, hw_gpio_event_t event,
     return;
   }
 
+  if (device->type != hid_type_gpio) {
+    // Non-button device keyed off a GPIO pin (e.g. hid_register_vsys()'s
+    // VBUS detect pin): don't emit a keycode event, just force an early
+    // re-poll on the next hid_poll() rather than waiting out its normal
+    // polling_interval_ms.
+    device->last_event_ms = 0u;
+    return;
+  }
+
   hid_state_t rising_state = device->gpio_invert ? hid_state_off : hid_state_on;
   hid_state_t falling_state = device->gpio_invert ? hid_state_on : hid_state_off;
 

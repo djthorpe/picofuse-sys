@@ -105,8 +105,20 @@
 // VBUS. This can be passed to cyw43_arch_gpio_get to determine if the device is
 // battery powered. PICO_VBUS_PIN and CYW43_WL_GPIO_VBUS_PIN should not both be
 // defined.
+//
+// GPIO24 on this board is CYW43_DEFAULT_PIN_WL_HOST_WAKE (see below), already
+// claimed by the CYW43 driver as its wireless host-wake pin - it is not a
+// free VBUS-sense pin, despite matching plain Pico's GPIO24 VBUS convention.
+// Reinitializing it as a plain GPIO input (as hw_adc_init_vsys() would with
+// PICO_VBUS_PIN set) breaks CYW43 SPI/host-wake communication, hanging wifi
+// join until the watchdog resets the board. Leave both undefined until this
+// board's actual VBUS-sense pin (if any) is confirmed from schematics.
 #ifndef CYW43_WL_GPIO_VBUS_PIN
-#define CYW43_WL_GPIO_VBUS_PIN 2
+// no CYW43_WL_GPIO_VBUS_PIN
+#endif
+
+#ifndef PICO_VBUS_PIN
+// no PICO_VBUS_PIN
 #endif
 
 // If CYW43_USES_VSYS_PIN is defined then CYW43 uses the VSYS GPIO (defined by

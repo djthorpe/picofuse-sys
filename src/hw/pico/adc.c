@@ -1,14 +1,10 @@
+#include "power.h"
 #include <hardware/adc.h>
 #include <hardware/gpio.h>
 #include <picofuse/hw.h>
 #include <picofuse/sys.h>
 #include <stdbool.h>
 #include <stdint.h>
-
-#ifdef PICO_CYW43_SUPPORTED
-#include "cyw43.h"
-#include <pico/cyw43_arch.h>
-#endif
 
 #if defined(PICO_RP2040) || defined(PICO_RP2350A)
 // Package with ADC-capable GPIOs starting at 26 (RP2040 / RP2350A)
@@ -51,40 +47,6 @@ struct hw_adc_t {
 static hw_adc_t _hw_adc_channels[NUM_ADC_CHANNELS] = {0};
 
 ///////////////////////////////////////////////////////////////////////////////
-// FPRIVATE METHODS
-
-/**
- * @brief Get the GPIO pin number for the VSYS voltage channel
- * @return GPIO pin number, or 0xFF if the channel has no GPIO mapping.
- */
-static inline uint8_t _hw_adc_vsys_pin(void) {
-#if defined(PICO_VSYS_PIN)
-  return PICO_VSYS_PIN;
-#elif defined(PICOLIPO_BAT_SENSE_PIN)
-  return PICOLIPO_BAT_SENSE_PIN;
-#elif defined(PIMORONI_PICO_LIPO2_RP2350)
-  return 43; // PIMORONI_PICO_LIPO2_RP2350 uses GPIO 43 for VSYS
-#else
-  return UINT8_MAX; // Invalid GPIO pin
-#endif
-}
-
-/**
- * @brief Get the CYW43 VBUS GPIO pin used to wake the wifi module before
- * measuring VSYS.
- * @return GPIO pin number, or 0xFF if VSYS measurement does not require
- * waking the wifi module on this platform.
- */
-static inline uint8_t _hw_adc_wifi_vbus_pin(void) {
-#if defined(PICO_CYW43_SUPPORTED) && defined(CYW43_USES_VSYS_PIN) &&           \
-    defined(CYW43_WL_GPIO_VBUS_PIN)
-  return CYW43_WL_GPIO_VBUS_PIN;
-#else
-  return UINT8_MAX;
-#endif
-}
-
-///////////////////////////////////////////////////////////////////////////////
 // LIFECYCLE
 
 uint8_t hw_adc_count(void) { return NUM_ADC_CHANNELS; }
@@ -123,8 +85,12 @@ hw_adc_t *hw_adc_init_temperature(void) {
   return adc;
 }
 
-hw_adc_t *hw_adc_init_vsys(void) {
-  uint8_t vsys_pin = _hw_adc_vsys_pin();
+hw_adc_t *hw_adc_init_vsys(hw_gpio_t **vbus_gpio) {
+  if (vbus_gpio != NULL) {
+    *vbus_gpio = NULL;
+  }
+
+  uint8_t vsys_pin = _hw_power_vsys_pin();
   if (vsys_pin == UINT8_MAX) {
     sys_debugf("hw",
         "adc_init_vsys: VSYS channel not supported on this platform");
@@ -138,8 +104,18 @@ hw_adc_t *hw_adc_init_vsys(void) {
     return NULL;
   }
   adc->vsys = true;
-  sys_debugf("hw", "adc_init_vsys: gpio=%d wifi_vbus_pin=%d", vsys_pin,
-             _hw_adc_wifi_vbus_pin());
+  sys_debugf("hw", "adc_init_vsys: gpio=%d", vsys_pin);
+
+#ifndef CYW43_WL_GPIO_VBUS_PIN
+  // A CYW43-owned VBUS pin lives on the wifi module, not a real RP2040 GPIO,
+  // so it can't be wrapped in a hw_gpio_t; only expose it here otherwise.
+  if (vbus_gpio != NULL) {
+    uint8_t vbus_pin = _hw_power_vbus_pin();
+    if (vbus_pin != UINT8_MAX) {
+      *vbus_gpio = hw_gpio_init(0u, vbus_pin, HW_GPIO_INPUT);
+    }
+  }
+#endif
 
   return adc;
 }
@@ -212,14 +188,9 @@ static float _hw_adc_read_raw(hw_adc_t *adc, uint16_t num_samples) {
     adc_set_temp_sensor_enabled(true);
   }
 
-#ifdef PICO_CYW43_SUPPORTED
-  uint8_t wifi_vbus_pin = adc->vsys ? _hw_adc_wifi_vbus_pin() : UINT8_MAX;
-  if (wifi_vbus_pin != UINT8_MAX) {
-    cyw43_thread_enter();
-    // Make sure cyw43 is awake so VSYS can be measured.
-    cyw43_arch_gpio_get(wifi_vbus_pin);
+  if (adc->vsys) {
+    _hw_power_vsys_pre_read();
   }
-#endif
 
   adc_select_input(adc->channel);
 
@@ -263,11 +234,9 @@ static float _hw_adc_read_raw(hw_adc_t *adc, uint16_t num_samples) {
     result = (float)sum / (float)num_samples;
   }
 
-#ifdef PICO_CYW43_SUPPORTED
-  if (wifi_vbus_pin != UINT8_MAX) {
-    cyw43_thread_exit();
+  if (adc->vsys) {
+    _hw_power_vsys_post_read();
   }
-#endif
 
   return result;
 }
@@ -286,7 +255,7 @@ float hw_adc_read_voltage(hw_adc_t *adc, uint16_t num_samples) {
   const float conversion_factor = ADC_VREF / (float)(1 << 12);
 
   if (adc->vsys) {
-    return raw12 * 3.0f * conversion_factor;
+    return raw12 * _hw_power_vsys_scale() * conversion_factor;
   }
 
   return raw12 * conversion_factor;
@@ -300,3 +269,7 @@ float hw_adc_read_temperature(hw_adc_t *adc, uint16_t num_samples) {
   float voltage = hw_adc_read_voltage(adc, num_samples);
   return 27.0f - ((voltage - 0.706f) / 0.001721f);
 }
+
+bool hw_adc_vbus_supported(void) { return _hw_power_vbus_pin() != UINT8_MAX; }
+
+bool hw_adc_vbus_present(void) { return _hw_power_vbus_present(); }

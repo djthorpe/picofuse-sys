@@ -263,6 +263,12 @@ hid_device_t *hid_register_temperature(hid_t *instance,
  * value has changed since the last poll. No raw metric is reported here;
  * see @ref hid_register_adc for a GPIO-pin ADC source that reports
  * `"raw_16"`.
+ *
+ * On platforms with a GPIO-backed VBUS detect pin, also publishes a
+ * `hid_event_type_metric` `"vbus"` event (1.0 = USB power present, 0.0 =
+ * absent) on the first poll and whenever it changes thereafter; a VBUS edge
+ * also forces an early re-poll instead of waiting for the next
+ * polling_interval_ms.
  */
 hid_device_t *hid_register_vsys(hid_t *instance,
                                 uint32_t polling_interval_ms);

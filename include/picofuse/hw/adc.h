@@ -59,12 +59,37 @@ hw_adc_t *hw_adc_init_temperature(void);
 /**
  * @brief Initialize an ADC handle for the VSYS voltage channel.
  * @ingroup ADC
+ * @param vbus_gpio Optional output parameter. If not NULL, set to a GPIO
+ * handle for the VBUS (USB power present) detect pin, or NULL if this
+ * platform has no such pin (or it is not representable as a GPIO handle).
  * @return ADC handle or NULL on failure.
  *
  * The VSYS voltage channel uses the ADC to measure the system supply voltage.
  * Some platforms may not support this feature, in which case NULL is returned.
  */
-hw_adc_t *hw_adc_init_vsys(void);
+hw_adc_t *hw_adc_init_vsys(hw_gpio_t **vbus_gpio);
+
+/**
+ * @brief Check whether VBUS (USB power) presence can be read on this
+ * platform.
+ * @ingroup ADC
+ * @retval true hw_adc_vbus_present() reflects a real VBUS detect pin.
+ * @retval false This platform has no VBUS detect pin; hw_adc_vbus_present()
+ * always returns false.
+ *
+ * True whether the underlying pin is a real GPIO (see the vbus_gpio
+ * out-param of hw_adc_init_vsys()) or owned by a wifi module and not
+ * representable as a GPIO handle.
+ */
+bool hw_adc_vbus_supported(void);
+
+/**
+ * @brief Read whether VBUS (USB power) is currently present.
+ * @ingroup ADC
+ * @retval true VBUS is present.
+ * @retval false VBUS is absent, or hw_adc_vbus_supported() is false.
+ */
+bool hw_adc_vbus_present(void);
 
 /**
  * @brief Finalize and release an ADC handle.

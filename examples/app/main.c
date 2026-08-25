@@ -71,11 +71,6 @@ void app_event(app_t *app, sys_event_t event, void *userdata) {
                (hid_event->data.keycode.state & hid_state_on) ? "pressed"
                                                               : "released",
                sys_thread_core());
-    if (hid_event->data.keycode.keycode == KEYCODE_BUTTON_USER &&
-        !(hid_event->data.keycode.state & hid_state_on)) {
-      sys_debugf("app", "app_event: user button released, shutting down");
-      app_shutdown(0);
-    }
     break;
   case hid_event_type_metric:
     if (strcmp(hid_event->data.metric.name, "temp") == 0) {
