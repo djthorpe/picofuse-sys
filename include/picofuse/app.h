@@ -111,28 +111,16 @@ typedef enum {
  */
 typedef struct app_t app_t;
 
-/**
- * @brief Opaque hardware watchdog handle (see picofuse/hw/watchdog.h).
- * @ingroup App
- */
+/* Opaque hardware watchdog handle (see picofuse/hw/watchdog.h). */
 typedef struct hw_watchdog_t hw_watchdog_t;
 
-/**
- * @brief Opaque Wi-Fi handle (see picofuse/hw/wifi.h).
- * @ingroup App
- */
+/* Opaque Wi-Fi handle (see picofuse/hw/wifi.h). */
 typedef struct hw_wifi_t hw_wifi_t;
 
-/**
- * @brief Opaque NTP manager handle (see picofuse/net/ntp.h).
- * @ingroup App
- */
+/* Opaque NTP manager handle (see picofuse/net/ntp.h). */
 typedef struct net_ntp_t net_ntp_t;
 
-/**
- * @brief Opaque LED handle (see picofuse/hw/led.h).
- * @ingroup App
- */
+/* Opaque LED handle (see picofuse/hw/led.h). */
 typedef struct hw_led_t hw_led_t;
 
 /**
