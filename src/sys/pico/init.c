@@ -33,7 +33,7 @@ void sys_init(void) {
   stdio_init_all();
   sys_sleep_ms(1000);
   sys_timestamp_ms();
-  sys_debugf("[sys] init sys=%s name=%s version=%s", sys_env_system(),
+  sys_debugf("sys", "init sys=%s name=%s version=%s", sys_env_system(),
              sys_env_name(), sys_env_version());
 }
 
@@ -44,7 +44,7 @@ void sys_exit(void) {
   _sys_timer_module_exit();
   _sys_date_module_exit();
   _sys_mem_module_exit();
-  sys_debugf("[sys] exit");
+  sys_debugf("sys", "exit");
 #ifndef NDEBUG
   _sys_debugf_module_exit();
 #endif

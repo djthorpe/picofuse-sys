@@ -93,7 +93,7 @@ static bool _dev_uc8151_send_command(dev_uc8151_t *uc8151, uint8_t command,
   hw_gpio_set(uc8151->dc_pin, false);
   size_t tx = hw_spi_xfr(uc8151->spi, &command, 1u, 0u, 0u);
   if (tx != 1u) {
-    sys_debugf("[uc8151] cmd 0x%02X failed (tx=%u)", (unsigned int)command,
+    sys_debugf("uc8151", "cmd 0x%02X failed (tx=%u)", (unsigned int)command,
                (unsigned int)tx);
     return false;
   }
@@ -103,7 +103,7 @@ static bool _dev_uc8151_send_command(dev_uc8151_t *uc8151, uint8_t command,
     tx = hw_spi_xfr(uc8151->spi, (void *)data, data_len, 0u, 0u);
     hw_gpio_set(uc8151->dc_pin, false);
     if (tx != data_len) {
-      sys_debugf("[uc8151] cmd 0x%02X data failed (%u/%u)",
+      sys_debugf("uc8151", "cmd 0x%02X data failed (%u/%u)",
                  (unsigned int)command, (unsigned int)tx,
                  (unsigned int)data_len);
     }
@@ -141,13 +141,13 @@ static bool _dev_uc8151_wait_ready(dev_uc8151_t *uc8151) {
 
   uint32_t waited_ms = 0u;
   if (_dev_uc8151_is_busy(uc8151)) {
-    sys_debugf("[uc8151] wait_ready start busy=%u",
+    sys_debugf("uc8151", "wait_ready start busy=%u",
                (unsigned int)hw_gpio_get(uc8151->busy_pin));
   }
 
   while (_dev_uc8151_is_busy(uc8151)) {
     if (waited_ms >= UC8151_BUSY_TIMEOUT_MS) {
-      sys_debugf("[uc8151] wait_ready timeout busy=%u",
+      sys_debugf("uc8151", "wait_ready timeout busy=%u",
                  (unsigned int)hw_gpio_get(uc8151->busy_pin));
       return false;
     }
@@ -157,7 +157,7 @@ static bool _dev_uc8151_wait_ready(dev_uc8151_t *uc8151) {
   }
 
   if (waited_ms > 0u) {
-    sys_debugf("[uc8151] wait_ready done in %u ms", (unsigned int)waited_ms);
+    sys_debugf("uc8151", "wait_ready done in %u ms", (unsigned int)waited_ms);
   }
 
   return true;
@@ -183,12 +183,12 @@ static uint8_t _dev_uc8151_psr_resolution_bits(const dev_uc8151_t *uc8151) {
 static bool _dev_uc8151_setup(dev_uc8151_t *uc8151) {
   uint8_t resolution_bits = _dev_uc8151_psr_resolution_bits(uc8151);
   if (resolution_bits == 0xFFu) {
-    sys_debugf("[uc8151] unsupported panel size %ux%u",
+    sys_debugf("uc8151", "unsupported panel size %ux%u",
                (unsigned int)uc8151->width, (unsigned int)uc8151->height);
     return false;
   }
 
-  sys_debugf("[uc8151] setup begin %ux%u rot=%u speed=%u inv=%u",
+  sys_debugf("uc8151", "setup begin %ux%u rot=%u speed=%u inv=%u",
              (unsigned int)uc8151->width, (unsigned int)uc8151->height,
              (unsigned int)uc8151->rotation, (unsigned int)uc8151->speed,
              (unsigned int)uc8151->inverted);
@@ -270,7 +270,7 @@ static bool _dev_uc8151_setup(dev_uc8151_t *uc8151) {
     return false;
   }
 
-  sys_debugf("[uc8151] setup complete");
+  sys_debugf("uc8151", "setup complete");
 
   return true;
 }
@@ -330,7 +330,7 @@ static void _dev_uc8151_reset(dev_uc8151_t *uc8151) {
     return;
   }
 
-  sys_debugf("[uc8151] reset pulse begin");
+  sys_debugf("uc8151", "reset pulse begin");
 
   // UC8151 reset is active low; pulse low then wait for internal startup.
   hw_gpio_set(uc8151->reset_pin, true);
@@ -340,7 +340,7 @@ static void _dev_uc8151_reset(dev_uc8151_t *uc8151) {
   hw_gpio_set(uc8151->reset_pin, true);
   sys_sleep_ms(10u);
 
-  sys_debugf("[uc8151] reset pulse end");
+  sys_debugf("uc8151", "reset pulse end");
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -368,20 +368,20 @@ dev_uc8151_t *dev_uc8151_init(hw_spi_t *spi, hw_gpio_t *dc_pin,
 
   dev_uc8151_config_t resolved = _dev_uc8151_resolve_config(config);
 
-  sys_debugf("[uc8151] init request width=%u height=%u rot=%u busy=%u",
+  sys_debugf("uc8151", "init request width=%u height=%u rot=%u busy=%u",
              (unsigned int)size.w, (unsigned int)size.h,
              (unsigned int)resolved.rotation,
              (unsigned int)hw_gpio_get(busy_pin));
 
-  sys_debugf("[uc8151] init resolve_config");
+  sys_debugf("uc8151", "init resolve_config");
 
-  sys_debugf("[uc8151] init calloc begin");
+  sys_debugf("uc8151", "init calloc begin");
   dev_uc8151_t *uc8151 = sys_calloc(1u, sizeof(*uc8151));
   if (uc8151 == NULL) {
-    sys_debugf("[uc8151] init calloc failed");
+    sys_debugf("uc8151", "init calloc failed");
     return NULL;
   }
-  sys_debugf("[uc8151] init calloc ok");
+  sys_debugf("uc8151", "init calloc ok");
 
   uc8151->spi = spi;
   uc8151->dc_pin = dc_pin;
@@ -395,25 +395,25 @@ dev_uc8151_t *dev_uc8151_init(hw_spi_t *spi, hw_gpio_t *dc_pin,
   uc8151->blocking = resolved.blocking;
   uc8151->init = true;
 
-  sys_debugf("[uc8151] init set pins start");
-  sys_debugf("[uc8151] init set reset=1 begin");
+  sys_debugf("uc8151", "init set pins start");
+  sys_debugf("uc8151", "init set reset=1 begin");
   hw_gpio_set(uc8151->reset_pin, true);
-  sys_debugf("[uc8151] init set reset=1 end value=%u",
+  sys_debugf("uc8151", "init set reset=1 end value=%u",
              (unsigned int)hw_gpio_get(uc8151->reset_pin));
 
-  sys_debugf("[uc8151] init set dc=0 begin");
+  sys_debugf("uc8151", "init set dc=0 begin");
   hw_gpio_set(uc8151->dc_pin, false);
-  sys_debugf("[uc8151] init set dc=0 end value=%u",
+  sys_debugf("uc8151", "init set dc=0 end value=%u",
              (unsigned int)hw_gpio_get(uc8151->dc_pin));
 
-  sys_debugf("[uc8151] init setup begin");
+  sys_debugf("uc8151", "init setup begin");
   if (!_dev_uc8151_setup(uc8151)) {
-    sys_debugf("[uc8151] init setup failed");
+    sys_debugf("uc8151", "init setup failed");
     dev_uc8151_deinit(uc8151);
     return NULL;
   }
 
-  sys_debugf("[uc8151] init ok");
+  sys_debugf("uc8151", "init ok");
 
   return uc8151;
 }

@@ -183,7 +183,7 @@ void _sys_mem_module_exit(void) {
 
 #ifndef NDEBUG
   if (head != NULL) {
-    sys_debugf("mem_deinit:");
+    sys_debugf("sys", "mem_deinit:");
     sys_mem_dump(head);
   }
 #endif

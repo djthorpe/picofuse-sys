@@ -18,6 +18,7 @@ struct app_t {
   sys_event_queue_t *queue;
   hid_t *hid;
   hw_watchdog_t *watchdog;
+  hw_wifi_t *wifi;
   app_flag_t flags;
   app_callback_start_t on_start;
   app_callback_event_t on_event;
@@ -64,6 +65,29 @@ static void _app_on_init(uint8_t worker) {
     (void)hid_register_temperature(_app->hid, 0u);
   }
 
+  // hid_register_vsys() returns NULL when the platform has no VSYS ADC
+  // channel, which is expected, not an error.
+  if (_app->hid != NULL && (_app->flags & APP_FLAG_VSYS)) {
+    (void)hid_register_vsys(_app->hid, 0u);
+  }
+
+  // hid_register_usb() returns NULL when the platform has no USB host
+  // controller support built in, which is expected, not an error.
+  if (_app->hid != NULL && (_app->flags & APP_FLAG_USB)) {
+    (void)hid_register_usb(_app->hid);
+  }
+
+  // hid_register_wifi() returns NULL when the platform has no Wi-Fi
+  // hardware support built in, which is expected, not an error. Its
+  // userdata is the raw hw_wifi_t* handle (see hid_register_wifi()), which
+  // app_wifi() hands back directly so callers can drive the connection.
+  if (_app->hid != NULL && (_app->flags & APP_FLAG_WIFI)) {
+    hid_device_t *wifi_device = hid_register_wifi(_app->hid, NULL);
+    if (wifi_device != NULL) {
+      _app->wifi = (hw_wifi_t *)hid_device_userdata(wifi_device);
+    }
+  }
+
   // hw_watchdog_init() is weakly linked (see hw.c), so a NULL
   // app_watchdog() is expected, not an error, when picofuse-hw is absent
   // or the platform has no watchdog backend.
@@ -104,8 +128,13 @@ static void _app_on_exit(uint8_t worker) {
     _app->watchdog = NULL;
   }
 
+  // hid_deinit() tears down the wifi HID device (see hid_register_wifi()),
+  // which calls hw_wifi_deinit() on this same handle via its own .deinit
+  // callback — clear it here so app_wifi() doesn't hand back a stale
+  // pointer afterward.
   hid_deinit(_app->hid);
   _app->hid = NULL;
+  _app->wifi = NULL;
   hw_exit();
   sys_event_queue_deinit(_app->queue);
   _app->queue = NULL;
@@ -124,6 +153,7 @@ int app_main(int argc, char *argv[], app_flag_t flags,
       .queue = NULL,
       .hid = NULL,
       .watchdog = NULL,
+      .wifi = NULL,
       .flags = flags,
       .on_start = on_start,
       .on_event = on_event,
@@ -164,6 +194,16 @@ hid_t *app_hid(const app_t *app) { return (app != NULL) ? app->hid : NULL; }
  */
 hw_watchdog_t *app_watchdog(const app_t *app) {
   return (app != NULL) ? app->watchdog : NULL;
+}
+
+/**
+ * @brief Get the Wi-Fi handle registered for this app.
+ * @param app Application instance.
+ * @return Wi-Fi handle, or NULL if APP_FLAG_WIFI was not passed to
+ * app_main(), or Wi-Fi is unavailable on this platform.
+ */
+hw_wifi_t *app_wifi(const app_t *app) {
+  return (app != NULL) ? app->wifi : NULL;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

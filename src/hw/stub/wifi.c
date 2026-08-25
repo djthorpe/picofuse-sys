@@ -14,7 +14,7 @@ struct hw_wifi_t {};
 
 hw_wifi_t *hw_wifi_init_client(const char *country_code,
                                hw_wifi_callback_t callback, void *user_data) {
-  sys_debugf(
+  sys_debugf("wifi",
       "wifi_init_client: country_code=%s callback=%p userdata=%p unsupported "
       "on this platform",
       country_code != NULL ? country_code : "(null)", (void *)callback,
@@ -27,7 +27,7 @@ hw_wifi_t *hw_wifi_init_client(const char *country_code,
 
 hw_wifi_t *hw_wifi_init_device(const char *device, hw_wifi_callback_t callback,
                                void *user_data) {
-  sys_debugf("wifi_init_device: device=%s callback=%p userdata=%p unsupported "
+  sys_debugf("wifi", "wifi_init_device: device=%s callback=%p userdata=%p unsupported "
              "on this platform",
              device != NULL ? device : "(null)", (void *)callback, user_data);
   (void)device;
@@ -42,7 +42,7 @@ bool hw_wifi_valid(hw_wifi_t *wifi) {
 }
 
 void hw_wifi_deinit(hw_wifi_t *wifi) {
-  sys_debugf("wifi_deinit: wifi=%p unsupported on this platform", wifi);
+  sys_debugf("wifi", "wifi_deinit: wifi=%p unsupported on this platform", wifi);
   (void)wifi;
 }
 

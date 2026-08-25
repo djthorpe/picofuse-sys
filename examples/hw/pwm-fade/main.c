@@ -82,12 +82,12 @@ int main(void) {
     sys_panicf("Failed to initialize PWM on LED GPIO %u", led_pin);
   }
 
-  sys_debugf("pwm_fade: led_pin=%u irq_supported=%u period_ns=%u ticks=%u",
+  sys_debugf("pwm_fade", "led_pin=%u irq_supported=%u period_ns=%u ticks=%u",
              led_pin, hw_pwm_irq_supported(), (unsigned int)PWM_PERIOD_NS,
              FADE_UPDATE_TICKS);
 
   for (;;) {
-    sys_debugf("pwm_fade: wraps=%u updates=%u duty=%d step=%d enabled=%u",
+    sys_debugf("pwm_fade", "wraps=%u updates=%u duty=%d step=%d enabled=%u",
                state.wrap_count, state.update_count, state.duty_percent,
                state.step_percent, hw_pwm_get_enabled(pwm));
     sys_sleep_ms(1000);

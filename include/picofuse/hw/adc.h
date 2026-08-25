@@ -51,8 +51,20 @@ hw_adc_t *hw_adc_init_pin(hw_gpio_t *gpio);
  * @brief Initialize an ADC handle for the internal temperature sensor channel.
  * @ingroup ADC
  * @return ADC handle or NULL on failure.
+ *
+ * The internal temperature sensor channel is not associated with a GPIO pin.
  */
 hw_adc_t *hw_adc_init_temperature(void);
+
+/**
+ * @brief Initialize an ADC handle for the VSYS voltage channel.
+ * @ingroup ADC
+ * @return ADC handle or NULL on failure.
+ *
+ * The VSYS voltage channel uses the ADC to measure the system supply voltage.
+ * Some platforms may not support this feature, in which case NULL is returned.
+ */
+hw_adc_t *hw_adc_init_vsys(void);
 
 /**
  * @brief Finalize and release an ADC handle.
@@ -101,32 +113,40 @@ bool hw_adc_valid(const hw_adc_t *adc);
  * @brief Read the current value from an ADC channel as a 12-bit value.
  * @ingroup ADC
  * @param adc ADC handle.
+ * @param num_samples Number of conversions to average. 0 or 1 takes a
+ * single, immediate reading; higher values sample the ADC FIFO that many
+ * times and return the mean, which reduces noise at the cost of latency.
+ * Backends may clamp this to an implementation-defined maximum to bound
+ * how long the call can block.
  * @return Raw value in the 0-4095 range.
  */
-uint16_t hw_adc_read_12(hw_adc_t *adc);
+uint16_t hw_adc_read_12(hw_adc_t *adc, uint16_t num_samples);
 
 /**
  * @brief Read the current value from an ADC channel as a 16-bit value.
  * @ingroup ADC
  * @param adc ADC handle.
+ * @param num_samples Number of conversions to average. See hw_adc_read_12().
  * @return Raw value in the 0-65535 range.
  */
-uint16_t hw_adc_read_16(hw_adc_t *adc);
+uint16_t hw_adc_read_16(hw_adc_t *adc, uint16_t num_samples);
 
 /**
  * @brief Read the current value from an ADC channel as a voltage.
  * @ingroup ADC
  * @param adc ADC handle.
+ * @param num_samples Number of conversions to average. See hw_adc_read_12().
  * @return Voltage value in volts.
  */
-float hw_adc_read_voltage(hw_adc_t *adc);
+float hw_adc_read_voltage(hw_adc_t *adc, uint16_t num_samples);
 
 /**
  * @brief Read the current value from an ADC channel as a temperature.
  * @ingroup ADC
  * @param adc ADC handle configured for temperature sensing.
+ * @param num_samples Number of conversions to average. See hw_adc_read_12().
  * @return Temperature value in degrees Celsius.
  */
-float hw_adc_read_temperature(hw_adc_t *adc);
+float hw_adc_read_temperature(hw_adc_t *adc, uint16_t num_samples);
 
 /** @} */

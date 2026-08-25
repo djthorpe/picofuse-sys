@@ -27,7 +27,7 @@ const hw_usb_device_t *dev_ftdi_next(dev_ftdi_iterator_t **iterator) {
 
 dev_ftdi_t *dev_ftdi_init(const char *serial) {
   (void)serial;
-  sys_debugf("[ftdi] unsupported on this platform");
+  sys_debugf("ftdi", "unsupported on this platform");
   return NULL;
 }
 

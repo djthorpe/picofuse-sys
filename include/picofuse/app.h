@@ -73,6 +73,29 @@ typedef enum {
                                    ///< no effect when HID is unavailable or
                                    ///< the platform has no internal
                                    ///< temperature sensor.
+  APP_FLAG_VSYS = (1 << 5),       ///< Register the VSYS voltage channel as
+                                   ///< a polling HID metric source (see
+                                   ///< hid_register_vsys()), if HID is
+                                   ///< available (see @ref app_hid). Has no
+                                   ///< effect when HID is unavailable or the
+                                   ///< platform has no VSYS ADC channel.
+  APP_FLAG_USB = (1 << 6),        ///< Register a USB host hotplug observer
+                                   ///< (see hid_register_usb()), if HID is
+                                   ///< available (see @ref app_hid). Has no
+                                   ///< effect when HID is unavailable or the
+                                   ///< platform has no USB host controller
+                                   ///< support built in.
+  APP_FLAG_WIFI = (1 << 7),       ///< Register a Wi-Fi connection-state
+                                   ///< observer with the default ("XX",
+                                   ///< worldwide) country code (see
+                                   ///< hid_register_wifi()), if HID is
+                                   ///< available (see @ref app_hid). Call
+                                   ///< hid_register_wifi() directly instead
+                                   ///< of using this flag if a specific
+                                   ///< country code is required. Has no
+                                   ///< effect when HID is unavailable or the
+                                   ///< platform has no Wi-Fi hardware
+                                   ///< support built in.
 } app_flag_t;
 
 /**
@@ -86,6 +109,12 @@ typedef struct app_t app_t;
  * @ingroup App
  */
 typedef struct hw_watchdog_t hw_watchdog_t;
+
+/**
+ * @brief Opaque Wi-Fi handle (see picofuse/hw/wifi.h).
+ * @ingroup App
+ */
+typedef struct hw_wifi_t hw_wifi_t;
 
 /**
  * @brief Called once, on the main worker, before the run loop starts
@@ -139,8 +168,13 @@ typedef void (*app_callback_event_t)(app_t *app, sys_event_t event,
  * watchdog is available, registers the board's user button as a HID event
  * if @ref APP_FLAG_USER_BUTTON is set and HID is available, registers the
  * internal temperature sensor as a HID metric source if
- * @ref APP_FLAG_TEMPERATURE is set and HID is available, then runs the
- * event loop across every available core if @ref APP_FLAG_MULTICORE is
+ * @ref APP_FLAG_TEMPERATURE is set and HID is available, registers the VSYS
+ * voltage channel as a HID metric source if @ref APP_FLAG_VSYS is set and
+ * HID is available, registers a USB host hotplug observer if
+ * @ref APP_FLAG_USB is set and HID is available, registers a Wi-Fi
+ * connection-state observer if @ref APP_FLAG_WIFI is set and HID is
+ * available, then runs the event loop across every available core if
+ * @ref APP_FLAG_MULTICORE is
  * set, or on the calling thread alone otherwise. Blocks until
  * @ref app_shutdown is called from within a callback (or from another
  * thread), then tears down
@@ -175,6 +209,19 @@ hid_t *app_hid(const app_t *app);
  * to app_main(), or the watchdog is unavailable on this platform.
  */
 hw_watchdog_t *app_watchdog(const app_t *app);
+
+/**
+ * @brief Get the Wi-Fi handle registered for this app.
+ * @ingroup App
+ * @param app Application instance.
+ * @return Wi-Fi handle, or NULL if @ref APP_FLAG_WIFI was not passed to
+ * app_main(), or Wi-Fi is unavailable on this platform.
+ *
+ * This is the same handle @ref hid_register_wifi() would have returned via
+ * `hid_device_userdata()`; call `hw_wifi_scan()`/`hw_wifi_connect()`/
+ * `hw_wifi_disconnect()` on it directly to drive the connection.
+ */
+hw_wifi_t *app_wifi(const app_t *app);
 
 /** @} */
 

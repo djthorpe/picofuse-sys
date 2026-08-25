@@ -17,7 +17,7 @@ dev_framebuffer_t *dev_framebuffer_init(const char *device,
   if (frame != NULL) {
     *frame = NULL;
   }
-  sys_debugf("[framebuffer] unsupported on this platform");
+  sys_debugf("framebuffer", "unsupported on this platform");
   return NULL;
 }
 

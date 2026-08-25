@@ -286,13 +286,13 @@ static bool _hid_evdev_is_event_node(const char *name) {
 hid_device_t *hid_register_evdev(hid_t *instance, const char *path,
                                  bool exclusive, void *userdata) {
   if (instance == NULL || path == NULL || path[0] == '\0') {
-    sys_debugf("[hid] evdev register failed: invalid arguments");
+    sys_debugf("hid", "evdev register failed: invalid arguments");
     return NULL;
   }
 
   int fd = open(path, O_RDONLY | O_NONBLOCK);
   if (fd < 0) {
-    sys_debugf("[hid] evdev register failed: open %s failed", path);
+    sys_debugf("hid", "evdev register failed: open %s failed", path);
     return NULL;
   }
 
@@ -300,7 +300,7 @@ hid_device_t *hid_register_evdev(hid_t *instance, const char *path,
   // processes from receiving events from the device, but may require root
   // privileges.
   if (exclusive && ioctl(fd, EVIOCGRAB, (void *)1) != 0) {
-    sys_debugf("[hid] evdev register failed: EVIOCGRAB %s failed", path);
+    sys_debugf("hid", "evdev register failed: EVIOCGRAB %s failed", path);
     close(fd);
     return NULL;
   }
@@ -336,14 +336,14 @@ hid_device_t *hid_register_evdev(hid_t *instance, const char *path,
       hid_register(instance, name, id, hid_type_evdev, hid_class, 0u,
                    userdata, _hid_evdev_callbacks);
   if (device == NULL) {
-    sys_debugf("[hid] evdev register failed: hid_register %s", path);
+    sys_debugf("hid", "evdev register failed: hid_register %s", path);
     sys_free(name);
     close(fd);
     return NULL;
   }
 
   device->fd = fd;
-  sys_debugf("[hid] evdev registered: %s (\"%s\") id=%08X exclusive=%d", path,
+  sys_debugf("hid", "evdev registered: %s (\"%s\") id=%08X exclusive=%d", path,
              device->name, (unsigned int)id, (int)exclusive);
   return device;
 }
@@ -355,7 +355,7 @@ size_t hid_evdev_list(hid_device_list_callback_t callback, void *userdata) {
 
   DIR *dir = opendir("/dev/input");
   if (dir == NULL) {
-    sys_debugf("[hid] evdev list failed: opendir /dev/input failed");
+    sys_debugf("hid", "evdev list failed: opendir /dev/input failed");
     return 0u;
   }
 

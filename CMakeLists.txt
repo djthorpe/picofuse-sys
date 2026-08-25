@@ -138,8 +138,15 @@ endif()
 add_compile_options(
     "-Wall"
     "-Wextra"
-    "$<$<CONFIG:Debug>:-DDEBUG>"
     "$<$<CONFIG:Release>:-O3>"
+    # Single canonical debug/release toggle: NDEBUG. sys_assert()'s verbose
+    # form, sys_debugf() and everything that routes through it (including
+    # the CYW43_PRINTF debug trace redirection - see
+    # src/hw/pico/cyw43_debug.h), the keycode name table, and the pwm debug
+    # logging all key off !NDEBUG now, rather than half of them keying off
+    # a separate project-specific DEBUG macro that had to be kept in sync
+    # with this one by hand.
+    "$<$<CONFIG:Release>:-DNDEBUG>"
     "-DSYSTEM_NAME_${SYSTEM_NAME_UPPER}"
     "-DSYSTEM_NAME=\"${SYSTEM_NAME_LOWER}\""
     "-DSYSTEM_PROCESSOR=\"${PROCESSOR_NAME_LOWER}\""

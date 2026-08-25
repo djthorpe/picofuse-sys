@@ -11,7 +11,7 @@ struct hw_pwm_t {};
 
 hw_pwm_t *hw_pwm_init(hw_gpio_t *gpio, hw_pwm_callback_t callback,
                       void *userdata, const hw_pwm_config_t *config) {
-  sys_debugf("pwm_init: unsupported on this platform (gpio=%p callback=%p "
+  sys_debugf("hw", "pwm_init: unsupported on this platform (gpio=%p callback=%p "
              "userdata=%p config=%p)",
              (void *)gpio, (void *)callback, userdata, (const void *)config);
   if (callback != NULL && !hw_pwm_irq_supported()) {
@@ -25,7 +25,7 @@ hw_pwm_t *hw_pwm_init(hw_gpio_t *gpio, hw_pwm_callback_t callback,
 }
 
 void hw_pwm_deinit(hw_pwm_t *pwm) {
-  sys_debugf("pwm_deinit: unsupported on this platform (pwm=%p)", (void *)pwm);
+  sys_debugf("hw", "pwm_deinit: unsupported on this platform (pwm=%p)", (void *)pwm);
   (void)pwm;
 }
 

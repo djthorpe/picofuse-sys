@@ -14,6 +14,8 @@ add_library(${NAME} STATIC
     any/keycode.c
     any/signal.c
     any/timer.c
+    any/usb.c
+    any/wifi.c
     ${EVDEV_SOURCE}
 )
 

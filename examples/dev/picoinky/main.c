@@ -49,7 +49,7 @@ static uint32_t _picoinky_flush_gpio_events(void) {
       continue;
     }
 
-    sys_debugf("[dev/picoinky] gpio-event bank=0 pin=%u rise=%u fall=%u",
+    sys_debugf("picoinky", "gpio-event bank=0 pin=%u rise=%u fall=%u",
                pins[i], (unsigned int)rising, (unsigned int)falling);
   }
 
@@ -100,7 +100,7 @@ static void _picoinky_gpio_event_cb(uint8_t bank, uint8_t pin,
 int main(void) {
   sys_init();
   hw_init();
-  sys_debugf("[dev/picoinky] boot");
+  sys_debugf("picoinky", "boot");
 
   hw_gpio_t *swa = hw_gpio_init(0u, SWA_PIN, HW_GPIO_PULLUP);
   hw_gpio_t *swb = hw_gpio_init(0u, SWB_PIN, HW_GPIO_PULLUP);
@@ -118,63 +118,63 @@ int main(void) {
       !hw_gpio_valid(spi_sclk) || !hw_gpio_valid(spi_mosi) ||
       !hw_gpio_valid(inky_dc) || !hw_gpio_valid(inky_reset) ||
       !hw_gpio_valid(inky_busy)) {
-    sys_debugf("[dev/picoinky] GPIO init failed");
+    sys_debugf("picoinky", "GPIO init failed");
     hw_exit();
     sys_exit();
     return 1;
   }
 
-  sys_debugf("[picoinky] set dc=0 begin");
+  sys_debugf("picoinky", "set dc=0 begin");
   hw_gpio_set(inky_dc, false);
-  sys_debugf("[picoinky] set dc=0 end read=%u",
+  sys_debugf("picoinky", "set dc=0 end read=%u",
              (unsigned int)hw_gpio_get(inky_dc));
 
-  sys_debugf("[picoinky] set reset=1 begin");
+  sys_debugf("picoinky", "set reset=1 begin");
   hw_gpio_set(inky_reset, true);
-  sys_debugf("[picoinky] set reset=1 end read=%u",
+  sys_debugf("picoinky", "set reset=1 end read=%u",
              (unsigned int)hw_gpio_get(inky_reset));
 
   hw_spi_t *spi = hw_spi_init(SPI_INDEX, spi_sclk, spi_mosi, spi_miso, spi_cs,
                               SPI_BAUD_RATE, NULL);
   if (!hw_spi_valid(spi)) {
-    sys_debugf("[picoinky] SPI init failed");
+    sys_debugf("picoinky", "SPI init failed");
     hw_exit();
     sys_exit();
     return 1;
   }
-  sys_debugf("[picoinky] spi-only mode init ok");
+  sys_debugf("picoinky", "spi-only mode init ok");
 
-  sys_debugf("[picoinky] gpio callback deferred until after reset probe");
+  sys_debugf("picoinky", "gpio callback deferred until after reset probe");
 
-  sys_debugf("[picoinky] busy probe start raw=%u active_low_busy=%u",
+  sys_debugf("picoinky", "busy probe start raw=%u active_low_busy=%u",
              (unsigned int)hw_gpio_get(inky_busy),
              (unsigned int)!hw_gpio_get(inky_busy));
   hw_gpio_set(inky_reset, false);
   sys_sleep_ms(RESET_PULSE_MS);
   _picoinky_flush_gpio_events();
-  sys_debugf("[picoinky] busy during reset raw=%u active_low_busy=%u",
+  sys_debugf("picoinky", "busy during reset raw=%u active_low_busy=%u",
              (unsigned int)hw_gpio_get(inky_busy),
              (unsigned int)!hw_gpio_get(inky_busy));
   hw_gpio_set(inky_reset, true);
   sys_sleep_ms(RESET_PULSE_MS);
   _picoinky_flush_gpio_events();
-  sys_debugf("[picoinky] busy after reset raw=%u active_low_busy=%u",
+  sys_debugf("picoinky", "busy after reset raw=%u active_low_busy=%u",
              (unsigned int)hw_gpio_get(inky_busy),
              (unsigned int)!hw_gpio_get(inky_busy));
 
   hw_gpio_set_callback(_picoinky_gpio_event_cb, NULL);
-  sys_debugf("[picoinky] gpio callback enabled (pins %u,%u,%u,%u)",
+  sys_debugf("picoinky", "gpio callback enabled (pins %u,%u,%u,%u)",
              (unsigned int)SWA_PIN, (unsigned int)SWB_PIN,
              (unsigned int)SWC_PIN, (unsigned int)INKY_BUSY_PIN);
 
-  sys_debugf("[picoinky] uc8151 init begin");
+  sys_debugf("picoinky", "uc8151 init begin");
   dev_uc8151_t *display =
       dev_uc8151_init(spi, inky_dc, inky_reset, inky_busy,
                       (pix_size_t){INKY_WIDTH, INKY_HEIGHT}, NULL);
   if (display == NULL) {
-    sys_debugf("[picoinky] uc8151 init failed");
+    sys_debugf("picoinky", "uc8151 init failed");
   } else {
-    sys_debugf("[picoinky] uc8151 init ok");
+    sys_debugf("picoinky", "uc8151 init ok");
 
     size_t stride = ((size_t)INKY_HEIGHT + 7u) / 8u;
     size_t data_size = (size_t)INKY_WIDTH * stride;
@@ -187,9 +187,9 @@ int main(void) {
           .stride = stride,
           .fmt = PIX_FMT_MONO,
       };
-      sys_debugf("[picoinky] painting black");
+      sys_debugf("picoinky", "painting black");
       bool ok = dev_uc8151_paint(display, &bitmap);
-      sys_debugf("[picoinky] paint %s", ok ? "ok" : "failed");
+      sys_debugf("picoinky", "paint %s", ok ? "ok" : "failed");
 
       // Partial draws on top of the black background.
       // Constraints: origin.y and region height must be multiples of 8.
@@ -208,7 +208,7 @@ int main(void) {
         };
         ok = dev_uc8151_paint_rect(display, &pf1, (pix_point_t){8, 32},
                                    (pix_size_t){p1w, p1h});
-        sys_debugf("[picoinky] patch1 %s", ok ? "ok" : "failed");
+        sys_debugf("picoinky", "patch1 %s", ok ? "ok" : "failed");
         sys_free(p1);
       }
 
@@ -225,7 +225,7 @@ int main(void) {
         };
         ok = dev_uc8151_paint_rect(display, &pf2, (pix_point_t){108, 48},
                                    (pix_size_t){p2w, p2h});
-        sys_debugf("[picoinky] patch2 %s", ok ? "ok" : "failed");
+        sys_debugf("picoinky", "patch2 %s", ok ? "ok" : "failed");
         sys_free(p2);
       }
 
@@ -242,17 +242,17 @@ int main(void) {
         };
         ok = dev_uc8151_paint_rect(display, &pf3, (pix_point_t){248, 32},
                                    (pix_size_t){p3w, p3h});
-        sys_debugf("[picoinky] patch3 %s", ok ? "ok" : "failed");
+        sys_debugf("picoinky", "patch3 %s", ok ? "ok" : "failed");
         sys_free(p3);
       }
 
       sys_free(fb);
     } else {
-      sys_debugf("[picoinky] alloc failed");
+      sys_debugf("picoinky", "alloc failed");
     }
   }
 
-  sys_debugf("[picoinky] gpio-only mode busy_raw=%u active_low_busy=%u",
+  sys_debugf("picoinky", "gpio-only mode busy_raw=%u active_low_busy=%u",
              (unsigned int)hw_gpio_get(inky_busy),
              (unsigned int)!hw_gpio_get(inky_busy));
 
@@ -266,24 +266,24 @@ int main(void) {
 
     if ((pressed >> SWA_PIN) & 1u) {
       patch1_black = !patch1_black;
-      sys_debugf("[picoinky] SWA pressed, patch1 -> %s",
+      sys_debugf("picoinky", "SWA pressed, patch1 -> %s",
                  patch1_black ? "black" : "white");
       _picoinky_paint_box(display, 8, 32, 40, 64, patch1_black);
     }
     if ((pressed >> SWB_PIN) & 1u) {
       patch2_black = !patch2_black;
-      sys_debugf("[picoinky] SWB pressed, patch2 -> %s",
+      sys_debugf("picoinky", "SWB pressed, patch2 -> %s",
                  patch2_black ? "black" : "white");
       _picoinky_paint_box(display, 108, 48, 80, 32, patch2_black);
     }
     if ((pressed >> SWC_PIN) & 1u) {
       patch3_black = !patch3_black;
-      sys_debugf("[picoinky] SWC pressed, patch3 -> %s",
+      sys_debugf("picoinky", "SWC pressed, patch3 -> %s",
                  patch3_black ? "black" : "white");
       _picoinky_paint_box(display, 248, 32, 40, 64, patch3_black);
     }
 
-    sys_debugf("[picoinky] alive busy_raw=%u active_low_busy=%u sw=%u%u%u",
+    sys_debugf("picoinky", "alive busy_raw=%u active_low_busy=%u sw=%u%u%u",
                (unsigned int)hw_gpio_get(inky_busy),
                (unsigned int)!hw_gpio_get(inky_busy),
                (unsigned int)hw_gpio_get(swa), (unsigned int)hw_gpio_get(swb),

@@ -155,6 +155,8 @@ static bool _hw_usb_build_device(uint8_t daddr, hw_usb_device_t *device) {
 }
 
 static void _hw_usb_emit_enumeration_complete_if_ready(void) {
+  static bool logged_wait = false;
+
   if (_hw_usb_active == NULL || !_hw_usb_active->init ||
       _hw_usb_active->enumeration_complete) {
     return;
@@ -162,6 +164,12 @@ static void _hw_usb_emit_enumeration_complete_if_ready(void) {
 
   // Give TinyUSB a short startup window to deliver initial mount callbacks.
   if ((sys_timestamp_ms() - _hw_usb_active->init_time_ms) < 1000u) {
+    if (!logged_wait) {
+      logged_wait = true;
+      sys_debugf("usb", "enum: waiting, elapsed_ms=%llu",
+                 (unsigned long long)(sys_timestamp_ms() -
+                                      _hw_usb_active->init_time_ms));
+    }
     return;
   }
 
@@ -174,15 +182,21 @@ static void _hw_usb_emit_enumeration_complete_if_ready(void) {
 // LIFECYCLE
 
 hw_usb_t *hw_usb_init(hw_usb_callback_t callback, void *userdata) {
-  sys_debugf("usb_init: callback=%p userdata=%p", (void *)callback, userdata);
+  sys_debugf("usb", "usb_init: callback=%p userdata=%p", (void *)callback,
+             userdata);
   hw_usb_deinit(&_hw_usb_instance);
 
   if (callback == NULL) {
     return NULL;
   }
 
-  if (!tuh_inited() && !tuh_init(0)) {
-    return NULL;
+  if (!tuh_inited()) {
+    bool ok = tuh_init(0);
+    sys_debugf("usb", "tuh_init: ok=%u tuh_inited=%u", (unsigned int)ok,
+               (unsigned int)tuh_inited());
+    if (!ok) {
+      return NULL;
+    }
   }
 
   sys_memset(&_hw_usb_instance, 0, sizeof(_hw_usb_instance));
@@ -198,9 +212,15 @@ hw_usb_t *hw_usb_init(hw_usb_callback_t callback, void *userdata) {
 }
 
 void hw_usb_deinit(hw_usb_t *usb) {
-  sys_debugf("usb_deinit: usb=%p", usb);
   if (usb == NULL) {
     return;
+  }
+
+  // hw_usb_init() unconditionally deinits the singleton instance first to
+  // clear any stale prior state; skip the log in that (typically no-op)
+  // case so it doesn't read as an init immediately undone.
+  if (usb->init) {
+    sys_debugf("usb", "usb_deinit: usb=%p", (void *)usb);
   }
 
   if (_hw_usb_active == usb) {
@@ -219,8 +239,22 @@ bool hw_usb_valid(const hw_usb_t *usb) {
 // PLATFORM INTEGRATION
 
 void _hw_usb_poll(void) {
+  static bool logged_entry = false;
+  static bool logged_skip = false;
+
   if (_hw_usb_active == NULL || !_hw_usb_active->init) {
+    if (!logged_skip) {
+      logged_skip = true;
+      sys_debugf("usb", "poll: skipped, active=%p", (void *)_hw_usb_active);
+    }
     return;
+  }
+
+  if (!logged_entry) {
+    logged_entry = true;
+    sys_debugf("usb", "poll: entered, active=%p init_time_ms=%llu",
+               (void *)_hw_usb_active,
+               (unsigned long long)_hw_usb_active->init_time_ms);
   }
 
   tuh_task();

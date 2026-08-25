@@ -54,6 +54,8 @@ typedef enum {
   hid_type_timer = 3,
   hid_type_signal = 4,
   hid_type_evdev = 5,
+  hid_type_usb = 6,
+  hid_type_wifi = 7,
 } hid_type_t;
 
 /**
@@ -204,21 +206,26 @@ hid_device_t *hid_register_gpio_pulldown(hid_t *instance, uint8_t bank,
  * `hw_adc_gpio_channel()`). Must be backed by a GPIO pin on the current
  * platform; use @ref hid_register_temperature for the internal
  * temperature-sensor channel instead.
+ * @param metric_name Name reported on the published metric event. Must
+ * remain valid for the lifetime of the registration (a string literal is
+ * fine); NULL defaults to `"raw_16"`.
+ * @param num_samples Number of ADC conversions to average per read (see
+ * `hw_adc_read_16()`). 0 or 1 takes a single, immediate reading.
  * @param polling_interval_ms Polling interval in milliseconds.
- * @details Passing 0 uses a default interval of 1000 ms.
+ * @details Passing 0 uses a default interval of 5000 ms.
  * @return Registered HID device descriptor, or NULL on failure (for
  * example, if the channel has no GPIO pin).
  *
  * Resolves the channel to its GPIO pin (`hw_adc_gpio_pin()`), reads it on
- * every poll, and publishes a `hid_event_type_metric` event for each of
- * `"voltage"` (volts), `"raw_12"` (0-4095), and `"raw_16"` (0-65535)
- * whenever that particular value has changed since the last poll,
- * mirroring the change-detection behavior of
+ * every poll, and publishes a `hid_event_type_metric` event named
+ * @p metric_name (0-65535) whenever the value has changed since the last
+ * poll, mirroring the change-detection behavior of
  * @ref dev_bme680_hid_register_i2c. No temperature metric is reported here;
  * see @ref hid_register_temperature for the internal temperature-sensor
  * channel.
  */
 hid_device_t *hid_register_adc(hid_t *instance, uint8_t channel,
+                               const char *metric_name, uint16_t num_samples,
                                uint32_t polling_interval_ms);
 
 /**
@@ -227,18 +234,38 @@ hid_device_t *hid_register_adc(hid_t *instance, uint8_t channel,
  * @ingroup HID
  * @param instance HID instance that owns the registration.
  * @param polling_interval_ms Polling interval in milliseconds.
- * @details Passing 0 uses a default interval of 1000 ms.
+ * @details Passing 0 uses a default interval of 5000 ms.
  * @return Registered HID device descriptor, or NULL on failure (for
  * example, if the platform has no internal temperature sensor).
  *
  * Reads the internal temperature-sensor ADC channel (see
- * `hw_adc_init_temperature()`) on every poll and publishes a
- * `hid_event_type_metric` `"temperature"` (degrees Celsius) event whenever
- * the value has changed since the last poll. See @ref hid_register_adc for
- * a GPIO-pin ADC source.
+ * `hw_adc_init_temperature()`), averaged over a fixed number of samples
+ * internal to this module, on every poll and publishes a
+ * `hid_event_type_metric` `"temp"` (degrees Celsius) event whenever the
+ * value has changed since the last poll. See @ref hid_register_adc for a
+ * GPIO-pin ADC source with a caller-controlled sample count.
  */
 hid_device_t *hid_register_temperature(hid_t *instance,
                                        uint32_t polling_interval_ms);
+
+/**
+ * @brief Register the VSYS voltage channel as a polling HID metric source.
+ * @ingroup HID
+ * @param instance HID instance that owns the registration.
+ * @param polling_interval_ms Polling interval in milliseconds.
+ * @details Passing 0 uses a default interval of 5000 ms.
+ * @return Registered HID device descriptor, or NULL on failure (for
+ * example, if the platform has no VSYS ADC channel).
+ *
+ * Reads the VSYS ADC channel (see `hw_adc_init_vsys()`), averaged over a
+ * fixed number of samples internal to this module, on every poll and
+ * publishes a `hid_event_type_metric` `"vsys"` (volts) event whenever the
+ * value has changed since the last poll. No raw metric is reported here;
+ * see @ref hid_register_adc for a GPIO-pin ADC source that reports
+ * `"raw_16"`.
+ */
+hid_device_t *hid_register_vsys(hid_t *instance,
+                                uint32_t polling_interval_ms);
 
 /**
  * @brief Register a user button as a HID input source.
@@ -306,6 +333,47 @@ size_t hid_evdev_list(hid_device_list_callback_t callback, void *userdata);
  * `hid_event_type_signal` events when those signals are observed.
  */
 hid_device_t *hid_register_signal(hid_t *instance);
+
+/**
+ * @brief Register a USB host hotplug observer.
+ * @ingroup HID
+ * @param instance HID instance that owns the USB registration.
+ * @return Registered HID device descriptor, or NULL on failure (for
+ * example, if the platform has no USB host controller support built in).
+ *
+ * Initializes the USB host subsystem (see `hw_usb_init()`), which
+ * enumerates already-attached devices through the same attach/detach
+ * callback used for live hotplug. Only one USB registration is permitted
+ * at a time, since `hw_usb_init()` is itself a process-wide singleton.
+ *
+ * Attach/detach activity is currently only logged via `sys_debugf()`; it
+ * is not yet delivered as HID events.
+ */
+hid_device_t *hid_register_usb(hid_t *instance);
+
+/**
+ * @brief Register a Wi-Fi connection-state observer.
+ * @ingroup HID
+ * @param instance HID instance that owns the Wi-Fi registration.
+ * @param country_code Country code for the Wi-Fi region (e.g., "US", "EU").
+ * If NULL, defaults to "XX" (worldwide). See `hw_wifi_init_client()`.
+ * @return Registered HID device descriptor, or NULL on failure (for
+ * example, if the platform has no Wi-Fi hardware support built in).
+ *
+ * Initializes the Wi-Fi client subsystem (see `hw_wifi_init_client()`) and
+ * emits `hid_event_type_wifi` events for every status change it reports
+ * (joining, connected, disconnected, scan results, errors — see
+ * hw_wifi_event_t). Only one Wi-Fi registration is permitted at a time,
+ * since `hw_wifi_init_client()` is itself a process-wide singleton.
+ *
+ * This registers an observer only; it does not expose scan/connect/
+ * disconnect actions. To drive the connection, retrieve the underlying
+ * `hw_wifi_t*` handle via `hid_device_userdata()` on the returned device
+ * and call `hw_wifi_scan()`/`hw_wifi_connect()`/`hw_wifi_disconnect()`
+ * directly (mirroring how `hid_type_gpio` devices expose their backing
+ * `hw_gpio_t*` the same way).
+ */
+hid_device_t *hid_register_wifi(hid_t *instance, const char *country_code);
 
 /**
  * @brief Deregister and remove a HID device.

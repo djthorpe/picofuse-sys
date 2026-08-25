@@ -211,7 +211,7 @@ static void *_hw_usb_event_thread(void *arg) {
 // LIFECYCLE
 
 hw_usb_t *hw_usb_init(hw_usb_callback_t callback, void *userdata) {
-  sys_debugf("[usb] usb_init: callback=%p userdata=%p", (void *)callback,
+  sys_debugf("usb", "usb_init: callback=%p userdata=%p", (void *)callback,
              userdata);
   hw_usb_deinit(&_hw_usb_instance);
 
@@ -262,9 +262,15 @@ hw_usb_t *hw_usb_init(hw_usb_callback_t callback, void *userdata) {
 }
 
 void hw_usb_deinit(hw_usb_t *usb) {
-  sys_debugf("[usb] usb_deinit: usb=%p", usb);
   if (usb == NULL) {
     return;
+  }
+
+  // hw_usb_init() unconditionally deinits the singleton instance first to
+  // clear any stale prior state; skip the log in that (typically no-op)
+  // case so it doesn't read as an init immediately undone.
+  if (usb->init) {
+    sys_debugf("usb", "usb_deinit: usb=%p", (void *)usb);
   }
 
   atomic_store_explicit(&usb->running, false, memory_order_release);

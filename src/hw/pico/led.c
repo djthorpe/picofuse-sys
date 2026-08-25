@@ -84,7 +84,7 @@ static bool _hw_led_neopixel_pio_init(hw_led_t *led) {
 
   if (!pio_claim_free_sm_and_add_program_for_gpio_range(
           &led_neopixel_program, &pio, &sm, &offset, pin, 1u, true)) {
-    sys_debugf("[hw] led_neopixel_pio_init: no PIO/SM for pin=%u", pin);
+    sys_debugf("hw", "led_neopixel_pio_init: no PIO/SM for pin=%u", pin);
     return false;
   }
 
@@ -242,7 +242,7 @@ static void _hw_led_blink_timer_cb(sys_timer_t *timer) {
 // LIFECYCLE
 
 hw_led_t *hw_led_init_gpio(hw_gpio_t *gpio) {
-  sys_debugf("[hw] led_init_gpio: gpio_valid=%u", hw_gpio_valid(gpio));
+  sys_debugf("hw", "led_init_gpio: gpio_valid=%u", hw_gpio_valid(gpio));
   if (!hw_gpio_valid(gpio)) {
     return NULL;
   }
@@ -270,7 +270,7 @@ hw_led_t *hw_led_init_gpio(hw_gpio_t *gpio) {
 }
 
 hw_led_t *hw_led_init_neopixel(hw_gpio_t *gpio, uint8_t led_count) {
-  sys_debugf("[hw] led_init_neopixel: gpio_valid=%u led_count=%u",
+  sys_debugf("hw", "led_init_neopixel: gpio_valid=%u led_count=%u",
              hw_gpio_valid(gpio), led_count);
   if (!hw_gpio_valid(gpio)) {
     return NULL;
@@ -321,16 +321,16 @@ hw_led_t *hw_led_init_neopixel(hw_gpio_t *gpio, uint8_t led_count) {
 }
 
 hw_led_t *hw_led_init_wifi(void) {
-  sys_debugf("[hw] led_init_wifi");
+  sys_debugf("hw", "led_init_wifi");
 #ifdef PICO_CYW43_SUPPORTED
   hw_led_type_t led_type = HW_LED_TYPE_NONE;
   uint8_t led_pin = hw_led_gpio_default(&led_type, NULL);
   if (!cyw43_is_initialized(&cyw43_state)) {
-    sys_debugf("[hw] led_init_wifi: cyw43 not initialized");
+    sys_debugf("hw", "led_init_wifi: cyw43 not initialized");
     return NULL;
   }
   if (led_type != HW_LED_TYPE_WIFI || led_pin == HW_LED_GPIO_NONE) {
-    sys_debugf("[hw] led_init_wifi: no wifi LED pin");
+    sys_debugf("hw", "led_init_wifi: no wifi LED pin");
     return NULL;
   }
 
@@ -360,7 +360,7 @@ hw_led_t *hw_led_init_wifi(void) {
 }
 
 hw_led_t *hw_led_init_pwm(hw_pwm_t *pwm) {
-  sys_debugf("[hw] led_init_pwm: pwm_valid=%u", hw_pwm_valid(pwm));
+  sys_debugf("hw", "led_init_pwm: pwm_valid=%u", hw_pwm_valid(pwm));
   if (!hw_pwm_valid(pwm)) {
     return NULL;
   }
@@ -396,7 +396,7 @@ hw_led_t *hw_led_init_default(void) {
   uint8_t led_count = 0;
   uint8_t led_pin = hw_led_gpio_default(&led_type, &led_count);
 
-  sys_debugf("[hw] led_init_default: type=%u pin=%u count=%u", led_type,
+  sys_debugf("hw", "led_init_default: type=%u pin=%u count=%u", led_type,
              led_pin, led_count);
 
   if (led_type == HW_LED_TYPE_NONE || led_pin == HW_LED_GPIO_NONE) {
@@ -458,7 +458,7 @@ hw_led_t *hw_led_init_default(void) {
 }
 
 void hw_led_deinit(hw_led_t *led) {
-  sys_debugf("[hw] led_deinit: led=%p initialized=%u", (void *)led,
+  sys_debugf("hw", "led_deinit: led=%p initialized=%u", (void *)led,
              led != NULL ? led->initialized : 0);
   if (led == NULL || !led->initialized) {
     return;

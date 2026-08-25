@@ -6,6 +6,7 @@
 
 #include "device.h"
 #include "keycode.h"
+#include <picofuse/hw/wifi.h>
 #include <picofuse/pix/types.h>
 #include <stdbool.h>
 
@@ -19,6 +20,7 @@ typedef enum {
   hid_event_type_metric = 3,
   hid_event_type_timer = 4,
   hid_event_type_signal = 5,
+  hid_event_type_wifi = 6,
 } hid_event_type_t;
 
 /**
@@ -62,6 +64,23 @@ typedef struct {
 } hid_signal_t;
 
 /**
+ * @brief Wi-Fi-oriented HID event payload.
+ *
+ * @p network is passed through from the underlying hw_wifi_callback_t
+ * without copying: it always points to program-lifetime storage (either
+ * a field on the singleton hw_wifi_t handle, or a static buffer reused
+ * per scan result — never a freed/stack-transient pointer), so it is
+ * never dangling. It may however show newer data than when this event
+ * was queued if a later Wi-Fi event arrives before this one is consumed
+ * (the same characteristic hw_wifi_callback_t already has). NULL when
+ * not applicable (a plain disconnect, or the scan-complete marker).
+ */
+typedef struct {
+  hw_wifi_event_t event;            ///< Wi-Fi status event (see hw_wifi_event_t).
+  const hw_wifi_network_t *network; ///< Associated network info, or NULL.
+} hid_wifi_t;
+
+/**
  * @brief Represents a single HID input event.
  */
 typedef struct {
@@ -73,6 +92,7 @@ typedef struct {
     hid_metric_t metric;
     hid_timer_t timer;
     hid_signal_t signal;
+    hid_wifi_t wifi;
   } data;
 } hid_event_t;
 
@@ -123,6 +143,18 @@ bool hid_event_queue_touch(hid_device_t *device, hid_state_t state,
  * @retval false Queueing failed.
  */
 bool hid_event_queue_signal(hid_device_t *device, sys_env_signal_t signal);
+
+/**
+ * @brief Queue a Wi-Fi status HID event to the owning HID instance queue.
+ * @param device HID device associated with the event.
+ * @param event Wi-Fi status event to publish (see hw_wifi_event_t).
+ * @param network Associated network info, or NULL if not applicable. Not
+ * copied — see hid_wifi_t for the pointer's lifetime characteristics.
+ * @retval true Event queued successfully.
+ * @retval false Queueing failed.
+ */
+bool hid_event_queue_wifi(hid_device_t *device, hw_wifi_event_t event,
+                          const hw_wifi_network_t *network);
 
 /**
  * @brief Free a HID event allocated internally by HID queue helpers.

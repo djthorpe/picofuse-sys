@@ -151,14 +151,14 @@ static hid_device_t *_hid_register_gpio_mode(hid_t *instance, uint8_t bank,
                                              hw_gpio_mode_t mode,
                                              bool invert) {
   if (instance == NULL) {
-    sys_debugf("[hid] gpio register failed: instance is NULL");
+    sys_debugf("hid", "gpio register failed: instance is NULL");
     return NULL;
   }
 
   hw_gpio_t *gpio = hw_gpio_init(bank, pin, mode);
   if (gpio == NULL) {
-    sys_debugf(
-        "[hid] gpio register failed: hw_gpio_init bank=%u pin=%u mode=%u",
+    sys_debugf("hid",
+        "gpio register failed: hw_gpio_init bank=%u pin=%u mode=%u",
         (unsigned int)bank, (unsigned int)pin, (unsigned int)mode);
     return NULL;
   }
@@ -168,7 +168,7 @@ static hid_device_t *_hid_register_gpio_mode(hid_t *instance, uint8_t bank,
                                       hid_type_gpio, hid_class_unknown, 0u,
                                       gpio, _hid_gpio_device_callbacks);
   if (device == NULL) {
-    sys_debugf("[hid] gpio register failed: hid_register bank=%u pin=%u",
+    sys_debugf("hid", "gpio register failed: hid_register bank=%u pin=%u",
                (unsigned int)bank, (unsigned int)pin);
     hw_gpio_deinit(gpio);
     return NULL;
@@ -191,7 +191,7 @@ void _hid_gpio_callback_init(void) {
   }
   hw_gpio_set_callback(_hid_gpio_callback, NULL);
   sys_atomic_set(&_hid_gpio_callback_initialized, 1u);
-  sys_debugf("[hid] gpio callback registered");
+  sys_debugf("hid", "gpio callback registered");
 }
 
 /**
@@ -207,7 +207,7 @@ void _hid_gpio_callback_deinit(void) {
   }
   hw_gpio_set_callback(NULL, NULL);
   sys_atomic_set(&_hid_gpio_callback_initialized, 0u);
-  sys_debugf("[hid] gpio callback de-registered");
+  sys_debugf("hid", "gpio callback de-registered");
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -252,12 +252,12 @@ hid_device_t *hid_register_gpio_pulldown(hid_t *instance, uint8_t bank,
  */
 hid_device_t *hid_register_user_button(hid_t *instance, uint16_t keycode) {
 #if defined(HID_USER_BUTTON_PIN)
-  sys_debugf("[hid] user button pin selected: %u",
+  sys_debugf("hid", "user button pin selected: %u",
              (unsigned int)HID_USER_BUTTON_PIN);
   return _hid_register_gpio_mode(instance, 0u, (uint8_t)HID_USER_BUTTON_PIN,
                                  keycode, HW_GPIO_PULLUP, true);
 #else
-  sys_debugf("[hid] user button unavailable: no known board user-button macro");
+  sys_debugf("hid", "user button unavailable: no known board user-button macro");
   (void)instance;
   (void)keycode;
   return NULL;

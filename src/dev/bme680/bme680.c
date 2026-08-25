@@ -460,21 +460,21 @@ static bool _dev_bme680_read_calibration(dev_bme680_t *bme680) {
 
   if (!_dev_bme680_read_registers(bme680, BME680_REG_COEFF1, coeff,
                                   BME680_LEN_COEFF1)) {
-    sys_debugf("bme680: coeff1 read failed");
+    sys_debugf("bme680", "coeff1 read failed");
     return false;
   }
 
   if (!_dev_bme680_read_registers(bme680, BME680_REG_COEFF2,
                                   &coeff[BME680_LEN_COEFF1],
                                   BME680_LEN_COEFF2)) {
-    sys_debugf("bme680: coeff2 read failed");
+    sys_debugf("bme680", "coeff2 read failed");
     return false;
   }
 
   if (!_dev_bme680_read_registers(bme680, BME680_REG_COEFF3,
                                   &coeff[BME680_LEN_COEFF1 + BME680_LEN_COEFF2],
                                   BME680_LEN_COEFF3)) {
-    sys_debugf("bme680: coeff3 read failed");
+    sys_debugf("bme680", "coeff3 read failed");
     return false;
   }
 
@@ -519,14 +519,14 @@ static bool _dev_bme680_read_calibration(dev_bme680_t *bme680) {
 static bool _dev_bme680_configure(dev_bme680_t *bme680) {
   if (!_dev_bme680_write_register_retry(bme680, BME680_REG_SOFT_RESET,
                                         BME680_SOFT_RESET_CMD)) {
-    sys_debugf("bme680: soft reset write failed");
+    sys_debugf("bme680", "soft reset write failed");
     return false;
   }
 
   sys_sleep_ms(10);
 
   if (!_dev_bme680_read_calibration(bme680)) {
-    sys_debugf("bme680: calibration read failed");
+    sys_debugf("bme680", "calibration read failed");
     return false;
   }
 
@@ -534,7 +534,7 @@ static bool _dev_bme680_configure(dev_bme680_t *bme680) {
       _dev_bme680_clamp_os(bme680->config.os_hum) & BME680_OSH_MSK;
   if (!_dev_bme680_write_register_retry(bme680, BME680_REG_CTRL_HUM,
                                         ctrl_hum)) {
-    sys_debugf("bme680: ctrl_hum write failed");
+    sys_debugf("bme680", "ctrl_hum write failed");
     return false;
   }
 
@@ -542,7 +542,7 @@ static bool _dev_bme680_configure(dev_bme680_t *bme680) {
       BME680_SET_BITS(0u, BME680_FILTER_MSK, BME680_FILTER_POS,
                       _dev_bme680_clamp_filter(bme680->config.iir_filter));
   if (!_dev_bme680_write_register_retry(bme680, BME680_REG_CONFIG, config)) {
-    sys_debugf("bme680: config write failed");
+    sys_debugf("bme680", "config write failed");
     return false;
   }
 
@@ -558,9 +558,9 @@ static bool _dev_bme680_configure(dev_bme680_t *bme680) {
                                         res_heat) ||
       !_dev_bme680_write_register_retry(bme680, BME680_REG_GAS_WAIT0,
                                         gas_wait)) {
-    sys_debugf("bme680: heater profile write failed (res_heat=%u gas_wait=%u)",
+    sys_debugf("bme680", "heater profile write failed (res_heat=%u gas_wait=%u)",
                (unsigned int)res_heat, (unsigned int)gas_wait);
-    sys_debugf("bme680: continuing with heater/gas disabled");
+    sys_debugf("bme680", "continuing with heater/gas disabled");
     return true;
   }
 
@@ -569,8 +569,8 @@ static bool _dev_bme680_configure(dev_bme680_t *bme680) {
                                BME680_ENABLE_HEATER);
   if (!_dev_bme680_write_register_retry(bme680, BME680_REG_CTRL_GAS_0,
                                         ctrl_gas_0)) {
-    sys_debugf("bme680: ctrl_gas_0 write failed");
-    sys_debugf("bme680: continuing with gas path disabled");
+    sys_debugf("bme680", "ctrl_gas_0 write failed");
+    sys_debugf("bme680", "continuing with gas path disabled");
     return true;
   }
 
@@ -584,9 +584,9 @@ static bool _dev_bme680_configure(dev_bme680_t *bme680) {
 
   if (!_dev_bme680_write_register_retry(bme680, BME680_REG_CTRL_GAS_1,
                                         ctrl_gas_1)) {
-    sys_debugf("bme680: ctrl_gas_1 write failed (variant=%u run_gas=%u)",
+    sys_debugf("bme680", "ctrl_gas_1 write failed (variant=%u run_gas=%u)",
                (unsigned int)bme680->variant_id, (unsigned int)run_gas);
-    sys_debugf("bme680: continuing with gas path disabled");
+    sys_debugf("bme680", "continuing with gas path disabled");
     return true;
   }
 
@@ -602,12 +602,12 @@ static bool _dev_bme680_warmup(dev_bme680_t *bme680) {
 
   // Take two measurements on init so the sensor has settled before polling.
   if (!dev_bme680_read_data(bme680, &data)) {
-    sys_debugf("bme680: warmup read 1 failed");
+    sys_debugf("bme680", "warmup read 1 failed");
     return false;
   }
 
   if (!dev_bme680_read_data(bme680, &data)) {
-    sys_debugf("bme680: warmup read 2 failed");
+    sys_debugf("bme680", "warmup read 2 failed");
     return false;
   }
 
@@ -636,7 +636,7 @@ void dev_bme680_default_config(dev_bme680_config_t *config) {
 dev_bme680_t *dev_bme680_init_i2c(hw_i2c_t *i2c,
                                   const dev_bme680_config_t *config) {
   if (!hw_i2c_valid(i2c)) {
-    sys_debugf("bme680: i2c handle invalid");
+    sys_debugf("bme680", "i2c handle invalid");
     return NULL;
   }
 
@@ -658,7 +658,7 @@ dev_bme680_t *dev_bme680_init_i2c(hw_i2c_t *i2c,
   bme680->i2c_addr = BME680_I2C_ADDR_PRIMARY;
   bool read_primary =
       _dev_bme680_read_register(bme680, BME680_REG_CHIP_ID, &chip_id);
-  sys_debugf("bme680: probe addr 0x%02X read=%u chip_id=0x%02X",
+  sys_debugf("bme680", "probe addr 0x%02X read=%u chip_id=0x%02X",
              (unsigned int)BME680_I2C_ADDR_PRIMARY,
              (unsigned int)(read_primary ? 1u : 0u), (unsigned int)chip_id);
 
@@ -666,11 +666,11 @@ dev_bme680_t *dev_bme680_init_i2c(hw_i2c_t *i2c,
     bme680->i2c_addr = BME680_I2C_ADDR_SECONDARY;
     bool read_secondary =
         _dev_bme680_read_register(bme680, BME680_REG_CHIP_ID, &chip_id);
-    sys_debugf("bme680: probe addr 0x%02X read=%u chip_id=0x%02X",
+    sys_debugf("bme680", "probe addr 0x%02X read=%u chip_id=0x%02X",
                (unsigned int)BME680_I2C_ADDR_SECONDARY,
                (unsigned int)(read_secondary ? 1u : 0u), (unsigned int)chip_id);
     if (!read_secondary || chip_id != BME680_CHIP_ID) {
-      sys_debugf("bme680: chip id check failed on both addresses");
+      sys_debugf("bme680", "chip id check failed on both addresses");
       dev_bme680_deinit(bme680);
       return NULL;
     }
@@ -682,17 +682,17 @@ dev_bme680_t *dev_bme680_init_i2c(hw_i2c_t *i2c,
   if (!_dev_bme680_read_register_retry(bme680, BME680_REG_VARIANT_ID,
                                        &bme680->variant_id)) {
     bme680->variant_id = BME680_VARIANT_GAS_LOW;
-    sys_debugf("bme680: variant id read failed, defaulting to GAS_LOW");
+    sys_debugf("bme680", "variant id read failed, defaulting to GAS_LOW");
   }
 
   if (!_dev_bme680_configure(bme680)) {
-    sys_debugf("bme680: configure failed");
+    sys_debugf("bme680", "configure failed");
     dev_bme680_deinit(bme680);
     return NULL;
   }
 
   if (!_dev_bme680_warmup(bme680)) {
-    sys_debugf("bme680: warmup failed");
+    sys_debugf("bme680", "warmup failed");
     dev_bme680_deinit(bme680);
     return NULL;
   }
@@ -738,7 +738,7 @@ dev_bme680_t *dev_bme680_init_spi(hw_spi_t *spi, hw_gpio_t *cs_pin,
   if (!_dev_bme680_read_register_retry(bme680, BME680_REG_VARIANT_ID,
                                        &bme680->variant_id)) {
     bme680->variant_id = BME680_VARIANT_GAS_LOW;
-    sys_debugf("bme680: variant id read failed, defaulting to GAS_LOW");
+    sys_debugf("bme680", "variant id read failed, defaulting to GAS_LOW");
   }
 
   if (!_dev_bme680_configure(bme680)) {

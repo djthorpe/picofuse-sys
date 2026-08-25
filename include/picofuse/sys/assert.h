@@ -16,7 +16,7 @@
  * @details If the condition is false, it will call `panicf` with an assertion
  * failure message, including the condition, file name, and line number.
  */
-#ifdef DEBUG
+#ifndef NDEBUG
 #define sys_assert(condition)                                                  \
   if (!(condition)) {                                                          \
     sys_panicf("ASSERT FAIL: %s, file %s, line %d", #condition, __FILE__,      \

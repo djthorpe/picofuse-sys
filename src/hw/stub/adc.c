@@ -12,18 +12,23 @@ struct hw_adc_t {};
 uint8_t hw_adc_count(void) { return 0; }
 
 hw_adc_t *hw_adc_init_pin(hw_gpio_t *gpio) {
-  sys_debugf("adc_init_pin: gpio=%p unsupported on this platform", gpio);
+  sys_debugf("hw", "adc_init_pin: gpio=%p unsupported on this platform", gpio);
   (void)gpio;
   return NULL;
 }
 
 hw_adc_t *hw_adc_init_temperature(void) {
-  sys_debugf("adc_init_temperature: unsupported on this platform");
+  sys_debugf("hw", "adc_init_temperature: unsupported on this platform");
+  return NULL;
+}
+
+hw_adc_t *hw_adc_init_vsys(void) {
+  sys_debugf("hw", "adc_init_vsys: unsupported on this platform");
   return NULL;
 }
 
 void hw_adc_deinit(hw_adc_t *adc) {
-  sys_debugf("adc_deinit: adc=%p unsupported on this platform", adc);
+  sys_debugf("hw", "adc_deinit: adc=%p unsupported on this platform", adc);
   (void)adc;
 }
 
@@ -45,22 +50,26 @@ bool hw_adc_valid(const hw_adc_t *adc) {
   return false;
 }
 
-uint16_t hw_adc_read_12(hw_adc_t *adc) {
+uint16_t hw_adc_read_12(hw_adc_t *adc, uint16_t num_samples) {
   (void)adc;
+  (void)num_samples;
   return 0;
 }
 
-uint16_t hw_adc_read_16(hw_adc_t *adc) {
+uint16_t hw_adc_read_16(hw_adc_t *adc, uint16_t num_samples) {
   (void)adc;
+  (void)num_samples;
   return 0;
 }
 
-float hw_adc_read_voltage(hw_adc_t *adc) {
+float hw_adc_read_voltage(hw_adc_t *adc, uint16_t num_samples) {
   (void)adc;
+  (void)num_samples;
   return 0.0f;
 }
 
-float hw_adc_read_temperature(hw_adc_t *adc) {
+float hw_adc_read_temperature(hw_adc_t *adc, uint16_t num_samples) {
   (void)adc;
+  (void)num_samples;
   return 0.0f;
 }

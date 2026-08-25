@@ -24,9 +24,9 @@ int main(int argc, char **argv) {
   pix_frame_t *frame = NULL;
   dev_framebuffer_t *fb = dev_framebuffer_init(device, &frame);
   if (fb == NULL) {
-    sys_debugf("[dev/framebuffer] failed to init %s", device);
+    sys_debugf("framebuffer", "failed to init %s", device);
   } else {
-    sys_debugf("[dev/framebuffer] %s %ux%u", device,
+    sys_debugf("framebuffer", "%s %ux%u", device,
                (unsigned int)frame->size.w, (unsigned int)frame->size.h);
 
     show_color(frame, PIX_COLOR_RED);   // Red

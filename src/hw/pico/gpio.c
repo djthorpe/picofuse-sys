@@ -33,7 +33,7 @@ static void _hw_gpio_callback(uint pin, uint32_t events);
  * @brief Initialize a GPIO pin with the specified mode.
  */
 hw_gpio_t *hw_gpio_init(uint8_t bank, uint8_t pin, hw_gpio_mode_t mode) {
-  sys_debugf("[hw] gpio_init: bank=%u pin=%u mode=%u", bank, pin, mode);
+  sys_debugf("hw", "gpio_init: bank=%u pin=%u mode=%u", bank, pin, mode);
   if (bank != 0 || pin >= hw_gpio_count(bank)) {
     return NULL;
   }
@@ -61,7 +61,7 @@ hw_gpio_t *hw_gpio_init(uint8_t bank, uint8_t pin, hw_gpio_mode_t mode) {
  * @brief Deinitialize and release a GPIO pin.
  */
 void hw_gpio_deinit(hw_gpio_t *gpio) {
-  sys_debugf("[hw] gpio_deinit: gpio=%p", gpio);
+  sys_debugf("hw", "gpio_deinit: gpio=%p", gpio);
   if (!hw_gpio_valid(gpio)) {
     return;
   }

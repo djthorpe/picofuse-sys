@@ -9,7 +9,7 @@ void _hw_watchdog_poll(void);
  * @brief Initializes the hardware system on startup.
  */
 void hw_init(void) {
-  sys_debugf("hw_init()");
+  sys_debugf("hw", "hw_init()");
   _hw_watchdog_module_init();
 }
 
@@ -18,7 +18,7 @@ void hw_init(void) {
  */
 void hw_exit(void) {
   _hw_watchdog_module_exit();
-  sys_debugf("hw_exit()");
+  sys_debugf("hw", "hw_exit()");
 }
 
 /**

@@ -8,6 +8,19 @@
 #include <pico/cyw43_arch.h>
 #endif
 
+// Sentinel for hw_wifi_t.state meaning "no last-observed link state yet /
+// force _hw_wifi_poll() to react to whatever cyw43_tcpip_link_status()
+// next reports". Must never collide with a real CYW43_LINK_* value (the
+// cyw43 SDK defines those in the range -3..3) — -1 was previously used
+// here, which is exactly CYW43_LINK_FAIL, so if the link status already
+// happened to read CYW43_LINK_FAIL right when a fresh hw_wifi_connect()/
+// hw_wifi_scan() reset this sentinel (for example, a link failure left
+// over from before an RP2040-only watchdog reset, which does not
+// power-cycle the CYW43 chip), _hw_wifi_poll()'s "state == wifi->state"
+// check would silently and permanently no-op instead of ever detecting
+// the new attempt's progress.
+#define _HW_WIFI_STATE_UNKNOWN (-100)
+
 ///////////////////////////////////////////////////////////////////////////////
 // TYPES
 
@@ -99,7 +112,7 @@ static int _hw_wifi_scan_callback(void *env,
 
 hw_wifi_t *hw_wifi_init_client(const char *country_code,
                                hw_wifi_callback_t callback, void *userdata) {
-  sys_debugf("wifi_init_client: country_code=%s callback=%p userdata=%p",
+  sys_debugf("wifi", "wifi_init_client: country_code=%s callback=%p userdata=%p",
              country_code != NULL ? country_code : "(null)", (void *)callback,
              userdata);
 #ifdef PICO_CYW43_SUPPORTED
@@ -137,7 +150,7 @@ hw_wifi_t *hw_wifi_init_client(const char *country_code,
 /** @brief Stub function in Pico SDK */
 hw_wifi_t *hw_wifi_init_device(const char *device, hw_wifi_callback_t callback,
                                void *user_data) {
-  sys_debugf("wifi_init_device: device=%s callback=%p userdata=%p",
+  sys_debugf("wifi", "wifi_init_device: device=%s callback=%p userdata=%p",
              device != NULL ? device : "(null)", (void *)callback, user_data);
   (void)device;
   (void)callback;
@@ -150,10 +163,14 @@ bool hw_wifi_valid(hw_wifi_t *wifi) {
 }
 
 void hw_wifi_deinit(hw_wifi_t *wifi) {
-  sys_debugf("wifi_deinit: wifi=%p", wifi);
   if (!hw_wifi_valid(wifi)) {
     return;
   }
+
+  // hw_wifi_init_client() unconditionally deinits the singleton instance
+  // first to clear any stale prior state; that (typically no-op) case
+  // returns above without logging, so this only logs a genuine teardown.
+  sys_debugf("wifi", "wifi_deinit: wifi=%p", (void *)wifi);
 
 #ifdef PICO_CYW43_SUPPORTED
   if (cyw43_is_initialized(&cyw43_state)) {
@@ -168,7 +185,7 @@ void hw_wifi_deinit(hw_wifi_t *wifi) {
   _hw_wifi_set_busy(
       wifi, hw_wifi_flag_leaving | hw_wifi_flag_joining | hw_wifi_flag_scanning,
       false);
-  wifi->state = -1;
+  wifi->state = _HW_WIFI_STATE_UNKNOWN;
   wifi->ts = 0;
 #endif
 
@@ -213,7 +230,7 @@ bool hw_wifi_scan(hw_wifi_t *wifi) {
   cyw43_arch_lwip_end();
   if (scan_result == 0) {
     _hw_wifi_set_busy(wifi, hw_wifi_flag_scanning, true);
-    wifi->state = -1;
+    wifi->state = _HW_WIFI_STATE_UNKNOWN;
     success = true;
   }
 #else
@@ -277,7 +294,7 @@ bool hw_wifi_connect(hw_wifi_t *wifi, const hw_wifi_network_t *network,
   // Reset prior connection state and store the requested network.
   sys_memset(&wifi->network, 0, sizeof(wifi->network));
   sys_memcpy(&wifi->network, network, sizeof(wifi->network));
-  wifi->state = -1;
+  wifi->state = _HW_WIFI_STATE_UNKNOWN;
   wifi->ts = 0;
 
   cyw43_arch_lwip_begin();
@@ -318,7 +335,7 @@ bool hw_wifi_disconnect(hw_wifi_t *wifi) {
     cyw43_arch_lwip_end();
     _hw_wifi_set_busy(wifi, hw_wifi_flag_scanning | hw_wifi_flag_joining,
                       false);
-    wifi->state = -1;
+    wifi->state = _HW_WIFI_STATE_UNKNOWN;
     wifi->ts = 0;
     sys_memset(&wifi->network, 0, sizeof(wifi->network));
     return false;
@@ -338,7 +355,7 @@ bool hw_wifi_disconnect(hw_wifi_t *wifi) {
   }
 
   _hw_wifi_set_busy(wifi, hw_wifi_flag_leaving, true);
-  wifi->state = -1;
+  wifi->state = _HW_WIFI_STATE_UNKNOWN;
   wifi->ts = 0;
   return true;
 #else
@@ -527,32 +544,32 @@ void _hw_wifi_poll(void) {
   // Change state
   switch (state) {
   case CYW43_LINK_DOWN:
-    sys_debugf("CYW43_LINK_DOWN");
+    sys_debugf("wifi", "CYW43_LINK_DOWN");
     // Ends the connection, joining or scanning attempt
     _hw_wifi_set_busy(wifi,
                       hw_wifi_flag_joining | hw_wifi_flag_leaving |
                           hw_wifi_flag_scanning,
                       false);
-    wifi->state = -1;
+    wifi->state = _HW_WIFI_STATE_UNKNOWN;
     wifi->callback(wifi, hw_wifi_event_disconnected, NULL, wifi->userdata);
     sys_memset(&wifi->network, 0, sizeof(wifi->network));
     break;
   case CYW43_LINK_JOIN:
-    sys_debugf("CYW43_LINK_JOIN");
+    sys_debugf("wifi", "CYW43_LINK_JOIN");
     // Starts a connection attempt
     _hw_wifi_set_busy(wifi, hw_wifi_flag_joining, true);
     wifi->callback(wifi, hw_wifi_event_joining, &wifi->network, wifi->userdata);
     break;
   case CYW43_LINK_NOIP:
     // Continues connection attempt
-    sys_debugf("CYW43_LINK_NOIP");
+    sys_debugf("wifi", "CYW43_LINK_NOIP");
     break;
   case CYW43_LINK_UP:
     // Ends the connection attempt successfully
-    sys_debugf("CYW43_LINK_UP");
+    sys_debugf("wifi", "CYW43_LINK_UP");
     if (_hw_wifi_get_busy(wifi, hw_wifi_flag_joining)) {
       _hw_wifi_set_busy(wifi, hw_wifi_flag_joining, false);
-      wifi->state = -1;
+      wifi->state = _HW_WIFI_STATE_UNKNOWN;
 
       // Update the network
       wifi->network.rssi = _hw_wifi_get_rssi(wifi);
@@ -569,37 +586,37 @@ void _hw_wifi_poll(void) {
     break;
   case CYW43_LINK_FAIL:
     // Ends the connection attempt unsuccessfully
-    sys_debugf("CYW43_LINK_FAIL");
+    sys_debugf("wifi", "CYW43_LINK_FAIL");
     _hw_wifi_set_busy(wifi, hw_wifi_flag_joining, false);
-    wifi->state = -1;
+    wifi->state = _HW_WIFI_STATE_UNKNOWN;
     wifi->callback(wifi, hw_wifi_event_error, &wifi->network, wifi->userdata);
     sys_memset(&wifi->network, 0, sizeof(wifi->network));
     break;
   case CYW43_LINK_NONET:
     // Ends the connection attempt unsuccessfully
-    sys_debugf("CYW43_LINK_NONET");
+    sys_debugf("wifi", "CYW43_LINK_NONET");
     _hw_wifi_set_busy(wifi, hw_wifi_flag_joining, false);
-    wifi->state = -1;
+    wifi->state = _HW_WIFI_STATE_UNKNOWN;
     wifi->callback(wifi, hw_wifi_event_notfound, &wifi->network,
                    wifi->userdata);
     sys_memset(&wifi->network, 0, sizeof(wifi->network));
     break;
   case CYW43_LINK_BADAUTH:
     // Ends the connection attempt unsuccessfully
-    sys_debugf("CYW43_LINK_BADAUTH");
+    sys_debugf("wifi", "CYW43_LINK_BADAUTH");
     _hw_wifi_set_busy(wifi, hw_wifi_flag_joining, false);
-    wifi->state = -1;
+    wifi->state = _HW_WIFI_STATE_UNKNOWN;
     wifi->callback(wifi, hw_wifi_event_badauth, &wifi->network, wifi->userdata);
     sys_memset(&wifi->network, 0, sizeof(wifi->network));
     break;
   default:
     // Ends the connection, joining or scanning attempt
-    sys_debugf("CYW43_LINK_UNKNOWN");
+    sys_debugf("wifi", "CYW43_LINK_UNKNOWN");
     _hw_wifi_set_busy(wifi,
                       hw_wifi_flag_joining | hw_wifi_flag_leaving |
                           hw_wifi_flag_scanning,
                       false);
-    wifi->state = -1;
+    wifi->state = _HW_WIFI_STATE_UNKNOWN;
     wifi->callback(wifi, hw_wifi_event_error, &wifi->network, wifi->userdata);
     sys_memset(&wifi->network, 0, sizeof(wifi->network));
     break;

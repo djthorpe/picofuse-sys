@@ -357,13 +357,13 @@ static bool _dev_st7701_stage_pio(dev_st7701_t *st7701) {
     return false;
   }
 
-  sys_debugf("[st7701] stage_pio begin");
+  sys_debugf("st7701", "stage_pio begin");
 
   st7701->pio = pio1;
 
   st7701->parallel_sm = (int8_t)pio_claim_unused_sm(st7701->pio, false);
   if (st7701->parallel_sm < 0) {
-    sys_debugf("[st7701] failed to claim parallel state machine");
+    sys_debugf("st7701", "failed to claim parallel state machine");
     return false;
   }
 
@@ -371,7 +371,7 @@ static bool _dev_st7701_stage_pio(dev_st7701_t *st7701) {
   if (st7701->timing_sm < 0) {
     pio_sm_unclaim(st7701->pio, (uint)st7701->parallel_sm);
     st7701->parallel_sm = -1;
-    sys_debugf("[st7701] failed to claim timing state machine");
+    sys_debugf("st7701", "failed to claim timing state machine");
     return false;
   }
 
@@ -383,7 +383,7 @@ static bool _dev_st7701_stage_pio(dev_st7701_t *st7701) {
       (uint16_t)pio_add_program(st7701->pio, &st7701_timing_program);
   st7701->pio_staged = true;
 
-  sys_debugf("[st7701] staged pio=%u parallel_sm=%d timing_sm=%d "
+  sys_debugf("st7701", "staged pio=%u parallel_sm=%d timing_sm=%d "
              "off(par=%u par18=%u tim=%u)",
              (unsigned int)pio_get_index(st7701->pio), (int)st7701->parallel_sm,
              (int)st7701->timing_sm, (unsigned int)st7701->parallel_offset,
@@ -402,12 +402,12 @@ static bool _dev_st7701_start_pio(dev_st7701_t *st7701) {
     return false;
   }
 
-  sys_debugf("[st7701] start_pio begin w=%u h=%u", (unsigned int)st7701->width,
+  sys_debugf("st7701", "start_pio begin w=%u h=%u", (unsigned int)st7701->width,
              (unsigned int)st7701->height);
 
   uint8_t rgb_base = 0u;
   if (!_dev_st7701_data_pins_contiguous(st7701, &rgb_base)) {
-    sys_debugf("[st7701] rgb data pins must be defined and contiguous");
+    sys_debugf("st7701", "rgb data pins must be defined and contiguous");
     return false;
   }
 
@@ -415,12 +415,12 @@ static bool _dev_st7701_start_pio(dev_st7701_t *st7701) {
       !_dev_st7701_pin_defined(st7701->pinout.vsync_pin) ||
       !_dev_st7701_pin_defined(st7701->pinout.lcd_dot_clk_pin) ||
       !_dev_st7701_pin_defined(st7701->pinout.lcd_de_pin)) {
-    sys_debugf("[st7701] missing timing/de pin mapping for pio start");
+    sys_debugf("st7701", "missing timing/de pin mapping for pio start");
     return false;
   }
 
   if (st7701->pinout.vsync_pin != (uint8_t)(st7701->pinout.hsync_pin + 1u)) {
-    sys_debugf("[st7701] expected contiguous hsync/vsync pins");
+    sys_debugf("st7701", "expected contiguous hsync/vsync pins");
     return false;
   }
 
@@ -477,11 +477,11 @@ static bool _dev_st7701_start_pio(dev_st7701_t *st7701) {
   pio_sm_set_enabled(st7701->pio, (uint)st7701->parallel_sm, true);
 
   if (!_dev_st7701_run_pio_smoke(st7701, ST7701_PIO_SMOKE_ROWS)) {
-    sys_debugf("[st7701] failed to run pio smoke pattern");
+    sys_debugf("st7701", "failed to run pio smoke pattern");
     return false;
   }
 
-  sys_debugf("[st7701] started pio rgb_base=%u hsync=%u vsync=%u de=%u dclk=%u",
+  sys_debugf("st7701", "started pio rgb_base=%u hsync=%u vsync=%u de=%u dclk=%u",
              (unsigned int)rgb_base, (unsigned int)st7701->pinout.hsync_pin,
              (unsigned int)st7701->pinout.vsync_pin,
              (unsigned int)st7701->pinout.lcd_de_pin,
@@ -550,7 +550,7 @@ static bool _dev_st7701_send_command(dev_st7701_t *st7701, uint8_t command,
   size_t words = 1u + data_len;
   size_t tx = hw_spi_write_words(st7701->spi, frame_words, words, 0u);
   if (tx != words) {
-    sys_debugf("[st7701] cmd 0x%02X failed (%u/%u)", (unsigned int)command,
+    sys_debugf("st7701", "cmd 0x%02X failed (%u/%u)", (unsigned int)command,
                (unsigned int)tx, (unsigned int)words);
     return false;
   }
@@ -728,7 +728,7 @@ dev_st7701_t *dev_st7701_init(hw_spi_t *spi, hw_gpio_t *reset_pin,
   uint8_t bits_per_word = hw_spi_get_bits_per_word(spi);
   if (bits_per_word != 9u) {
     if (!dev_st7701_configure_spi(spi)) {
-      sys_debugf("[st7701] requires 9-bit SPI framing, got %u bits",
+      sys_debugf("st7701", "requires 9-bit SPI framing, got %u bits",
                  (unsigned int)bits_per_word);
       return NULL;
     }
@@ -736,7 +736,7 @@ dev_st7701_t *dev_st7701_init(hw_spi_t *spi, hw_gpio_t *reset_pin,
 
   dev_st7701_t *st7701 = &_dev_st7701_singleton;
   if (st7701->init) {
-    sys_debugf("[st7701] singleton already initialized");
+    sys_debugf("st7701", "singleton already initialized");
     return NULL;
   }
   sys_memset(st7701, 0, sizeof(*st7701));
@@ -759,7 +759,7 @@ dev_st7701_t *dev_st7701_init(hw_spi_t *spi, hw_gpio_t *reset_pin,
   st7701->palette = resolved.palette;
   st7701->init = true;
 
-  sys_debugf("[st7701] init %ux%u rot=%u bl=%u spi(data=%u clk=%u cs=%u) "
+  sys_debugf("st7701", "init %ux%u rot=%u bl=%u spi(data=%u clk=%u cs=%u) "
              "timing(dotclk=%u de=%u vsync=%u hsync=%u) fb=%u pal=%u",
              (unsigned int)st7701->width, (unsigned int)st7701->height,
              (unsigned int)st7701->rotation,
@@ -774,7 +774,7 @@ dev_st7701_t *dev_st7701_init(hw_spi_t *spi, hw_gpio_t *reset_pin,
              (unsigned int)(st7701->framebuffer != NULL),
              (unsigned int)(st7701->palette != NULL));
 
-  sys_debugf("[st7701] backlight active_low=%u",
+  sys_debugf("st7701", "backlight active_low=%u",
              (unsigned int)(st7701->backlight_active_low ? 1u : 0u));
 
   if (st7701->backlight_pin != NULL) {
@@ -813,7 +813,7 @@ void dev_st7701_deinit(dev_st7701_t *st7701) {
     return;
   }
 
-  sys_debugf("[st7701] deinit");
+  sys_debugf("st7701", "deinit");
 
   _dev_st7701_unstage_pio(st7701);
   sys_memset(st7701, 0, sizeof(*st7701));
@@ -857,7 +857,7 @@ bool dev_st7701_paint(dev_st7701_t *st7701, const pix_bitmap_t *bitmap) {
     }
 
     if ((st7701->paint_calls % ST7701_DEBUG_LOG_EVERY_N_PAINT) == 0u) {
-      sys_debugf("[st7701] paint fb call=%u next_row=%u rows=%u",
+      sys_debugf("st7701", "paint fb call=%u next_row=%u rows=%u",
                  (unsigned int)st7701->paint_calls,
                  (unsigned int)st7701->pio_next_row, (unsigned int)rows);
     }
@@ -865,7 +865,7 @@ bool dev_st7701_paint(dev_st7701_t *st7701, const pix_bitmap_t *bitmap) {
     bool ok = _dev_st7701_run_pio_framebuffer_rgb565(
         st7701, st7701->framebuffer, st7701->pio_next_row, rows);
     if (!ok) {
-      sys_debugf("[st7701] paint fb failed call=%u next_row=%u rows=%u",
+      sys_debugf("st7701", "paint fb failed call=%u next_row=%u rows=%u",
                  (unsigned int)st7701->paint_calls,
                  (unsigned int)st7701->pio_next_row, (unsigned int)rows);
       return false;
@@ -885,14 +885,14 @@ bool dev_st7701_paint(dev_st7701_t *st7701, const pix_bitmap_t *bitmap) {
     uint8_t b = (uint8_t)(rgba & 0xFFu);
     uint32_t rgb666 = _dev_st7701_rgb888_to_rgb666(r, g, b);
     if ((st7701->paint_calls % ST7701_DEBUG_LOG_EVERY_N_PAINT) == 0u) {
-      sys_debugf("[st7701] paint rgba call=%u rgb666=0x%05x",
+      sys_debugf("st7701", "paint rgba call=%u rgb666=0x%05x",
                  (unsigned int)st7701->paint_calls, (unsigned int)rgb666);
     }
     return _dev_st7701_run_pio_solid(st7701, rgb666, st7701->height);
   }
 
   if ((st7701->paint_calls % ST7701_DEBUG_LOG_EVERY_N_PAINT) == 0u) {
-    sys_debugf("[st7701] paint smoke call=%u",
+    sys_debugf("st7701", "paint smoke call=%u",
                (unsigned int)st7701->paint_calls);
   }
 

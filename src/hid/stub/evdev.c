@@ -10,7 +10,7 @@ hid_device_t *hid_register_evdev(hid_t *instance, const char *path,
   (void)path;
   (void)exclusive;
   (void)userdata;
-  sys_debugf("[hid] evdev unsupported on this platform");
+  sys_debugf("hid", "evdev unsupported on this platform");
   return NULL;
 }
 

@@ -257,8 +257,8 @@ hid_device_t *dev_presto_touch_register(hid_t *hid, uint32_t i2c_baud_rate) {
 hid_device_t *dev_presto_touch_register(hid_t *hid, uint32_t i2c_baud_rate) {
   (void)hid;
   (void)i2c_baud_rate;
-  sys_debugf(
-      "[hid] presto touch register unavailable: board touch macros undefined");
+  sys_debugf("hid",
+      "presto touch register unavailable: board touch macros undefined");
   return NULL;
 }
 

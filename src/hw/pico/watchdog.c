@@ -58,7 +58,7 @@ void _hw_watchdog_poll(void) {
     return;
   }
 
-  sys_debugf("[watchdog] ping");
+  sys_debugf("watchdog", "ping");
   watchdog->last_feed_ms = now_ms;
   watchdog_update();
   _hw_lock_exit();

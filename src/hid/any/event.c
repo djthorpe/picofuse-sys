@@ -301,6 +301,45 @@ bool hid_event_queue_signal(hid_device_t *device, sys_env_signal_t signal) {
 }
 
 /**
+ * @brief Queue a Wi-Fi status HID event on the owning instance queue.
+ */
+bool hid_event_queue_wifi(hid_device_t *device, hw_wifi_event_t event,
+                          const hw_wifi_network_t *network) {
+  hid_t *instance;
+  hid_event_t *hid_event;
+
+  if (device == NULL) {
+    return false;
+  }
+
+  instance = device->instance;
+  if (instance == NULL || !sys_event_queue_valid(instance->queue)) {
+    return false;
+  }
+
+  if (!_hid_event_pool_init(instance)) {
+    return false;
+  }
+
+  hid_event = _hid_event_pool_retain(instance);
+  if (hid_event == NULL) {
+    return false;
+  }
+
+  hid_event->device = device;
+  hid_event->type = hid_event_type_wifi;
+  hid_event->data.wifi.event = event;
+  hid_event->data.wifi.network = network;
+
+  if (!sys_event_queue_try_push(instance->queue, (sys_event_t)hid_event)) {
+    hid_event_free(hid_event);
+    return false;
+  }
+
+  return true;
+}
+
+/**
  * @brief Free a HID event object allocated by event queue helpers.
  */
 void hid_event_free(hid_event_t *event) {

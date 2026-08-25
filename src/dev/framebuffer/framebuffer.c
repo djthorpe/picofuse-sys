@@ -161,12 +161,12 @@ static bool _dev_framebuffer_do_lock(dev_framebuffer_t *fb) {
   }
 
   if (fb->locked) {
-    sys_debugf("[framebuffer] lock called while already locked");
+    sys_debugf("framebuffer", "lock called while already locked");
   }
 
   uint32_t crtc = 0u;
   if (ioctl(fb->fd, FBIO_WAITFORVSYNC, &crtc) != 0 && !fb->vsync_warned) {
-    sys_debugf("[framebuffer] vsync wait unsupported, writes may tear");
+    sys_debugf("framebuffer", "vsync wait unsupported, writes may tear");
     fb->vsync_warned = true;
   }
 
@@ -180,7 +180,7 @@ static void _dev_framebuffer_do_unlock(dev_framebuffer_t *fb) {
   }
 
   if (!fb->locked) {
-    sys_debugf("[framebuffer] unlock called while not locked");
+    sys_debugf("framebuffer", "unlock called while not locked");
   }
 
   fb->locked = false;
@@ -193,7 +193,7 @@ static void _dev_framebuffer_do_clear(const dev_framebuffer_t *fb,
   }
 
   if (!fb->locked) {
-    sys_debugf("[framebuffer] clear called without lock (writes may tear)");
+    sys_debugf("framebuffer", "clear called without lock (writes may tear)");
   }
 
   uint16_t width = fb->frame.size.w;
@@ -226,7 +226,7 @@ static void _dev_framebuffer_do_set(const dev_framebuffer_t *fb,
   }
 
   if (!fb->locked) {
-    sys_debugf("[framebuffer] set called without lock (writes may tear)");
+    sys_debugf("framebuffer", "set called without lock (writes may tear)");
   }
 
   // A size where both dimensions are 0 or 1 addresses a single pixel.
@@ -303,7 +303,7 @@ static bool _dev_framebuffer_read_bitmap_pixel_row(const uint8_t *row,
     break;
   }
   default:
-    sys_debugf("[framebuffer] copy: unsupported source format %d", (int)fmt);
+    sys_debugf("framebuffer", "copy: unsupported source format %d", (int)fmt);
     return false;
   }
 
@@ -324,7 +324,7 @@ static void _dev_framebuffer_do_copy(const dev_framebuffer_t *fb,
   }
 
   if (!fb->locked) {
-    sys_debugf("[framebuffer] copy called without lock (writes may tear)");
+    sys_debugf("framebuffer", "copy called without lock (writes may tear)");
   }
 
   uint16_t w = size.w;
@@ -384,7 +384,7 @@ static void _dev_framebuffer_frame_unlock(pix_frame_t *frame) {
 static void _dev_framebuffer_frame_clear(pix_frame_t *frame, pix_color_t color,
                                          pix_op_t op) {
   if (op != PIX_SET) {
-    sys_debugf("[framebuffer] clear: unsupported op %d", (int)op);
+    sys_debugf("framebuffer", "clear: unsupported op %d", (int)op);
     return;
   }
   _dev_framebuffer_do_clear((const dev_framebuffer_t *)frame->ctx, color);
@@ -394,7 +394,7 @@ static void _dev_framebuffer_frame_set(pix_frame_t *frame, pix_color_t color,
                                        pix_point_t origin, pix_size_t size,
                                        pix_op_t op) {
   if (op != PIX_SET) {
-    sys_debugf("[framebuffer] set: unsupported op %d", (int)op);
+    sys_debugf("framebuffer", "set: unsupported op %d", (int)op);
     return;
   }
   _dev_framebuffer_do_set((const dev_framebuffer_t *)frame->ctx, color, origin,
@@ -406,7 +406,7 @@ static void _dev_framebuffer_frame_copy(pix_frame_t *frame,
                                         pix_point_t origin, pix_size_t size,
                                         pix_op_t op) {
   if (op != PIX_SET) {
-    sys_debugf("[framebuffer] copy: unsupported op %d", (int)op);
+    sys_debugf("framebuffer", "copy: unsupported op %d", (int)op);
     return;
   }
   _dev_framebuffer_do_copy((const dev_framebuffer_t *)frame->ctx, src, origin,
@@ -428,7 +428,7 @@ dev_framebuffer_t *dev_framebuffer_init(const char *device,
 
   int fd = open(device, O_RDWR);
   if (fd < 0) {
-    sys_debugf("[framebuffer] open %s failed", device);
+    sys_debugf("framebuffer", "open %s failed", device);
     return NULL;
   }
 
@@ -436,20 +436,20 @@ dev_framebuffer_t *dev_framebuffer_init(const char *device,
   struct fb_var_screeninfo vinfo;
   if (ioctl(fd, FBIOGET_FSCREENINFO, &finfo) != 0 ||
       ioctl(fd, FBIOGET_VSCREENINFO, &vinfo) != 0) {
-    sys_debugf("[framebuffer] ioctl query failed on %s", device);
+    sys_debugf("framebuffer", "ioctl query failed on %s", device);
     close(fd);
     return NULL;
   }
 
   if (vinfo.red.msb_right || vinfo.green.msb_right || vinfo.blue.msb_right) {
-    sys_debugf("[framebuffer] unsupported msb-right layout on %s", device);
+    sys_debugf("framebuffer", "unsupported msb-right layout on %s", device);
     close(fd);
     return NULL;
   }
 
   pix_format_t fmt;
   if (!_dev_framebuffer_resolve_format(&vinfo, &fmt)) {
-    sys_debugf("[framebuffer] unsupported pixel layout on %s "
+    sys_debugf("framebuffer", "unsupported pixel layout on %s "
                "(bpp=%u r=%u g=%u b=%u)",
                device, (unsigned int)vinfo.bits_per_pixel,
                (unsigned int)vinfo.red.length, (unsigned int)vinfo.green.length,
@@ -465,14 +465,14 @@ dev_framebuffer_t *dev_framebuffer_init(const char *device,
 
   size_t size = (size_t)stride * (size_t)vinfo.yres;
   if (size == 0u) {
-    sys_debugf("[framebuffer] zero-sized screen on %s", device);
+    sys_debugf("framebuffer", "zero-sized screen on %s", device);
     close(fd);
     return NULL;
   }
 
   void *data = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
   if (data == MAP_FAILED) {
-    sys_debugf("[framebuffer] mmap failed on %s", device);
+    sys_debugf("framebuffer", "mmap failed on %s", device);
     close(fd);
     return NULL;
   }
@@ -506,7 +506,7 @@ dev_framebuffer_t *dev_framebuffer_init(const char *device,
     fb->frame.copy = _dev_framebuffer_frame_copy;
   }
 
-  sys_debugf("[framebuffer] init %s %ux%u bpp=%u fmt=%d stride=%u", device,
+  sys_debugf("framebuffer", "init %s %ux%u bpp=%u fmt=%d stride=%u", device,
              (unsigned int)fb->frame.size.w, (unsigned int)fb->frame.size.h,
              (unsigned int)fb->bpp, (int)fb->frame.fmt,
              (unsigned int)fb->frame.stride);

@@ -3,7 +3,7 @@
 
 #include <stddef.h>
 
-#ifdef DEBUG
+#ifndef NDEBUG
 #define HID_KEYCODE_CASE(name)                                                 \
   case name:                                                                   \
     return #name;
@@ -239,7 +239,7 @@ static const char *_hid_keycode_name(uint16_t keycode) {
 #endif
 
 const char *hid_keycode_to_string(uint16_t keycode) {
-#ifdef DEBUG
+#ifndef NDEBUG
   const char *name = _hid_keycode_name(keycode);
   if (name != NULL) {
     return name;

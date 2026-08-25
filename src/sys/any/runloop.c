@@ -19,6 +19,28 @@ static sys_atomic_t _active = {
 static sys_waitgroup_t *_wg = NULL;
 static bool _owns_queue = false;
 
+// Marker pushed onto _queue by _poll_timer's callback to force worker 0's
+// sys_event_queue_timed_pop() to return promptly. Only needed with more than
+// one worker: sys_cond_timedwait()'s underlying timeout (best_effort_wfe_or_
+// timeout() on Pico) has been observed to not reliably wake worker 0 on
+// schedule once a second core is also waiting on the same queue, starving
+// _poll() (and everything it drives - watchdog/USB/Wi-Fi polling) of its
+// ~_POLL_INTERVAL_MS cadence. sys_timer callbacks fire via the platform
+// alarm pool instead, which stays reliable under multicore, so routing the
+// wakeup through a queued event sidesteps the unreliable timeout entirely.
+// The address of this object (not its value) is the sentinel; any worker
+// that happens to pop it - not necessarily worker 0 - must recognize and
+// discard it rather than passing it to _callback() as a real event.
+static const uint8_t _poll_tick_marker = 0;
+static sys_timer_t *_poll_timer = NULL;
+
+static void _poll_tick_timer_cb(sys_timer_t *timer) {
+  (void)timer;
+  // Best-effort: if the queue is full the tick is simply skipped, worker 0
+  // is presumably not starved of wakeups right now.
+  (void)sys_event_queue_try_push(_queue, (sys_event_t)&_poll_tick_marker);
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // WORKER (index >= 1)
 
@@ -35,14 +57,17 @@ static void _worker(void *arg) {
     _init(idx);
   }
 
-  sys_debugf("[sys] runloop: worker %u started", idx);
+  sys_debugf("sys", "runloop: worker %u started", idx);
 
   sys_event_t event;
   while ((event = sys_event_queue_pop(_queue)) != NULL) {
+    if (event == (sys_event_t)&_poll_tick_marker) {
+      continue;
+    }
     _callback(event);
   }
 
-  sys_debugf("[sys] runloop: worker %u exiting", idx);
+  sys_debugf("sys", "runloop: worker %u exiting", idx);
   if (_exit != NULL) {
     _exit(idx);
   }
@@ -121,16 +146,32 @@ uint32_t sys_runloop_run_with_queue(uint8_t num_workers,
     }
   }
 
+  // With more than one worker sharing _queue, sys_event_queue_timed_pop()'s
+  // timeout below cannot be relied on to wake worker 0 on schedule (see the
+  // comment on _poll_tick_marker above), so a repeating timer nudges the
+  // queue instead. Single-worker runs skip this - the timeout mechanism is
+  // reliable there, and there's no other worker to contend with anyway.
+  if (num_workers > 1 && _poll != NULL) {
+    _poll_timer = sys_timer_init(_POLL_INTERVAL_MS, NULL, _poll_tick_timer_cb);
+    if (_poll_timer != NULL && !sys_timer_start(_poll_timer)) {
+      sys_timer_deinit(_poll_timer);
+      _poll_timer = NULL;
+    }
+  }
+
   // Worker 0: calling thread, optionally drives poll callback between events.
   if (_init != NULL) {
     _init(0);
   }
 
-  sys_debugf("[sys] runloop: main thread starting");
+  sys_debugf("sys", "runloop: main thread starting");
   while (true) {
     sys_event_t event = sys_event_queue_timed_pop(_queue, _POLL_INTERVAL_MS);
     if (_poll != NULL) {
       _poll();
+    }
+    if (event == (sys_event_t)&_poll_tick_marker) {
+      continue;
     }
     if (event != NULL) {
       _callback(event);
@@ -138,7 +179,12 @@ uint32_t sys_runloop_run_with_queue(uint8_t num_workers,
       break;
     }
   }
-  sys_debugf("[sys] runloop: main thread exiting");
+  sys_debugf("sys", "runloop: main thread exiting");
+
+  if (_poll_timer != NULL) {
+    sys_timer_deinit(_poll_timer);
+    _poll_timer = NULL;
+  }
 
   if (_exit != NULL) {
     _exit(0);

@@ -289,7 +289,7 @@ hid_device_t *hid_register(hid_t *instance, const char *name, uint32_t id,
     _hid_device_release(instance, device);
     return NULL;
   } else {
-    sys_debugf("[hid] device registered: name=%s id=%08X type=%u", device->name,
+    sys_debugf("hid", "device registered: name=%s id=%08X type=%u", device->name,
                (unsigned int)device->id, (unsigned int)device->type);
     return device;
   }
@@ -308,7 +308,7 @@ bool hid_deregister(hid_t *instance, hid_device_t *device) {
 
   // Logged before running teardown callbacks, since a backend's .deinit may
   // free/null fields such as device->name (see hid_register_evdev()).
-  sys_debugf("[hid] device de-registered: name=%s id=%08X type=%u",
+  sys_debugf("hid", "device de-registered: name=%s id=%08X type=%u",
              device->name, (unsigned int)device->id,
              (unsigned int)device->type);
 

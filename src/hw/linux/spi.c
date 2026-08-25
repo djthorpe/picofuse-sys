@@ -49,7 +49,7 @@ uint8_t hw_spi_count(void) { return 0; }
 
 hw_spi_t *hw_spi_init_default(uint32_t baud_rate,
                               const hw_spi_config_t *config) {
-  sys_debugf("[hw] spi_init_default: baud=%u config=%p", baud_rate, config);
+  sys_debugf("hw", "spi_init_default: baud=%u config=%p", baud_rate, config);
   (void)config;
   (void)baud_rate;
   return NULL;
@@ -58,8 +58,8 @@ hw_spi_t *hw_spi_init_default(uint32_t baud_rate,
 hw_spi_t *hw_spi_init(uint8_t index, hw_gpio_t *sck_pin, hw_gpio_t *tx_pin,
                       hw_gpio_t *rx_pin, hw_gpio_t *cs_pin, uint32_t baud_rate,
                       const hw_spi_config_t *config) {
-  sys_debugf(
-      "[hw] spi_init: index=%u sck=%p tx=%p rx=%p cs=%p baud=%u config=%p",
+  sys_debugf("hw",
+      "spi_init: index=%u sck=%p tx=%p rx=%p cs=%p baud=%u config=%p",
       index, sck_pin, tx_pin, rx_pin, cs_pin, baud_rate, config);
   (void)index;
   (void)sck_pin;
@@ -77,7 +77,7 @@ hw_spi_t *hw_spi_init_device(const char *device, uint32_t baud_rate,
   uint8_t bits_per_word = 8u;
   bool cs_active_low = true;
 
-  sys_debugf("[hw] spi_init_device: device=%s baud=%u config=%p",
+  sys_debugf("hw", "spi_init_device: device=%s baud=%u config=%p",
              device != NULL ? device : "(null)", baud_rate, config);
   if (config != NULL) {
     cs_active_low = config->cs_active_low;
@@ -122,7 +122,7 @@ hw_spi_t *hw_spi_init_device(const char *device, uint32_t baud_rate,
 }
 
 void hw_spi_deinit(hw_spi_t *spi) {
-  sys_debugf("[hw] spi_deinit: spi=%p", spi);
+  sys_debugf("hw", "spi_deinit: spi=%p", spi);
   if (!hw_spi_valid(spi)) {
     return;
   }

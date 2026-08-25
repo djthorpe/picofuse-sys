@@ -11,7 +11,7 @@ struct hw_spi_t {};
 
 hw_spi_t *hw_spi_init_default(uint32_t baud_rate,
                               const hw_spi_config_t *config) {
-  sys_debugf("spi_init_default: unsupported on this platform (baud=%u)",
+  sys_debugf("hw", "spi_init_default: unsupported on this platform (baud=%u)",
              baud_rate);
   (void)config;
   (void)baud_rate;
@@ -21,7 +21,7 @@ hw_spi_t *hw_spi_init_default(uint32_t baud_rate,
 hw_spi_t *hw_spi_init(uint8_t index, hw_gpio_t *sck_pin, hw_gpio_t *tx_pin,
                       hw_gpio_t *rx_pin, hw_gpio_t *cs_pin, uint32_t baud_rate,
                       const hw_spi_config_t *config) {
-  sys_debugf("spi_init: unsupported on this platform (index=%u baud=%u)", index,
+  sys_debugf("hw", "spi_init: unsupported on this platform (index=%u baud=%u)", index,
              baud_rate);
   (void)index;
   (void)sck_pin;
@@ -35,7 +35,7 @@ hw_spi_t *hw_spi_init(uint8_t index, hw_gpio_t *sck_pin, hw_gpio_t *tx_pin,
 
 hw_spi_t *hw_spi_init_device(const char *device, uint32_t baud_rate,
                              const hw_spi_config_t *config) {
-  sys_debugf(
+  sys_debugf("hw",
       "spi_init_device: unsupported on this platform (device=%s baud=%u)",
       device != NULL ? device : "(null)", baud_rate);
   (void)device;
@@ -45,7 +45,7 @@ hw_spi_t *hw_spi_init_device(const char *device, uint32_t baud_rate,
 }
 
 void hw_spi_deinit(hw_spi_t *spi) {
-  sys_debugf("spi_deinit: spi=%p unsupported on this platform", spi);
+  sys_debugf("hw", "spi_deinit: spi=%p unsupported on this platform", spi);
   (void)spi;
 }
 
