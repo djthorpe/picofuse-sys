@@ -66,7 +66,13 @@ typedef enum {
   hw_wifi_event_badauth =
       (1 << 4), ///< Bad authentication during connection attempt
   hw_wifi_event_notfound = (1 << 5), ///< Network not found
-  hw_wifi_event_error = (1 << 6)     ///< Other error occurred
+  hw_wifi_event_error = (1 << 6),    ///< Other error occurred
+  hw_wifi_event_status = (1 << 7),   ///< Periodic status refresh while
+                                     ///< already connected (updated RSSI,
+                                     ///< channel, BSSID) - not a new
+                                     ///< connection; see
+                                     ///< hw_wifi_event_connected for the
+                                     ///< one-time "just joined" transition.
 } hw_wifi_event_t;
 
 /**

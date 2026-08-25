@@ -145,6 +145,8 @@ void app_event(app_t *app, sys_event_t event, void *userdata) {
       label = "not found";
     } else if (wifi_event & hw_wifi_event_error) {
       label = "error";
+    } else if (wifi_event & hw_wifi_event_status) {
+      label = "status";
     }
 
     if (network != NULL) {

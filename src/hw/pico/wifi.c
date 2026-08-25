@@ -506,8 +506,9 @@ void _hw_wifi_poll(void) {
         _hw_wifi_get_bssid(wifi, wifi->network.bssid);
         wifi->network.channel = _hw_wifi_get_channel(wifi);
 
-        // Callback
-        wifi->callback(wifi, hw_wifi_event_connected, &wifi->network,
+        // Callback - a periodic refresh, not a new connection; see
+        // hw_wifi_event_connected below for the one-time join transition.
+        wifi->callback(wifi, hw_wifi_event_status, &wifi->network,
                        wifi->userdata);
       }
     }
