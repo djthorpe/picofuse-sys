@@ -130,6 +130,12 @@ typedef struct hw_wifi_t hw_wifi_t;
 typedef struct net_ntp_t net_ntp_t;
 
 /**
+ * @brief Opaque LED handle (see picofuse/hw/led.h).
+ * @ingroup App
+ */
+typedef struct hw_led_t hw_led_t;
+
+/**
  * @brief Called once, on the main worker, before the run loop starts
  * dispatching events.
  * @ingroup App
@@ -175,7 +181,8 @@ typedef void (*app_callback_event_t)(app_t *app, sys_event_t event,
  * @return Exit code, suitable for returning directly from `main()`.
  *
  * Calls `sys_init()`, attempts `hw_init()` and `hid_init()` (see
- * @ref app_hid), registers environment signals as HID events if
+ * @ref app_hid), initializes the on-board LED if available (see
+ * @ref app_led), registers environment signals as HID events if
  * @ref APP_FLAG_SIGNAL is set and HID is available, enables the hardware
  * watchdog (see @ref app_watchdog) if @ref APP_FLAG_WATCHDOG is set and a
  * watchdog is available, registers the board's user button as a HID event
@@ -193,7 +200,8 @@ typedef void (*app_callback_event_t)(app_t *app, sys_event_t event,
  * set, or on the calling thread alone otherwise. Blocks until
  * @ref app_shutdown is called from within a callback (or from another
  * thread), then tears down
- * (`net_ntp_deinit()`, `hid_deinit()`, `hw_exit()`, `sys_exit()`).
+ * (`net_ntp_deinit()`, `hid_deinit()`, `hw_led_deinit()`, `hw_exit()`,
+ * `sys_exit()`).
  */
 int app_main(int argc, char *argv[], app_flag_t flags,
              app_callback_start_t on_start, app_callback_event_t on_event,
@@ -249,6 +257,19 @@ hw_wifi_t *app_wifi(const app_t *app);
  * app_main() does not sync automatically.
  */
 net_ntp_t *app_ntp(const app_t *app);
+
+/**
+ * @brief Get the on-board LED handle initialized for this app.
+ * @ingroup App
+ * @param app Application instance.
+ * @return LED handle, or NULL if the platform has no default on-board LED
+ * (see hw_led_init_default()), or the picofuse-hw library is not linked
+ * into this binary.
+ *
+ * Always attempted on startup, unlike the optional @ref app_flag_t-gated
+ * features; call hw_led_set()/hw_led_blink() on it directly.
+ */
+hw_led_t *app_led(const app_t *app);
 
 /** @} */
 

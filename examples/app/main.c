@@ -6,6 +6,7 @@
 
 #define HELLO_TIMER_ID 0x48454C4Fu
 #define HELLO_TIMER_INTERVAL_MS 5000u
+#define WIFI_JOINING_LED_BLINK_MS 250u
 
 #ifndef WIFI_SSID
 #define WIFI_SSID ""
@@ -129,8 +130,10 @@ void app_event(app_t *app, sys_event_t event, void *userdata) {
       label = (network != NULL) ? "scan result" : "scan complete";
     } else if (wifi_event & hw_wifi_event_joining) {
       label = "joining";
+      (void)hw_led_blink(app_led(app), 0, WIFI_JOINING_LED_BLINK_MS, true);
     } else if (wifi_event & hw_wifi_event_connected) {
       label = "connected";
+      (void)hw_led_set(app_led(app), 0, true);
       net_ntp_t *ntp = app_ntp(app);
       if (ntp != NULL) {
         sys_debugf("app", "app_event: syncing NTP (core=%u)",
@@ -139,12 +142,16 @@ void app_event(app_t *app, sys_event_t event, void *userdata) {
       }
     } else if (wifi_event & hw_wifi_event_disconnected) {
       label = "disconnected";
+      (void)hw_led_set(app_led(app), 0, false);
     } else if (wifi_event & hw_wifi_event_badauth) {
       label = "bad auth";
+      (void)hw_led_set(app_led(app), 0, false);
     } else if (wifi_event & hw_wifi_event_notfound) {
       label = "not found";
+      (void)hw_led_set(app_led(app), 0, false);
     } else if (wifi_event & hw_wifi_event_error) {
       label = "error";
+      (void)hw_led_set(app_led(app), 0, false);
     } else if (wifi_event & hw_wifi_event_status) {
       label = "status";
     }
@@ -167,7 +174,7 @@ void app_event(app_t *app, sys_event_t event, void *userdata) {
   hid_event_free(hid_event);
 }
 
-int main(int argc, char **argv) {
+ccint main(int argc, char **argv) {
   return app_main(argc, argv,
                   APP_FLAG_SIGNAL | APP_FLAG_WATCHDOG | APP_FLAG_MULTICORE |
                       APP_FLAG_USER_BUTTON | APP_FLAG_TEMPERATURE |

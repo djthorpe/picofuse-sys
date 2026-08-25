@@ -49,3 +49,7 @@ __attribute__((weak)) void hw_gpio_set_callback(hw_gpio_callback_t callback,
   (void)callback;
   (void)userdata;
 }
+
+__attribute__((weak)) hw_led_t *hw_led_init_default(void) { return NULL; }
+
+__attribute__((weak)) void hw_led_deinit(hw_led_t *led) { (void)led; }

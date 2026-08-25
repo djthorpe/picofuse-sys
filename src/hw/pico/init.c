@@ -10,6 +10,7 @@
 
 void _hw_led_module_init(void);
 void _hw_led_module_exit(void);
+void _hw_led_poll(void);
 void _hw_flash_module_init(void);
 void _hw_flash_module_exit(void);
 void _hw_watchdog_module_init(void);
@@ -77,5 +78,6 @@ void hw_poll(void) {
 #if PICO_CYW43_SUPPORTED
   cyw43_arch_poll();
   _hw_wifi_poll();
+  _hw_led_poll();
 #endif
 }

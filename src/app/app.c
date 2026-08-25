@@ -12,15 +12,28 @@
 #define APP_QUEUE_CAPACITY 32
 #endif
 
+/**
+ * @def APP_WIFI_QUEUE_CAPACITY
+ * @brief Maximum number of hid_event_type_wifi events held for worker 0
+ * (see _app_on_event()).
+ */
+#ifndef APP_WIFI_QUEUE_CAPACITY
+#define APP_WIFI_QUEUE_CAPACITY 8
+#endif
+
 ///////////////////////////////////////////////////////////////////////////////
 // TYPES
 
 struct app_t {
   sys_event_queue_t *queue;
+  // Holds hid_event_type_wifi events popped on a non-zero core, so they can
+  // be redispatched from worker 0 (see _app_on_event()/_app_poll()).
+  sys_event_queue_t *wifi_queue;
   hid_t *hid;
   hw_watchdog_t *watchdog;
   hw_wifi_t *wifi;
   net_ntp_t *ntp;
+  hw_led_t *led;
   app_flag_t flags;
   app_callback_start_t on_start;
   app_callback_event_t on_event;
@@ -65,6 +78,9 @@ static void _app_on_init(uint8_t worker) {
   _app->queue = sys_event_queue_init(APP_QUEUE_CAPACITY);
   sys_assert(_app->queue != NULL);
 
+  _app->wifi_queue = sys_event_queue_init(APP_WIFI_QUEUE_CAPACITY);
+  sys_assert(_app->wifi_queue != NULL);
+
   // hw_init() and hid_init() are weakly linked (see hw.c and hid.c): they
   // are harmless no-ops (hid_init() returning NULL) unless the
   // picofuse-hw / picofuse-hid libraries are also linked into this binary,
@@ -72,6 +88,12 @@ static void _app_on_init(uint8_t worker) {
   // absent.
   hw_init();
   _app->hid = hid_init(sys_runloop_queue());
+
+  // hw_led_init_default() is weakly linked (see hw.c), so a NULL app_led()
+  // is expected, not an error, when picofuse-hw is absent or the platform
+  // has no default on-board LED. Always attempted, unlike the flag-gated
+  // features below.
+  _app->led = hw_led_init_default();
 
   if (_app->hid != NULL && (_app->flags & APP_FLAG_SIGNAL)) {
     (void)hid_register_signal(_app->hid);
@@ -134,12 +156,38 @@ static void _app_on_init(uint8_t worker) {
 }
 
 static void _app_on_event(sys_event_t event) {
+  // picofuse-net/picofuse-hw's Pico backends link pico_cyw43_arch_lwip_poll,
+  // which provides no cross-core safety: any cyw43/lwIP call (Wi-Fi-type
+  // LEDs, net_ntp_sync(), hw_wifi_*()) made from a core other than the one
+  // hw_init() ran on (core 0, see _app_on_init()) panics. With
+  // APP_FLAG_MULTICORE the runloop can hand this event to any worker, so a
+  // wifi event landing on a non-zero core is queued here and redelivered
+  // from worker 0 by _app_poll() instead of being dispatched directly.
+  hid_event_t *hid_event = (hid_event_t *)event;
+  if (hid_event != NULL && hid_event->type == hid_event_type_wifi &&
+      sys_thread_core() != 0u) {
+    if (!sys_event_queue_try_push(_app->wifi_queue, event)) {
+      sys_debugf("app", "wifi event queue full, dropping event");
+      hid_event_free(hid_event);
+    }
+    return;
+  }
+
   if (_app->on_event != NULL) {
     _app->on_event(_app, event, _app->userdata);
   }
 }
 
 static void _app_poll(void) {
+  // Guaranteed to run on worker 0 only (see sys_runloop_poll_t's doc), so
+  // it's safe to redeliver wifi events deferred by _app_on_event() here.
+  sys_event_t deferred;
+  while ((deferred = sys_event_queue_try_pop(_app->wifi_queue)) != NULL) {
+    if (_app->on_event != NULL) {
+      _app->on_event(_app, deferred, _app->userdata);
+    }
+  }
+
   hw_poll();
   if (_app->hid != NULL) {
     (void)hid_poll(_app->hid);
@@ -150,6 +198,15 @@ static void _app_on_exit(uint8_t worker) {
   if (worker != 0u) {
     return;
   }
+
+  // Free any wifi events deferred by _app_on_event() that never reached
+  // _app_poll() before shutdown, so nothing leaks.
+  sys_event_t deferred;
+  while ((deferred = sys_event_queue_try_pop(_app->wifi_queue)) != NULL) {
+    hid_event_free((hid_event_t *)deferred);
+  }
+  sys_event_queue_deinit(_app->wifi_queue);
+  _app->wifi_queue = NULL;
 
   // Disable the watchdog before other teardown steps run, so shutdown work
   // cannot itself be interrupted by a watchdog-triggered reset.
@@ -171,6 +228,9 @@ static void _app_on_exit(uint8_t worker) {
   net_ntp_deinit(_app->ntp);
   _app->ntp = NULL;
 
+  hw_led_deinit(_app->led);
+  _app->led = NULL;
+
   hw_exit();
   sys_event_queue_deinit(_app->queue);
   _app->queue = NULL;
@@ -187,10 +247,12 @@ int app_main(int argc, char *argv[], app_flag_t flags,
 
   app_t app = {
       .queue = NULL,
+      .wifi_queue = NULL,
       .hid = NULL,
       .watchdog = NULL,
       .wifi = NULL,
       .ntp = NULL,
+      .led = NULL,
       .flags = flags,
       .on_start = on_start,
       .on_event = on_event,
@@ -250,6 +312,14 @@ hw_wifi_t *app_wifi(const app_t *app) {
  * or the picofuse-net library is not linked into this binary.
  */
 net_ntp_t *app_ntp(const app_t *app) { return (app != NULL) ? app->ntp : NULL; }
+
+/**
+ * @brief Get the on-board LED handle initialized for this app.
+ * @param app Application instance.
+ * @return LED handle, or NULL if the platform has no default on-board LED,
+ * or the picofuse-hw library is not linked into this binary.
+ */
+hw_led_t *app_led(const app_t *app) { return (app != NULL) ? app->led : NULL; }
 
 ///////////////////////////////////////////////////////////////////////////////
 // METHODS

@@ -23,6 +23,13 @@ struct hw_led_t {
   bool owns_gpio;
   bool blink_repeating;
   bool blink_phase_on;
+  // cyw43_arch_gpio_put() (used for HW_LED_TYPE_WIFI) panics if called from
+  // IRQ context under this project's pico_cyw43_arch_lwip_poll build, which
+  // the blink timer callback runs in - so for that type,
+  // _hw_led_apply_state() only records the desired value here, and
+  // _hw_led_poll() (driven by hw_poll(), regular thread context) applies it.
+  bool wifi_pending;
+  bool wifi_pending_value;
   uint8_t led_count;
   uint8_t blink_index;
   uint8_t wifi_pin;
@@ -50,6 +57,35 @@ void _hw_lock_exit(void);
 void _hw_led_module_init(void) {}
 
 void _hw_led_module_exit(void) {}
+
+/**
+ * @brief Apply any pending HW_LED_TYPE_WIFI toggle recorded by
+ * _hw_led_apply_state(). Must be called from regular thread context on the
+ * core cyw43_arch_init() ran on (see hw_poll()), never from an IRQ.
+ */
+void _hw_led_poll(void) {
+#ifdef PICO_CYW43_SUPPORTED
+  for (uint8_t i = 0; i < HW_LED_POOL_CAPACITY; i++) {
+    hw_led_t *led = &_hw_led_pool[i];
+
+    bool pending;
+    bool value = false;
+
+    _hw_lock_enter();
+    pending = led->initialized && led->type == HW_LED_TYPE_WIFI &&
+             led->wifi_pending;
+    if (pending) {
+      value = led->wifi_pending_value;
+      led->wifi_pending = false;
+    }
+    _hw_lock_exit();
+
+    if (pending) {
+      cyw43_arch_gpio_put(led->wifi_pin, value ? 1 : 0);
+    }
+  }
+#endif
+}
 
 static hw_led_t *_hw_led_alloc(void) {
   _hw_lock_enter();
@@ -180,7 +216,9 @@ static bool _hw_led_apply_state(hw_led_t *led, uint8_t index, bool enabled) {
     if (led->wifi_pin == HW_LED_GPIO_NONE) {
       return false;
     }
-    cyw43_arch_gpio_put(led->wifi_pin, enabled ? 1 : 0);
+    // Deferred to _hw_led_poll(); see the wifi_pending field comment.
+    led->wifi_pending = true;
+    led->wifi_pending_value = enabled;
     return true;
 #else
     return false;
