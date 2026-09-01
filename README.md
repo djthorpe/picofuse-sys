@@ -1,5 +1,8 @@
 # picofuse
 
+NOTE This is being migrated to <https://github.com/mutablelogic/picofuse>
+
+
 Picofuse is a software system for hardware-independent development of small event-driven applications. It provides a common interface for hardware peripherals and a build system that abstracts away the details of the underlying hardware. There are a variety of modules which define the abstraction:
 
 * `sys`: System-level functions.
